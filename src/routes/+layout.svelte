@@ -1,5 +1,4 @@
 <script lang="ts">
-  import CalendarClock from '@lucide/svelte/icons/calendar-clock';
   import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
   import Moon from '@lucide/svelte/icons/moon';
   import NotebookPen from '@lucide/svelte/icons/notebook-pen';
@@ -8,6 +7,7 @@
   import { onMount } from 'svelte';
   import { page } from '$app/state';
   import favicon from '$lib/assets/favicon.svg';
+  import ClopenDoors from '$lib/components/ClopenDoors.svelte';
   import * as Tooltip from '$lib/components/ui/tooltip';
   import '../app.css';
 
@@ -64,7 +64,7 @@
           <span class="hamburger-bar {menuOpen ? '-translate-y-[7px] -rotate-45' : ''}"></span>
         </button>
         <a href="/" class="flex items-center gap-2 font-semibold tracking-tight" onclick={() => (menuOpen = false)}>
-          <CalendarClock class="size-5 text-primary" />
+          <ClopenDoors class="h-5 w-auto text-primary" />
           <span>Clopen</span>
         </a>
       </div>
