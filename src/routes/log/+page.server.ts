@@ -65,7 +65,7 @@ function fieldErrorsOf(parsed: z.ZodError, prefix = ''): Record<string, string> 
   return out;
 }
 
-type ConflictStrategy = 'overwrite' | 'skip' | undefined;
+type ConflictStrategy = 'overwrite' | 'skip' | 'append' | undefined;
 
 /** Per-conflict payload sent to the client: every existing row for a date plus the proposed replacement. */
 export type ConflictRow = {
@@ -87,7 +87,7 @@ export type ConflictRow = {
 };
 
 function parseStrategy(v: FormDataEntryValue | null): ConflictStrategy {
-  return v === 'overwrite' || v === 'skip' ? v : undefined;
+  return v === 'overwrite' || v === 'skip' || v === 'append' ? v : undefined;
 }
 
 // Decide which incoming entries actually get inserted given a strategy.
@@ -143,6 +143,9 @@ async function applyConflictStrategy(
     await deleteEntriesByDates(existingDates);
     return { ok: true, toInsert: inputs, overwroteCount: existingDates.length };
   }
+  // 'append': keep both — the new entries coexist with the existing ones
+  // (multiple entries per day are first-class; totals and OT sum per day).
+  if (strategy === 'append') return { ok: true, toInsert: inputs, overwroteCount: 0 };
   const skipSet = new Set(existingDates);
   return { ok: true, toInsert: inputs.filter((i) => !skipSet.has(i.date)), overwroteCount: 0 };
 }

@@ -127,7 +127,10 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   today. Year-view weekly chart sits below.
 - `src/routes/log/+page.*` — entries page. Three forms (single add, weekly
   grid, CSV import) share a `conflictAwareEnhance` factory that surfaces
-  duplicate-date conflicts in a dialog (`overwrite | keep existing | cancel`).
+  duplicate-date conflicts in a dialog (`overwrite | keep existing | keep both |
+  cancel` — keep both appends the new entries as additional same-day shifts,
+  and the dialog leads with "Add a second shift?" when clock spans don't
+  overlap).
   Add-an-entry has a 4×2 grid of leave-kind shortcut buttons under the regular
   fields. The weekly grid uses a shadcn `Select` per row with icons and color
   badges so the chosen leave kind reads at a glance; selecting one hides the

@@ -145,10 +145,35 @@
   type ConflictRow = { date: string; existing: ConflictEntry[]; proposed: ConflictEntry };
   let conflictForm = $state<HTMLFormElement | null>(null);
   let conflicts = $state<ConflictRow[]>([]);
+  // True when every conflict looks like a clean second shift: clock times on
+  // both sides and no overlap between the proposed span and any existing one
+  // (spans that wrap past midnight extend into the next day).
+  const conflictsLookLikeSecondShift = $derived(
+    conflicts.length > 0 &&
+      conflicts.every((c) => {
+        if (!c.proposed.startTime || !c.proposed.endTime) return false;
+        const span = (e: { startTime: string | null; endTime: string | null }): [number, number] | null => {
+          if (!e.startTime || !e.endTime) return null;
+          const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+          const start = toMin(e.startTime);
+          let end = toMin(e.endTime);
+          if (end <= start) end += 24 * 60;
+          return [start, end];
+        };
+        const p = span(c.proposed);
+        if (!p) return false;
+        return c.existing.every((e) => {
+          const x = span(e);
+          if (!x) return false;
+          return p[1] <= x[0] || p[0] >= x[1];
+        });
+      }),
+  );
+
   function clearConflictStrategy(formEl: HTMLFormElement) {
     formEl.querySelector('input[name="conflictStrategy"]')?.remove();
   }
-  function resolveConflict(strategy: 'overwrite' | 'skip' | 'cancel') {
+  function resolveConflict(strategy: 'overwrite' | 'skip' | 'append' | 'cancel') {
     const formEl = conflictForm;
     if (!formEl || strategy === 'cancel') {
       conflictForm = null;
@@ -1720,12 +1745,15 @@
 <Dialog.Root open={conflicts.length > 0} onOpenChange={(o) => !o && resolveConflict('cancel')}>
   <Dialog.Content class="sm:max-w-2xl">
     <Dialog.Header>
-      <Dialog.Title>Entries already exist</Dialog.Title>
+      <Dialog.Title>{conflictsLookLikeSecondShift ? 'Add a second shift?' : 'Entries already exist'}</Dialog.Title>
       <Dialog.Description>
         {conflicts.length === 1
           ? 'An entry already exists for this date.'
           : `Entries already exist for ${conflicts.length} of these dates.`}
-        Choose how to handle the conflict — other rows in the batch are unaffected by your choice.
+        {conflictsLookLikeSecondShift
+          ? 'The times don\u2019t overlap, so this looks like an additional shift — keep both to record it alongside.'
+          : 'Keep both records the new times as an additional shift on the same day.'}
+        Other rows in the batch are unaffected by your choice.
       </Dialog.Description>
     </Dialog.Header>
     <div class="flex max-h-[60vh] flex-col gap-3 overflow-y-auto pr-1">
@@ -1775,6 +1803,12 @@
         class="hover:bg-destructive/30 focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2"
       >
         Overwrite
+      </Button>
+      <Button
+        onclick={() => resolveConflict('append')}
+        class="hover:bg-primary/75 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        Keep both
       </Button>
     </Dialog.Footer>
   </Dialog.Content>
