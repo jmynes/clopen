@@ -452,8 +452,9 @@
   function recomputeWeekTotals() {
     // Build into a local and assign once — recompute runs inside a tracking
     // $effect, so reading weekTotals here would make the effect re-run on its
-    // own write and loop.
-    const mains = weekRowDates.map((_, i) => {
+    // own write and loop. Sub-shifts carry their own per-row Worked fields
+    // (subShiftWorked), so the main row shows only its own shift.
+    weekTotals = weekRowDates.map((_, i) => {
       if (leaveRows.has(i)) return null;
       const brk = Number(inputByName(`break-${i}`)?.value) || 0;
       if (weekMode === 'clock') {
@@ -466,25 +467,20 @@
       if (!h) return null;
       return Math.max(0, h - brk);
     });
-    // Fold in the controlled sub-shifts (a day with only a complete sub-shift
-    // still shows a total).
-    weekTotals = mains.map((main, i) => {
-      let total = main;
-      for (const sh of subShifts[i] ?? []) {
-        const sbrk = Number(sh.brk) || 0;
-        let v: number | null = null;
-        if (weekMode === 'clock') {
-          const ss = parseTimeInput(sh.start);
-          const se = parseTimeInput(sh.end);
-          if (ss && se) v = Math.max(0, hoursBetween(ss, se) - sbrk);
-        } else {
-          const h = Number(sh.hours);
-          if (h) v = Math.max(0, h - sbrk);
-        }
-        if (v !== null) total = (total ?? 0) + v;
-      }
-      return total;
-    });
+  }
+
+  // Per-sub-shift Worked, computed from the controlled state.
+  function subShiftWorked(sh: SubShift): number | null {
+    const brk = Number(sh.brk) || 0;
+    if (weekMode === 'clock') {
+      const start = parseTimeInput(sh.start);
+      const end = parseTimeInput(sh.end);
+      if (!start || !end) return null;
+      return Math.max(0, hoursBetween(start, end) - brk);
+    }
+    const h = Number(sh.hours);
+    if (!h) return null;
+    return Math.max(0, h - brk);
   }
   // Week navigation and mode switches recreate the inputs; re-read once the
   // new DOM is in place.
@@ -1193,6 +1189,7 @@
               </div>
               {#if !isLeave}
                 {#each subShifts[i] as shift, j (j)}
+                  {@const shiftWorked = subShiftWorked(shift)}
                   <div class="flex flex-col gap-2 px-2.5 pb-2.5 lg:order-last lg:basis-full lg:flex-row lg:items-start lg:gap-3 lg:p-0 lg:pb-1">
                     <div class="flex items-center justify-between lg:hidden">
                       <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -1250,7 +1247,7 @@
                           {#if weekErrors[`end-${i}-${j + 1}`]}<p class="text-xs text-destructive">{weekErrors[`end-${i}-${j + 1}`]}</p>{/if}
                         </div>
                       {:else}
-                        <div class="col-span-3 flex flex-col gap-1 lg:w-20 lg:shrink-0">
+                        <div class="col-span-2 flex flex-col gap-1 lg:w-20 lg:shrink-0">
                           <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Hours</span>
                           <Input
                             type="number"
@@ -1267,7 +1264,7 @@
                           {#if weekErrors[`hours-${i}-${j + 1}`]}<p class="text-xs text-destructive">{weekErrors[`hours-${i}-${j + 1}`]}</p>{/if}
                         </div>
                       {/if}
-                      <div class="col-span-3 flex flex-col gap-1 lg:w-20 lg:shrink-0">
+                      <div class="{weekMode === 'clock' ? 'col-span-3' : 'col-span-2'} flex flex-col gap-1 lg:w-20 lg:shrink-0">
                         <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Break</span>
                         <Input
                           type="number"
@@ -1283,8 +1280,18 @@
                         />
                         {#if weekErrors[`break-${i}-${j + 1}`]}<p class="text-xs text-destructive">{weekErrors[`break-${i}-${j + 1}`]}</p>{/if}
                       </div>
-                      <div class="hidden lg:block lg:w-20 lg:shrink-0"></div>
-                      <div class="{weekMode === 'clock' ? 'col-span-3' : 'col-span-6'} flex flex-col gap-1 lg:flex-1">
+                      <div class="{weekMode === 'clock' ? 'col-span-3' : 'col-span-2'} flex flex-col gap-1 lg:w-20 lg:shrink-0">
+                        <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Worked</span>
+                        <Input
+                          type="text"
+                          readonly
+                          tabindex={-1}
+                          value={shiftWorked === null ? '—' : hrs(shiftWorked)}
+                          aria-label="Worked hours for {weekdayShort(date)} shift {j + 2}"
+                          class="pointer-events-none bg-muted/40 font-mono tabular-nums text-muted-foreground"
+                        />
+                      </div>
+                      <div class="col-span-6 flex flex-col gap-1 lg:flex-1">
                         <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Note</span>
                         <Input
                           type="text"
