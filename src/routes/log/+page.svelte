@@ -400,9 +400,9 @@
                 ? 'bg-muted/70'
                 : ''}"
           >
-            <div class="w-28 shrink-0 pt-2 text-sm">
-              <span class="font-medium">{weekdayShort(date)}</span>
-              <span class="ml-1 text-muted-foreground">{formatDay(date).replace(/^\w+,\s/, '')}</span>
+            <div class="w-28 shrink-0 pt-2 font-mono text-sm tabular-nums">
+              <span class="font-medium uppercase">{weekdayShort(date)}</span>
+              <span class="ml-1 text-muted-foreground">{formatDay(date).replace(/^\w+,\s/, '').toUpperCase()}</span>
             </div>
             {#if weekMode === 'clock'}
               <div class="flex w-40 shrink-0 flex-col gap-1">
@@ -547,9 +547,9 @@
           <Table.Body>
             {#each data.entries as entry (entry.id)}
               <Table.Row class="even:bg-muted/70">
-                <Table.Cell>
-                  <span class="text-muted-foreground">{weekdayShort(entry.date)}</span>
-                  <span class="ml-1">{formatDay(entry.date).replace(/^\w+,\s/, '')}</span>
+                <Table.Cell class="font-mono text-sm tabular-nums">
+                  <span class="uppercase text-muted-foreground">{weekdayShort(entry.date)}</span>
+                  <span class="ml-1 uppercase">{formatDay(entry.date).replace(/^\w+,\s/, '').toUpperCase()}</span>
                 </Table.Cell>
                 <Table.Cell class="font-mono text-sm tabular-nums">
                   {entry.startTime ? formatTime(entry.startTime) : '—'}
