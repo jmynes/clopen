@@ -1,6 +1,9 @@
 <script lang="ts">
   import CalendarClock from '@lucide/svelte/icons/calendar-clock';
+  import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
   import Moon from '@lucide/svelte/icons/moon';
+  import NotebookPen from '@lucide/svelte/icons/notebook-pen';
+  import Settings from '@lucide/svelte/icons/settings';
   import Sun from '@lucide/svelte/icons/sun';
   import { onMount } from 'svelte';
   import { page } from '$app/state';
@@ -10,9 +13,9 @@
   let { children } = $props();
 
   const links = [
-    { href: '/', label: 'Dashboard' },
-    { href: '/log', label: 'Log' },
-    { href: '/settings', label: 'Settings' },
+    { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/log', label: 'Log', icon: NotebookPen },
+    { href: '/settings', label: 'Settings', icon: Settings },
   ];
 
   function isActive(href: string): boolean {
@@ -45,22 +48,24 @@
     <div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
       <a href="/" class="flex items-center gap-2 font-semibold tracking-tight">
         <CalendarClock class="size-5 text-primary" />
-        <span class="hidden sm:inline">Timesheet</span>
+        <span>Timesheet</span>
       </a>
       <nav class="flex items-center gap-1 text-sm">
-        {#each links as link (link.href)}
-          <a
-            href={link.href}
-            class="rounded-md px-2 py-1.5 transition-colors hover:bg-accent hover:text-accent-foreground sm:px-3 {isActive(
-              link.href,
-            )
-              ? 'bg-accent text-accent-foreground font-medium'
-              : 'text-muted-foreground'}"
-            aria-current={isActive(link.href) ? 'page' : undefined}
-          >
-            {link.label}
-          </a>
-        {/each}
+        <div class="hidden items-center gap-1 sm:flex">
+          {#each links as link (link.href)}
+            <a
+              href={link.href}
+              class="rounded-md px-3 py-1.5 transition-colors hover:bg-accent hover:text-accent-foreground {isActive(
+                link.href,
+              )
+                ? 'bg-accent text-accent-foreground font-medium'
+                : 'text-muted-foreground'}"
+              aria-current={isActive(link.href) ? 'page' : undefined}
+            >
+              {link.label}
+            </a>
+          {/each}
+        </div>
         <div
           role="radiogroup"
           aria-label="Theme"
@@ -101,7 +106,31 @@
     </div>
   </header>
 
-  <main class="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
+  <main class="mx-auto max-w-5xl px-4 py-6 pb-24 sm:px-6 sm:py-10 sm:pb-10">
     {@render children()}
   </main>
+
+  <!-- iOS-style tab bar replaces the header links on phones -->
+  <nav
+    aria-label="Primary"
+    class="fixed inset-x-0 bottom-0 z-10 border-t border-border/70 bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden"
+  >
+    <div class="grid grid-cols-3">
+      {#each links as link (link.href)}
+        {@const Icon = link.icon}
+        <a
+          href={link.href}
+          class="flex flex-col items-center gap-1 pt-2 pb-1.5 text-[11px] font-medium transition-colors {isActive(
+            link.href,
+          )
+            ? 'text-primary'
+            : 'text-muted-foreground'}"
+          aria-current={isActive(link.href) ? 'page' : undefined}
+        >
+          <Icon class="size-5" />
+          {link.label}
+        </a>
+      {/each}
+    </div>
+  </nav>
 </div>
