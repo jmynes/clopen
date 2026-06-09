@@ -88,59 +88,7 @@
             </div>
           </section>
 
-          <section class="flex flex-col gap-4 py-5">
-            <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Schedule</h3>
-            <fieldset class="flex flex-col gap-1.5">
-              <legend class="sr-only">Workdays</legend>
-              <span class="text-sm font-medium">Workdays</span>
-              <p class="text-xs text-muted-foreground">
-                Days that accrue the baseline. Default is Mon–Fri (8h × 5 = 40h/week).
-              </p>
-              <!-- Deterministic 4 + 3 split, both rows centered, at every width -->
-              <div class="mt-1 flex flex-col gap-1.5">
-                {#each [orderedWeekdays.slice(0, 4), orderedWeekdays.slice(4)] as chipRow, ri (ri)}
-                  <div class="flex justify-center gap-1.5">
-                    {#each chipRow as day (day.n)}
-                      <label
-                        class="flex w-16 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-input px-1 py-2 text-sm has-checked:border-primary has-checked:bg-accent"
-                      >
-                        <input
-                          type="checkbox"
-                          name="workdays"
-                          value={day.n}
-                          checked={selected.has(day.n)}
-                          class="accent-primary"
-                        />
-                        {day.label}
-                      </label>
-                    {/each}
-                  </div>
-                {/each}
-              </div>
-            </fieldset>
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div class="flex flex-col gap-1.5">
-                <Label for="weekStartsOn">Week starts on</Label>
-                <select
-                  id="weekStartsOn"
-                  name="weekStartsOn"
-                  bind:value={weekStartsOnValue}
-                  class="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
-                >
-                  <option value="1">Monday</option>
-                  <option value="7">Sunday</option>
-                </select>
-                <p class="text-xs text-muted-foreground">Weekly grid order and dashboard grouping.</p>
-              </div>
-              <div class="flex flex-col gap-1.5">
-                <Label for="epoch">Tracking since</Label>
-                <Input id="epoch" type="date" name="epoch" value={data.epoch} required class="w-full" />
-                <p class="text-xs text-muted-foreground">Earliest date that accrues the make-whole baseline.</p>
-              </div>
-            </div>
-          </section>
-
-          <section class="flex flex-col gap-3 pt-5">
+          <section class="flex flex-col gap-3 py-5">
             <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Overtime</h3>
             <div class="rounded-md border border-input text-sm transition-colors has-checked:border-primary has-checked:bg-accent">
               <label class="flex cursor-pointer items-start gap-2 px-3 py-2">
@@ -186,6 +134,58 @@
               </div>
             </div>
           </section>
+          <section class="flex flex-col gap-4 pt-5">
+            <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Schedule</h3>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div class="flex flex-col gap-1.5">
+                <Label for="weekStartsOn">Week starts on</Label>
+                <select
+                  id="weekStartsOn"
+                  name="weekStartsOn"
+                  bind:value={weekStartsOnValue}
+                  class="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                >
+                  <option value="1">Monday</option>
+                  <option value="7">Sunday</option>
+                </select>
+                <p class="text-xs text-muted-foreground">Weekly grid order and dashboard grouping.</p>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <Label for="epoch">Tracking since</Label>
+                <Input id="epoch" type="date" name="epoch" value={data.epoch} required class="w-full" />
+                <p class="text-xs text-muted-foreground">Earliest date that accrues the make-whole baseline.</p>
+              </div>
+            </div>
+            <fieldset class="flex flex-col gap-1.5">
+              <legend class="sr-only">Workdays</legend>
+              <span class="text-sm font-medium">Workdays</span>
+              <p class="text-xs text-muted-foreground">
+                Days that accrue the baseline. Default is Mon–Fri (8h × 5 = 40h/week).
+              </p>
+              <!-- Deterministic 4 + 3 split, both rows centered, at every width -->
+              <div class="mt-1 flex flex-col gap-1.5">
+                {#each [orderedWeekdays.slice(0, 4), orderedWeekdays.slice(4)] as chipRow, ri (ri)}
+                  <div class="flex justify-center gap-1.5">
+                    {#each chipRow as day (day.n)}
+                      <label
+                        class="flex w-16 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-input px-1 py-2 text-sm has-checked:border-primary has-checked:bg-accent"
+                      >
+                        <input
+                          type="checkbox"
+                          name="workdays"
+                          value={day.n}
+                          checked={selected.has(day.n)}
+                          class="accent-primary"
+                        />
+                        {day.label}
+                      </label>
+                    {/each}
+                  </div>
+                {/each}
+              </div>
+            </fieldset>
+          </section>
+
         </Card.Content>
       </Card.Root>
 
