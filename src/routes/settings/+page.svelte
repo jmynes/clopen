@@ -28,6 +28,8 @@
   // svelte-ignore state_referenced_locally
   let otEnabled = $state(data.otMultiplierEnabled);
   // svelte-ignore state_referenced_locally
+  let otMultiplierValue = $state(data.otMultiplier);
+  // svelte-ignore state_referenced_locally
   let weekStartsOnValue = $state(String(data.weekStartsOn));
   const orderedWeekdays = $derived(weekStartsOnValue === '7' ? [WEEKDAYS[6], ...WEEKDAYS.slice(0, 6)] : WEEKDAYS);
 </script>
@@ -101,14 +103,18 @@
                   </span>
                 </span>
               </label>
-              <!-- readonly, not disabled, while toggled off: a disabled input wouldn't
-                   submit and saving would silently reset a custom multiplier to 1.5 -->
+              <!-- Disabled while toggled off so it's fully inert; a disabled input
+                   doesn't submit, so a hidden input carries the bound value and a
+                   custom multiplier isn't silently reset to 1.5 on save. -->
               <div
                 class="flex items-center justify-between gap-3 border-t border-border/50 px-3 py-2 transition-opacity {otEnabled
                   ? ''
                   : 'opacity-50'}"
               >
                 <Label for="otMultiplier">Multiplier (× hourly rate)</Label>
+                {#if !otEnabled}
+                  <input type="hidden" name="otMultiplier" value={otMultiplierValue} />
+                {/if}
                 <!-- inputs can't render ::after, so the × suffix is an overlaid span -->
                 <div class="relative w-24 shrink-0">
                   <Input
@@ -118,10 +124,9 @@
                     step="0.05"
                     min="1"
                     max="10"
-                    value={data.otMultiplier}
+                    bind:value={otMultiplierValue}
                     required
-                    readonly={!otEnabled}
-                    tabindex={otEnabled ? undefined : -1}
+                    disabled={!otEnabled}
                     class="pr-7 text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   />
                   <span
