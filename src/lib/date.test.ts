@@ -4,12 +4,12 @@ import { formatWeekRange } from './date';
 describe('formatWeekRange', () => {
   it('omits the year by default', () => {
     expect(formatWeekRange('2026-01-05')).toBe('Jan 05 – 11');
-    expect(formatWeekRange('2026-01-26')).toBe('Jan 26 – Feb 1');
+    expect(formatWeekRange('2026-01-26')).toBe('Jan 26 – Feb 01');
   });
 
   it('shows the year when asked (same year)', () => {
     expect(formatWeekRange('2026-01-05', true)).toBe('Jan 05 – 11, 2026');
-    expect(formatWeekRange('2026-01-26', true)).toBe('Jan 26 – Feb 1, 2026');
+    expect(formatWeekRange('2026-01-26', true)).toBe('Jan 26 – Feb 01, 2026');
   });
 
   it('shows both years when the week straddles a year boundary', () => {
