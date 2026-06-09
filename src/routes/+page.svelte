@@ -9,7 +9,7 @@
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
   import WeeklyChart from '$lib/components/WeeklyChart.svelte';
-  import { formatDay, formatWeekRange, todayISO } from '$lib/date';
+  import { formatDay, formatRangeISO, formatWeekRange, todayISO } from '$lib/date';
   import { addDays, countWorkdays, loggedHours, weekDates } from '$lib/timesheet';
   import type { PageData } from './$types';
 
@@ -57,7 +57,7 @@
         const wk = weekDates(anchor, wsOn)[0];
         const start = addDays(wk, -7);
         const end = addDays(wk, 6);
-        return { start, end, label: `${formatWeekRange(start, true)} → ${formatDay(end).replace(/^\w+,\s/, '')}` };
+        return { start, end, label: formatRangeISO(start, end, true) };
       }
       case 'month': {
         const start = `${anchor.slice(0, 7)}-01`;

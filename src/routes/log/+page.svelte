@@ -18,7 +18,7 @@
   import { Label } from '$lib/components/ui/label';
   import * as Table from '$lib/components/ui/table';
   import { toCsv } from '$lib/csv';
-  import { formatDay, formatTime, formatWeekRange, isWeekend, todayISO, weekdayShort } from '$lib/date';
+  import { formatDay, formatRangeISO, formatTime, formatWeekRange, isWeekend, todayISO, weekdayShort } from '$lib/date';
   import type { TimeEntry } from '$lib/db/schema';
   import { addDays, parseTimeInput, weekDates } from '$lib/timesheet';
   import type { ActionData, PageData } from './$types';
@@ -224,7 +224,7 @@
         const wk = weekDates(anchor, wsOn)[0];
         const start = addDays(wk, -7);
         const end = addDays(wk, 6);
-        return { start, end, label: `${formatWeekRange(start, true)} → ${formatDay(end).replace(/^\w+,\s/, '')}` };
+        return { start, end, label: formatRangeISO(start, end, true) };
       }
       case 'month': {
         const start = `${anchor.slice(0, 7)}-01`;

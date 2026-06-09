@@ -60,11 +60,19 @@ export function formatDay(iso: string): string {
 export function formatWeekRange(weekStartISO: string, withYear = false): string {
   const start = utcDate(weekStartISO);
   const end = new Date(start.getTime() + 6 * 86_400_000);
+  return formatDateRange(start, end, withYear);
+}
+
+/** Generic ISO date-range label; collapses same-month days like "Jun 5 – 13". */
+export function formatRangeISO(startISO: string, endISO: string, withYear = false): string {
+  return formatDateRange(utcDate(startISO), utcDate(endISO), withYear);
+}
+
+function formatDateRange(start: Date, end: Date, withYear: boolean): string {
   const month = new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' });
   const startYear = start.getUTCFullYear();
   const endYear = end.getUTCFullYear();
   const sameMonth = start.getUTCMonth() === end.getUTCMonth() && startYear === endYear;
-
   const startLabel = `${month.format(start)} ${start.getUTCDate()}`;
   const endLabel = sameMonth ? `${end.getUTCDate()}` : `${month.format(end)} ${end.getUTCDate()}`;
   if (!withYear) return `${startLabel} – ${endLabel}`;
