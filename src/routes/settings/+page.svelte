@@ -96,20 +96,25 @@
               <p class="text-xs text-muted-foreground">
                 Days that accrue the baseline. Default is Mon–Fri (8h × 5 = 40h/week).
               </p>
-              <div class="mt-1 grid grid-cols-4 gap-1.5 md:grid-cols-7">
-                {#each orderedWeekdays as day (day.n)}
-                  <label
-                    class="flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-input px-1 py-2 text-sm has-checked:border-primary has-checked:bg-accent"
-                  >
-                    <input
-                      type="checkbox"
-                      name="workdays"
-                      value={day.n}
-                      checked={selected.has(day.n)}
-                      class="accent-primary"
-                    />
-                    {day.label}
-                  </label>
+              <!-- Deterministic 4 + 3 split, both rows centered, at every width -->
+              <div class="mt-1 flex flex-col gap-1.5">
+                {#each [orderedWeekdays.slice(0, 4), orderedWeekdays.slice(4)] as chipRow, ri (ri)}
+                  <div class="flex justify-center gap-1.5">
+                    {#each chipRow as day (day.n)}
+                      <label
+                        class="flex w-16 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-input px-1 py-2 text-sm has-checked:border-primary has-checked:bg-accent"
+                      >
+                        <input
+                          type="checkbox"
+                          name="workdays"
+                          value={day.n}
+                          checked={selected.has(day.n)}
+                          class="accent-primary"
+                        />
+                        {day.label}
+                      </label>
+                    {/each}
+                  </div>
                 {/each}
               </div>
             </fieldset>
