@@ -656,7 +656,7 @@
                   name="note-{i}"
                   placeholder="Reason (optional)"
                   aria-label="PTO note for {weekdayShort(date)}"
-                  class="max-w-md"
+                  class="flex-1"
                 />
               </div>
             {:else if weekMode === 'clock'}
