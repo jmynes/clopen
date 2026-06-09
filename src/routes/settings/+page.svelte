@@ -20,6 +20,16 @@
   ];
 
   const selected = $derived(new Set(data.settings.workdays));
+
+  // Local mirrors of two form fields so the UI can react before saving:
+  // the multiplier field greys out while the toggle is off, and the workday
+  // chips reorder to match the chosen week start.
+  // Initial-only reads; the form is the source of truth after first render.
+  // svelte-ignore state_referenced_locally
+  let otEnabled = $state(data.otMultiplierEnabled);
+  // svelte-ignore state_referenced_locally
+  let weekStartsOnValue = $state(String(data.weekStartsOn));
+  const orderedWeekdays = $derived(weekStartsOnValue === '7' ? [WEEKDAYS[6], ...WEEKDAYS.slice(0, 6)] : WEEKDAYS);
 </script>
 
 <div class="flex flex-col gap-8">
@@ -81,7 +91,7 @@
             Days that accrue the baseline. Default is Mon–Fri (8h × 5 = 40h/week).
           </p>
           <div class="flex flex-wrap gap-2">
-            {#each WEEKDAYS as day (day.n)}
+            {#each orderedWeekdays as day (day.n)}
               <label
                 class="flex cursor-pointer items-center gap-2 rounded-md border border-input px-3 py-2 text-sm has-checked:border-primary has-checked:bg-accent"
               >
@@ -97,12 +107,7 @@
           <label
             class="flex cursor-pointer items-start gap-2 rounded-md border border-input px-3 py-2 text-sm has-checked:border-primary has-checked:bg-accent"
           >
-            <input
-              type="checkbox"
-              name="otMultiplierEnabled"
-              checked={data.otMultiplierEnabled}
-              class="mt-0.5 accent-primary"
-            />
+            <input type="checkbox" name="otMultiplierEnabled" bind:checked={otEnabled} class="mt-0.5 accent-primary" />
             <span>
               <span class="font-medium">Overtime multiplies pay</span>
               <span class="block text-xs text-muted-foreground">
@@ -111,7 +116,9 @@
               </span>
             </span>
           </label>
-          <div class="flex flex-col gap-1.5">
+          <!-- readonly, not disabled, while toggled off: a disabled input wouldn't
+               submit and saving would silently reset a custom multiplier to 1.5 -->
+          <div class="flex flex-col gap-1.5 transition-opacity {otEnabled ? '' : 'opacity-50'}">
             <Label for="otMultiplier">Multiplier (× hourly rate)</Label>
             <!-- inputs can't render ::after, so the × suffix is an overlaid span -->
             <div class="relative w-full md:w-28">
@@ -124,6 +131,8 @@
                 max="10"
                 value={data.otMultiplier}
                 required
+                readonly={!otEnabled}
+                tabindex={otEnabled ? undefined : -1}
                 class="pr-7 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
               <span
@@ -224,10 +233,11 @@
           <select
             id="weekStartsOn"
             name="weekStartsOn"
+            bind:value={weekStartsOnValue}
             class="h-9 w-full rounded-md border md:w-48 border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
           >
-            <option value="1" selected={data.weekStartsOn === 1}>Monday</option>
-            <option value="7" selected={data.weekStartsOn === 7}>Sunday</option>
+            <option value="1">Monday</option>
+            <option value="7">Sunday</option>
           </select>
         </div>
         </Card.Content>
