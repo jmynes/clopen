@@ -245,15 +245,20 @@
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const anchorYear = $derived(Number(weekAnchor.slice(0, 4)));
   const anchorMonth = $derived(Number(weekAnchor.slice(5, 7))); // 1–12
+  const epochYear = $derived(Number(data.epoch.slice(0, 4)));
+  const epochMonth = $derived(Number(data.epoch.slice(5, 7)));
+  // The tracking epoch is the floor here, like the ledger's pagination.
   const yearOptions = $derived.by(() => {
     const ty = Number(todayISO().slice(0, 4));
     const set = new Set<number>([anchorYear]);
-    for (let y = ty - 5; y <= ty + 1; y++) set.add(y);
-    return [...set].sort((a, b) => a - b);
+    for (let y = Math.max(epochYear, ty - 5); y <= ty + 1; y++) set.add(y);
+    return [...set].filter((y) => y >= epochYear).sort((a, b) => a - b);
   });
   function jumpTo(year: number, month: number) {
-    weekAnchor = `${year}-${String(month).padStart(2, '0')}-01`;
+    const target = `${year}-${String(month).padStart(2, '0')}-01`;
+    weekAnchor = target < data.epoch ? data.epoch : target;
   }
+  const weekAtEpoch = $derived(weekStart <= data.epoch);
 
   // Export every entry as CSV (gross hours + break + clock times round-trip).
   function exportCsv() {
@@ -905,13 +910,14 @@
                   variant="outline"
                   size="icon"
                   aria-label="Previous week"
+                  disabled={weekAtEpoch}
                   onclick={() => (weekAnchor = addDays(weekStart, -7))}
                 >
                   <ChevronLeft class="size-4" />
                 </Button>
               {/snippet}
             </Tooltip.Trigger>
-            <Tooltip.Content>Previous week</Tooltip.Content>
+            <Tooltip.Content>{weekAtEpoch ? 'Already at the tracking epoch' : 'Previous week'}</Tooltip.Content>
           </Tooltip.Root>
           <span class="min-w-44 flex-1 text-center text-sm font-medium tabular-nums md:flex-none">
             {formatWeekRange(weekStart, true)}
@@ -941,7 +947,9 @@
             class="h-9 flex-1 rounded-md border border-input bg-transparent px-2 text-sm focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none md:order-1 md:flex-none"
           >
             {#each MONTHS as label, idx (label)}
-              <option value={String(idx + 1)}>{label}</option>
+              <option value={String(idx + 1)} disabled={anchorYear === epochYear && idx + 1 < epochMonth}>
+                {label}
+              </option>
             {/each}
           </select>
           <select
