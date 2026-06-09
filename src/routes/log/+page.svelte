@@ -901,7 +901,7 @@
            sharing a line. md:order-* restores the desktop sequence
            (month, year, nav, This week) once the md:contents wrapper dissolves. -->
       <div class="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
-        <div class="flex items-center gap-2 md:order-3">
+        <div class="flex items-center gap-2 md:order-4">
           <Tooltip.Root>
             <Tooltip.Trigger>
               {#snippet child({ props })}
@@ -952,11 +952,14 @@
           </Tooltip.Root>
         </div>
         <div class="flex items-center gap-2 md:contents">
+          <Button variant="outline" size="sm" class="md:order-1" onclick={() => (weekAnchor = todayISO())}>
+            This week
+          </Button>
           <select
             aria-label="Month"
             value={String(anchorMonth)}
             onchange={(e) => jumpTo(anchorYear, Number(e.currentTarget.value))}
-            class="h-9 flex-1 rounded-md border border-input bg-transparent px-2 text-sm focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none md:order-1 md:flex-none"
+            class="h-9 flex-1 rounded-md border border-input bg-transparent px-2 font-mono text-sm uppercase focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none md:order-2 md:flex-none"
           >
             {#each MONTHS as label, idx (label)}
               <option value={String(idx + 1)} disabled={anchorYear === epochYear && idx + 1 < epochMonth}>
@@ -968,15 +971,13 @@
             aria-label="Year"
             value={String(anchorYear)}
             onchange={(e) => jumpTo(Number(e.currentTarget.value), anchorMonth)}
-            class="h-9 flex-1 rounded-md border border-input bg-transparent px-2 text-sm tabular-nums focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none md:order-2 md:flex-none"
+            class="h-9 flex-1 rounded-md border border-input bg-transparent px-2 font-mono text-sm tabular-nums focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none md:order-3 md:flex-none"
           >
             {#each yearOptions as y (y)}
               <option value={String(y)}>{y}</option>
             {/each}
           </select>
-          <Button variant="outline" size="sm" class="md:order-4" onclick={() => (weekAnchor = todayISO())}>
-            This week
-          </Button>
+
         </div>
       </div>
     </Card.Header>
@@ -1472,6 +1473,7 @@
             <option value={v}>{label}</option>
           {/each}
         </select>
+        <Button variant="outline" size="sm" class="shrink-0" onclick={() => (entriesAnchor = todayISO())}>Today</Button>
         <Tooltip.Root>
           <Tooltip.Trigger>
             {#snippet child({ props })}
@@ -1523,7 +1525,6 @@
           </Tooltip.Trigger>
           <Tooltip.Content>Next period</Tooltip.Content>
         </Tooltip.Root>
-        <Button variant="outline" size="sm" class="shrink-0" onclick={() => (entriesAnchor = todayISO())}>Today</Button>
       </div>
       {#if form?.imported}
         <p class="mb-3 text-sm text-success">
