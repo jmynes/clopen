@@ -4,6 +4,8 @@
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import Download from '@lucide/svelte/icons/download';
+  import Maximize2 from '@lucide/svelte/icons/maximize-2';
+  import Minimize2 from '@lucide/svelte/icons/minimize-2';
   import Palmtree from '@lucide/svelte/icons/palmtree';
   import PartyPopper from '@lucide/svelte/icons/party-popper';
   import Pencil from '@lucide/svelte/icons/pencil';
@@ -215,6 +217,13 @@
   };
   let entriesPeriod = $state<Period>('year');
   let entriesAnchor = $state(todayISO());
+  // Fullscreen takeover for the entries section. Escape collapses it unless a
+  // dialog is open on top (those own the Escape key).
+  let entriesExpanded = $state(false);
+  function onWindowKeydown(e: KeyboardEvent) {
+    if (e.key !== 'Escape') return;
+    if (entriesExpanded && !editOpen && deleting === null && conflicts.length === 0) entriesExpanded = false;
+  }
 
   function shiftMonth(anchor: string, n: number): string {
     const [y, m] = anchor.slice(0, 7).split('-').map(Number);
@@ -267,6 +276,10 @@
     data.entries.filter((e) => e.date >= entriesBucket.start && e.date <= entriesBucket.end),
   );
 
+  // The tracking epoch is the floor: once the current bucket reaches it there's
+  // nothing older to page back to.
+  const entriesAtEpoch = $derived(entriesBucket.start <= data.epoch);
+
   // Pad missing days with blank rows for every period so unlogged days stand
   // out at a glance. The scrollable container keeps long quarters/years usable.
   // Either weekend setting suppresses the blank Sat/Sun padding; days with
@@ -289,7 +302,7 @@
       const dayEntries = byDate.get(cursor);
       if (dayEntries && dayEntries.length > 0) {
         for (const entry of dayEntries) rows.push({ kind: 'entry', entry });
-      } else if (!hideBlankWeekends || !isWeekend(cursor)) {
+      } else if (cursor >= data.epoch && (!hideBlankWeekends || !isWeekend(cursor))) {
         rows.push({ kind: 'blank', date: cursor });
       }
       cursor = addDays(cursor, -1);
@@ -496,6 +509,8 @@
   }
 </script>
 
+<svelte:window onkeydown={onWindowKeydown} />
+
 <div class="flex flex-col gap-8">
   <div>
     <h1 class="text-2xl font-semibold tracking-tight">Log time</h1>
@@ -632,7 +647,9 @@
         </div>
         <input type="hidden" name="kind" value="" bind:this={addKindInput} />
         <div class="flex w-full basis-full flex-wrap items-center gap-3">
-          <Button type="submit"><Plus class="size-4" /> Add entry</Button>
+          <Button type="submit" class="hover:bg-primary/75 max-sm:mx-auto max-sm:w-2/3">
+            <Plus class="size-4" /> Add entry
+          </Button>
           <div class="flex w-full flex-col items-start gap-2 sm:ml-auto sm:w-auto sm:flex-row sm:items-center sm:gap-3">
             <span class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Or log leave</span>
             <div class="grid w-full grid-cols-2 gap-2 sm:w-fit sm:grid-flow-col sm:grid-cols-none sm:grid-rows-2">
@@ -785,14 +802,14 @@
                     {#if isLeave}
                       {@const Icon = LEAVE_ICON[leaveKind]}
                       {@const meta = LEAVE_META[leaveKind]}
-                      <span class="inline-flex items-center gap-1.5">
-                        <Icon class="size-3.5" />
-                        <span class="text-xs">{meta.short}{meta.paid ? '' : ' (unpaid)'}</span>
+                      <span class="inline-flex min-w-0 items-center gap-1.5">
+                        <Icon class="size-3.5 shrink-0" />
+                        <span class="min-w-0 truncate text-xs">{meta.short}{meta.paid ? '' : ' (unpaid)'}</span>
                       </span>
                     {:else}
-                      <span class="inline-flex items-center gap-1.5 text-muted-foreground">
-                        <Briefcase class="size-3.5" />
-                        <span class="text-xs">Work</span>
+                      <span class="inline-flex min-w-0 items-center gap-1.5 text-muted-foreground">
+                        <Briefcase class="size-3.5 shrink-0" />
+                        <span class="min-w-0 truncate text-xs">Work</span>
                       </span>
                     {/if}
                   </Select.Trigger>
@@ -917,7 +934,7 @@
           {/each}
         </div>
         <div class="mt-1 flex flex-wrap items-center gap-3">
-          <Button type="submit"><Plus class="size-4" /> Add week</Button>
+          <Button type="submit" class="hover:bg-primary/75"><Plus class="size-4" /> Add week</Button>
           <Button type="button" variant="outline" onclick={fillDown}>
             <ArrowDownToLine class="size-4" /> Fill down
           </Button>
@@ -936,7 +953,21 @@
   </Card.Root>
 
   <!-- entries -->
-  <Card.Root>
+  {#if entriesExpanded}
+    <!-- h is explicit: Chrome won't stretch an abs-positioned <button> from top/bottom constraints -->
+    <button
+      type="button"
+      class="fixed inset-x-0 top-0 z-40 h-dvh cursor-default bg-black/70"
+      onclick={() => (entriesExpanded = false)}
+      aria-label="Collapse entries"
+      tabindex={-1}
+    ></button>
+  {/if}
+  <Card.Root
+    class={entriesExpanded
+      ? 'fixed inset-0 z-50 overflow-hidden max-sm:rounded-none max-sm:ring-0 sm:inset-6 2xl:inset-x-[calc((100vw-84rem)/2)]'
+      : ''}
+  >
     <Card.Header class="flex flex-row flex-wrap items-center justify-between gap-2">
       <div>
         <Card.Title>Entries</Card.Title>
@@ -966,9 +997,22 @@
             <Upload class="size-4" /> Import CSV
           </Button>
         </form>
+        <Button
+          variant="outline"
+          size="sm"
+          type="button"
+          aria-label={entriesExpanded ? 'Collapse entries' : 'Expand entries'}
+          onclick={() => (entriesExpanded = !entriesExpanded)}
+        >
+          {#if entriesExpanded}
+            <Minimize2 class="size-4" />
+          {:else}
+            <Maximize2 class="size-4" />
+          {/if}
+        </Button>
       </div>
     </Card.Header>
-    <Card.Content>
+    <Card.Content class={entriesExpanded ? 'flex min-h-0 flex-1 flex-col' : ''}>
       <!-- pagination controls: always a single dedicated row above the table -->
       <div class="mb-3 flex flex-wrap items-center gap-2">
         <select
@@ -988,6 +1032,7 @@
           size="icon"
           class="shrink-0"
           aria-label="Previous period"
+          disabled={entriesAtEpoch}
           onclick={() => shiftEntriesPage(-1)}
         >
           <ChevronLeft class="size-4" />
@@ -1020,7 +1065,11 @@
       {:else if pagedEntries.length === 0}
         <p class="py-8 text-center text-sm text-muted-foreground">No entries in this {entriesPeriod}.</p>
       {:else}
-        <div class="hidden max-h-[calc(14*2.75rem+2.5rem)] overflow-y-auto rounded-md border border-input md:block">
+        <div
+          class="hidden overflow-y-auto rounded-md border border-input md:block {entriesExpanded
+            ? 'min-h-0 flex-1'
+            : 'max-h-[calc(14*2.75rem+2.5rem)]'}"
+        >
         <Table.Root>
           <Table.Header class="sticky top-0 z-10 bg-background">
             <Table.Row>
@@ -1039,7 +1088,7 @@
             {#each displayRows as row, idx (row.kind === 'entry' ? row.entry.id : `blank-${row.date}`)}
               {#if row.kind === 'blank'}
                 <Table.Row
-                  class={`text-muted-foreground/60 ${idx % 2 === 1 ? 'bg-muted/70' : ''} ${isWeekend(row.date) ? 'bg-amber-500/5' : ''}`}
+                  class={`text-muted-foreground/60 ${isWeekend(row.date) ? 'bg-amber-500/10' : idx % 2 === 1 ? 'bg-muted/70' : ''}`}
                 >
                   <Table.Cell class="font-mono text-sm uppercase tabular-nums">
                     <span>{weekdayShort(row.date)}</span>
@@ -1137,13 +1186,19 @@
         </div>
 
         <!-- mobile entries list: same rows, stacked layout -->
-        <div class="max-h-[calc(14*2.75rem+2.5rem)] divide-y divide-input overflow-y-auto rounded-md border border-input md:hidden">
+        <div
+          class="divide-y divide-input overflow-y-auto rounded-md border border-input md:hidden {entriesExpanded
+            ? 'min-h-0 flex-1'
+            : 'max-h-[calc(14*2.75rem+2.5rem)]'}"
+        >
           {#each displayRows as row, idx (row.kind === 'entry' ? row.entry.id : `blank-${row.date}`)}
             {#if row.kind === 'blank'}
               <div
-                class="flex items-center justify-between px-3 py-2 text-muted-foreground/60 {idx % 2 === 1
-                  ? 'bg-muted/70'
-                  : ''} {isWeekend(row.date) ? 'bg-amber-500/5' : ''}"
+                class="flex items-center justify-between px-3 py-2 text-muted-foreground/60 {isWeekend(row.date)
+                  ? 'bg-amber-500/10'
+                  : idx % 2 === 1
+                    ? 'bg-muted/70'
+                    : ''}"
               >
                 <span class="font-mono text-sm uppercase tabular-nums">
                   <span>{weekdayShort(row.date)}</span>
@@ -1156,7 +1211,7 @@
               {@const entryLeave = entry.entryKind !== 'work' ? (entry.entryKind as LeaveKind) : null}
               {@const leaveIsUnpaid = entryLeave ? !LEAVE_META[entryLeave].paid : false}
               <div
-                class="flex items-start justify-between gap-3 px-3 py-2 {entryLeave
+                class="flex items-center justify-between gap-3 px-3 py-2 {entryLeave
                   ? KIND_CLASSES[entryLeave].row + (leaveIsUnpaid ? ' unpaid-hatch' : '')
                   : idx % 2 === 1
                     ? 'bg-muted/70'

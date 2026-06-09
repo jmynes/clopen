@@ -29,6 +29,7 @@ export const load: PageServerLoad = async () => {
     timeFormat: row.timeFormat as '12h' | '24h',
     hideWeekendsEntries: row.hideWeekendsEntries,
     hideWeekendsGrid: row.hideWeekendsGrid,
+    epoch: row.epoch,
   };
 };
 
