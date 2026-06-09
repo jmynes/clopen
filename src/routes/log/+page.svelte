@@ -725,6 +725,7 @@
           {/if}
           <span class="w-20 shrink-0">Break</span>
           <span class="flex-1">Note</span>
+          <span class="w-40 shrink-0 text-center">Leave</span>
         </div>
         {#each weekRowDates as date, i (date)}
           {@const rowErr = (col: string) => weekErrors[`${col}-${i}`]}
@@ -842,11 +843,15 @@
                 {#if isLeave}
                   {@const Icon = LEAVE_ICON[leaveKind]}
                   {@const meta = LEAVE_META[leaveKind]}
-                  <Icon class="size-3.5" />
-                  <span class="text-xs">{meta.short}{meta.paid ? '' : ' (unpaid)'}</span>
+                  <span class="inline-flex items-center gap-1.5">
+                    <Icon class="size-3.5" />
+                    <span class="text-xs">{meta.short}{meta.paid ? '' : ' (unpaid)'}</span>
+                  </span>
                 {:else}
-                  <Briefcase class="size-3.5 text-muted-foreground" />
-                  <span class="text-xs text-muted-foreground">Work</span>
+                  <span class="inline-flex items-center gap-1.5 text-muted-foreground">
+                    <Briefcase class="size-3.5" />
+                    <span class="text-xs">Work</span>
+                  </span>
                 {/if}
               </Select.Trigger>
               <Select.Content>
