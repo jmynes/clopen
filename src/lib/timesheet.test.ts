@@ -109,8 +109,14 @@ describe('hoursBetween', () => {
     expect(hoursBetween('08:15', '16:45')).toBe(8.5);
   });
 
-  it('is negative when end precedes start (caller rejects it)', () => {
-    expect(hoursBetween('17:00', '09:00')).toBe(-8);
+  it('wraps past midnight when end precedes start (overnight shift)', () => {
+    expect(hoursBetween('17:00', '09:00')).toBe(16);
+    expect(hoursBetween('22:35', '00:05')).toBe(1.5);
+    expect(hoursBetween('10:35', '00:05')).toBe(13.5);
+  });
+
+  it('returns 0 when start and end match (caller rejects it)', () => {
+    expect(hoursBetween('09:00', '09:00')).toBe(0);
   });
 });
 

@@ -37,9 +37,10 @@ export function formatTime(hhmm: string): string {
   return `${h12}:${String(m).padStart(2, '0')} ${period}`;
 }
 
-/** "9:00 AM – 5:00 PM" — labeled clock range. */
+/** "9:00 AM – 5:00 PM" — labeled clock range; appends "(+1d)" for overnight shifts. */
 export function formatTimeRange(start: string, end: string): string {
-  return `${formatTime(start)} – ${formatTime(end)}`;
+  const overnight = end < start;
+  return `${formatTime(start)} – ${formatTime(end)}${overnight ? ' (+1d)' : ''}`;
 }
 
 /** "Mon, Jan 5" — friendly label for an ISO date. */

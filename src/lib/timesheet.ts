@@ -126,10 +126,16 @@ export function parseTimeInput(raw: string): string | null {
 }
 
 /** Hours between two `HH:MM` clock times (end − start); negative if end precedes start. */
+// Returns the hours from `start` to `end`. When `end` is earlier than `start`,
+// the shift is assumed to cross midnight and the result wraps into the next day
+// (e.g., 10:35 → 00:05 = 13.5h). An exact match returns 0.
 export function hoursBetween(start: string, end: string): number {
   const [sh, sm] = start.split(':').map(Number);
   const [eh, em] = end.split(':').map(Number);
-  return round2((eh * 60 + em - (sh * 60 + sm)) / 60);
+  const startMin = sh * 60 + sm;
+  const endMin = eh * 60 + em;
+  const diff = endMin - startMin;
+  return round2((diff < 0 ? diff + 24 * 60 : diff) / 60);
 }
 
 export function loggedHours(entries: EntryLike[]): number {

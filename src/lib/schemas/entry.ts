@@ -61,7 +61,10 @@ export const clockEntryInput = z
     breakHours,
     note,
   })
-  .refine((v) => hoursBetween(v.startTime, v.endTime) > 0, { error: 'End must be after start', path: ['endTime'] })
+  .refine((v) => hoursBetween(v.startTime, v.endTime) > 0, {
+    error: "Clock in and clock out can't match",
+    path: ['endTime'],
+  })
   .refine((v) => v.breakHours < hoursBetween(v.startTime, v.endTime), {
     error: 'Break must be less than worked time',
     path: ['breakHours'],
