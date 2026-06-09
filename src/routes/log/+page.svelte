@@ -1,5 +1,5 @@
 <script lang="ts">
-  import ArrowDownToLine from '@lucide/svelte/icons/arrow-down-to-line';
+  import ArrowUpDown from '@lucide/svelte/icons/arrow-up-down';
   import Briefcase from '@lucide/svelte/icons/briefcase';
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
@@ -483,18 +483,19 @@
     if (m) lastTouched = { col: m[1], row: Number(m[2]) };
   }
 
-  // Copy the last touched field down to the visible rows below it. Falls back
-  // to the original behavior — first visible day's in/out/break (or
-  // hours/break) down the whole week — when nothing has been touched yet (or
-  // the touched cell vanished with a week/mode change, or is empty).
-  function fillDown() {
+  // Copy the last touched field to every other visible row — up and down.
+  // Falls back to the original behavior — first visible day's in/out/break
+  // (or hours/break) down the whole week — when nothing has been touched yet
+  // (or the touched cell vanished with a week/mode change, or is empty).
+  function fillWeek() {
     const rows = weekRows.map((r) => r.i);
     if (lastTouched) {
       const { col, row } = lastTouched;
       const src = inputByName(`${col}-${row}`);
-      const from = rows.indexOf(row);
-      if (src?.value && from !== -1) {
-        for (const r of rows.slice(from + 1)) setCell(col, r, src.value);
+      if (src?.value && rows.includes(row)) {
+        for (const r of rows) {
+          if (r !== row) setCell(col, r, src.value);
+        }
         return;
       }
     }
@@ -1006,9 +1007,16 @@
         </div>
         <div class="mt-1 flex flex-wrap items-center gap-3">
           <Button type="submit" class="hover:bg-primary/75"><Plus class="size-4" /> Add week</Button>
-          <Button type="button" variant="outline" title="Copy the last touched field down the week" onclick={fillDown}>
-            <ArrowDownToLine class="size-4" /> Fill down
-          </Button>
+          <Tooltip.Root>
+            <Tooltip.Trigger>
+              {#snippet child({ props })}
+                <Button {...props} type="button" variant="outline" onclick={fillWeek}>
+                  <ArrowUpDown class="size-4" /> Fill
+                </Button>
+              {/snippet}
+            </Tooltip.Trigger>
+            <Tooltip.Content side="bottom">Copy the last touched field to the whole week</Tooltip.Content>
+          </Tooltip.Root>
           <span class="hidden text-xs text-muted-foreground lg:inline">Tip: paste a block from a spreadsheet into any cell.</span>
           {#if form?.weekAdded}
             <span class="text-sm text-success">Added {form.weekAdded} {form.weekAdded === 1 ? 'day' : 'days'}.</span>
