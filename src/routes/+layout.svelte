@@ -42,16 +42,16 @@
 
 <div class="min-h-screen bg-background text-foreground">
   <header class="border-b border-border/70 bg-background/80 backdrop-blur sticky top-0 z-10">
-    <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+    <div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
       <a href="/" class="flex items-center gap-2 font-semibold tracking-tight">
         <CalendarClock class="size-5 text-primary" />
-        <span>Timesheet</span>
+        <span class="hidden sm:inline">Timesheet</span>
       </a>
       <nav class="flex items-center gap-1 text-sm">
         {#each links as link (link.href)}
           <a
             href={link.href}
-            class="rounded-md px-3 py-1.5 transition-colors hover:bg-accent hover:text-accent-foreground {isActive(
+            class="rounded-md px-2 py-1.5 transition-colors hover:bg-accent hover:text-accent-foreground sm:px-3 {isActive(
               link.href,
             )
               ? 'bg-accent text-accent-foreground font-medium'
@@ -101,7 +101,7 @@
     </div>
   </header>
 
-  <main class="mx-auto max-w-5xl px-6 py-10">
+  <main class="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
     {@render children()}
   </main>
 </div>
