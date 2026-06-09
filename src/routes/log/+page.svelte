@@ -1193,7 +1193,7 @@
               </div>
               {#if !isLeave}
                 {#each subShifts[i] as shift, j (j)}
-                  <div class="flex flex-col gap-2 px-2.5 pb-2.5 lg:basis-full lg:flex-row lg:items-start lg:gap-3 lg:p-0 lg:pb-1">
+                  <div class="flex flex-col gap-2 px-2.5 pb-2.5 lg:order-last lg:basis-full lg:flex-row lg:items-start lg:gap-3 lg:p-0 lg:pb-1">
                     <div class="flex items-center justify-between lg:hidden">
                       <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                         Shift {j + 2}
