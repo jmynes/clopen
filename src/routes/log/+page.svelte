@@ -678,11 +678,13 @@
             <option value={String(y)}>{y}</option>
           {/each}
         </select>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 max-sm:order-1 max-sm:w-full">
           <Button variant="outline" size="icon" aria-label="Previous week" onclick={() => (weekAnchor = addDays(weekStart, -7))}>
             <ChevronLeft class="size-4" />
           </Button>
-          <span class="min-w-44 text-center text-sm font-medium tabular-nums">{formatWeekRange(weekStart, true)}</span>
+          <span class="min-w-44 flex-1 text-center text-sm font-medium tabular-nums sm:flex-none">
+            {formatWeekRange(weekStart, true)}
+          </span>
           <Button variant="outline" size="icon" aria-label="Next week" onclick={() => (weekAnchor = addDays(weekStart, 7))}>
             <ChevronRight class="size-4" />
           </Button>
@@ -731,158 +733,168 @@
           <span class="flex-1">Note</span>
           <span class="w-40 shrink-0 text-center">Leave</span>
         </div>
-        {#each weekRowDates as date, i (date)}
-          {@const rowErr = (col: string) => weekErrors[`${col}-${i}`]}
-          {@const leaveKind = leaveRows.get(i) ?? null}
-          {@const isLeave = leaveKind !== null}
-          {@const rowUnpaid = isLeave ? !LEAVE_META[leaveKind].paid : false}
-          <div
-            class="grid grid-cols-6 gap-x-3 gap-y-2 rounded-md px-2 py-2 lg:flex lg:items-start lg:gap-3 lg:py-1 {isLeave
-              ? KIND_CLASSES[leaveKind].row + (rowUnpaid ? ' unpaid-hatch' : '')
-              : isWeekend(date)
-                ? 'bg-amber-500/5 ring-1 ring-inset ring-amber-500/15'
-                : i % 2 === 1
-                  ? 'bg-muted/70'
-                  : ''}"
-          >
-            <div class="col-span-3 flex h-8 items-center font-mono text-sm uppercase tabular-nums lg:w-28 lg:shrink-0">
-              <span class="font-medium">{weekdayShort(date)}</span>
-              <span class="ml-1 text-muted-foreground">{formatDay(date).replace(/^\w+,\s/, '')}</span>
-            </div>
-            {#if isLeave}
-              {@const meta = LEAVE_META[leaveKind]}
-              <input type="hidden" name="leave-{i}" value={leaveKind} />
-              <div
-                class="col-span-3 flex min-h-8 items-center justify-center rounded-md px-2 font-mono text-xs font-medium uppercase tracking-wider max-lg:order-1 lg:h-8 lg:w-40 lg:shrink-0 {KIND_CLASSES[leaveKind].badge}"
-              >
-                {meta.short} · {meta.paid ? '8.00h paid' : 'unpaid'}
-              </div>
-              <Input
-                type="text"
-                name="note-{i}"
-                placeholder="Reason (optional)"
-                aria-label="Leave note for {weekdayShort(date)}"
-                class="col-span-3 flex-1 max-lg:order-1"
-              />
-            {:else if weekMode === 'clock'}
-              <div class="col-span-3 flex flex-col gap-1 max-lg:order-1 lg:w-40 lg:shrink-0">
-                <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">In</span>
-                <Input
-                  type="text"
-                  name="start-{i}"
-                  inputmode="numeric"
-                  autocomplete="off"
-                  placeholder={startPlaceholder}
-                  onblur={normalizeTime}
-                  aria-label="Clock in for {weekdayShort(date)}"
-                  aria-invalid={rowErr('start') ? 'true' : undefined}
-                  class="font-mono tabular-nums"
-                />
-                {#if rowErr('start')}<p class="text-xs text-destructive">{rowErr('start')}</p>{/if}
-              </div>
-              <div class="col-span-3 flex flex-col gap-1 max-lg:order-1 lg:w-40 lg:shrink-0">
-                <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Out</span>
-                <Input
-                  type="text"
-                  name="end-{i}"
-                  inputmode="numeric"
-                  autocomplete="off"
-                  placeholder={endPlaceholder}
-                  onblur={normalizeTime}
-                  aria-label="Clock out for {weekdayShort(date)}"
-                  aria-invalid={rowErr('end') ? 'true' : undefined}
-                  class="font-mono tabular-nums"
-                />
-                {#if rowErr('end')}<p class="text-xs text-destructive">{rowErr('end')}</p>{/if}
-              </div>
-            {:else}
-              <div class="col-span-3 flex flex-col gap-1 max-lg:order-1 lg:w-20 lg:shrink-0">
-                <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Hours</span>
-                <Input
-                  type="number"
-                  name="hours-{i}"
-                  step="0.25"
-                  min="0.25"
-                  max="24"
-                  placeholder={isWeekend(date) ? '—' : '0'}
-                  aria-label="Hours for {weekdayShort(date)}"
-                  aria-invalid={rowErr('hours') ? 'true' : undefined}
-                  class="font-mono tabular-nums"
-                />
-                {#if rowErr('hours')}<p class="text-xs text-destructive">{rowErr('hours')}</p>{/if}
-              </div>
-            {/if}
-            {#if !isLeave}
-              <div class="{weekMode === 'clock' ? 'col-span-2' : 'col-span-3'} flex flex-col gap-1 max-lg:order-1 lg:w-20 lg:shrink-0">
-                <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Break</span>
-                <Input
-                  type="number"
-                  name="break-{i}"
-                  step="0.25"
-                  min="0"
-                  max="24"
-                  placeholder="0"
-                  aria-label="Break for {weekdayShort(date)}"
-                  aria-invalid={rowErr('break') ? 'true' : undefined}
-                  class="font-mono tabular-nums"
-                />
-                {#if rowErr('break')}<p class="text-xs text-destructive">{rowErr('break')}</p>{/if}
-              </div>
-              <div class="{weekMode === 'clock' ? 'col-span-4' : 'col-span-6'} flex flex-col gap-1 max-lg:order-1 lg:flex-1">
-                <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Note</span>
-                <Input
-                  type="text"
-                  name="note-{i}"
-                  placeholder="Note (optional)"
-                  aria-label="Note for {weekdayShort(date)}"
-                  aria-invalid={rowErr('note') ? 'true' : undefined}
-                />
-                {#if rowErr('note')}<p class="text-xs text-destructive">{rowErr('note')}</p>{/if}
-              </div>
-            {/if}
-            <Select.Root
-              type="single"
-              value={leaveKind ?? 'work'}
-              onValueChange={(v) => setLeaveRow(i, v === 'work' ? '' : (v as LeaveKind))}
+        <div class="grid gap-3 sm:grid-cols-2 lg:contents">
+          {#each weekRowDates as date, i (date)}
+            {@const rowErr = (col: string) => weekErrors[`${col}-${i}`]}
+            {@const leaveKind = leaveRows.get(i) ?? null}
+            {@const isLeave = leaveKind !== null}
+            {@const rowUnpaid = isLeave ? !LEAVE_META[leaveKind].paid : false}
+            <div
+              class="flex flex-col rounded-md max-lg:overflow-hidden max-lg:rounded-lg lg:flex-row lg:items-start lg:gap-3 lg:px-2 lg:py-1 {isLeave
+                ? KIND_CLASSES[leaveKind].row + (rowUnpaid ? ' unpaid-hatch' : '')
+                : isWeekend(date)
+                  ? 'bg-amber-500/5 ring-1 ring-inset ring-amber-500/20'
+                  : i % 2 === 1
+                    ? 'max-lg:ring-1 max-lg:ring-inset max-lg:ring-border lg:bg-muted/70'
+                    : 'max-lg:ring-1 max-lg:ring-inset max-lg:ring-border'}"
             >
-              <Select.Trigger
-                aria-label="Leave kind for {weekdayShort(date)}"
-                class="col-span-3 h-8 w-full self-center lg:w-40 lg:shrink-0 {isLeave ? KIND_CLASSES[leaveKind].button : ''}"
-              >
+              <!-- card header below lg: day + entry-type select; dissolves into the flat row at lg -->
+              <div class="flex items-center justify-between gap-2 border-b border-border/40 bg-muted/40 px-2.5 py-1.5 lg:contents">
+                <div class="flex h-8 items-center font-mono text-sm uppercase tabular-nums lg:w-28 lg:shrink-0">
+                  <span class="font-medium">{weekdayShort(date)}</span>
+                  <span class="ml-1 text-muted-foreground">{formatDay(date).replace(/^\w+,\s/, '')}</span>
+                </div>
+                <Select.Root
+                  type="single"
+                  value={leaveKind ?? 'work'}
+                  onValueChange={(v) => setLeaveRow(i, v === 'work' ? '' : (v as LeaveKind))}
+                >
+                  <Select.Trigger
+                    aria-label="Leave kind for {weekdayShort(date)}"
+                    class="h-8 w-36 shrink-0 lg:order-last lg:w-40 lg:self-center {isLeave ? KIND_CLASSES[leaveKind].button : ''}"
+                  >
+                    {#if isLeave}
+                      {@const Icon = LEAVE_ICON[leaveKind]}
+                      {@const meta = LEAVE_META[leaveKind]}
+                      <span class="inline-flex items-center gap-1.5">
+                        <Icon class="size-3.5" />
+                        <span class="text-xs">{meta.short}{meta.paid ? '' : ' (unpaid)'}</span>
+                      </span>
+                    {:else}
+                      <span class="inline-flex items-center gap-1.5 text-muted-foreground">
+                        <Briefcase class="size-3.5" />
+                        <span class="text-xs">Work</span>
+                      </span>
+                    {/if}
+                  </Select.Trigger>
+                  <Select.Content>
+                    <Select.Item value="work">
+                      <span class="inline-flex items-center gap-2 text-muted-foreground">
+                        <Briefcase class="size-3.5" />
+                        Work
+                      </span>
+                    </Select.Item>
+                    {#each LEAVE_KINDS as k (k)}
+                      {@const ItemIcon = LEAVE_ICON[k]}
+                      <Select.Item value={k}>
+                        <span class="inline-flex items-center gap-2 rounded-md px-1 py-0.5 {KIND_CLASSES[k].badge}">
+                          <ItemIcon class="size-3.5" />
+                          {LEAVE_META[k].label}
+                        </span>
+                      </Select.Item>
+                    {/each}
+                  </Select.Content>
+                </Select.Root>
+              </div>
+              <!-- card body below lg -->
+              <div class="flex flex-col gap-2 p-2.5 lg:contents">
                 {#if isLeave}
-                  {@const Icon = LEAVE_ICON[leaveKind]}
                   {@const meta = LEAVE_META[leaveKind]}
-                  <span class="inline-flex items-center gap-1.5">
-                    <Icon class="size-3.5" />
-                    <span class="text-xs">{meta.short}{meta.paid ? '' : ' (unpaid)'}</span>
-                  </span>
+                  <input type="hidden" name="leave-{i}" value={leaveKind} />
+                  <div
+                    class="flex min-h-8 items-center justify-center rounded-md px-2 font-mono text-xs font-medium uppercase tracking-wider lg:h-8 lg:w-40 lg:shrink-0 {KIND_CLASSES[leaveKind].badge}"
+                  >
+                    {meta.short} · {meta.paid ? '8.00h paid' : 'unpaid'}
+                  </div>
+                  <Input
+                    type="text"
+                    name="note-{i}"
+                    placeholder="Reason (optional)"
+                    aria-label="Leave note for {weekdayShort(date)}"
+                    class="lg:flex-1"
+                  />
                 {:else}
-                  <span class="inline-flex items-center gap-1.5 text-muted-foreground">
-                    <Briefcase class="size-3.5" />
-                    <span class="text-xs">Work</span>
-                  </span>
+                  <div class="grid grid-cols-6 gap-2 lg:contents">
+                    {#if weekMode === 'clock'}
+                      <div class="col-span-3 flex flex-col gap-1 lg:w-40 lg:shrink-0">
+                        <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">In</span>
+                        <Input
+                          type="text"
+                          name="start-{i}"
+                          inputmode="numeric"
+                          autocomplete="off"
+                          placeholder={startPlaceholder}
+                          onblur={normalizeTime}
+                          aria-label="Clock in for {weekdayShort(date)}"
+                          aria-invalid={rowErr('start') ? 'true' : undefined}
+                          class="font-mono tabular-nums"
+                        />
+                        {#if rowErr('start')}<p class="text-xs text-destructive">{rowErr('start')}</p>{/if}
+                      </div>
+                      <div class="col-span-3 flex flex-col gap-1 lg:w-40 lg:shrink-0">
+                        <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Out</span>
+                        <Input
+                          type="text"
+                          name="end-{i}"
+                          inputmode="numeric"
+                          autocomplete="off"
+                          placeholder={endPlaceholder}
+                          onblur={normalizeTime}
+                          aria-label="Clock out for {weekdayShort(date)}"
+                          aria-invalid={rowErr('end') ? 'true' : undefined}
+                          class="font-mono tabular-nums"
+                        />
+                        {#if rowErr('end')}<p class="text-xs text-destructive">{rowErr('end')}</p>{/if}
+                      </div>
+                    {:else}
+                      <div class="col-span-3 flex flex-col gap-1 lg:w-20 lg:shrink-0">
+                        <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Hours</span>
+                        <Input
+                          type="number"
+                          name="hours-{i}"
+                          step="0.25"
+                          min="0.25"
+                          max="24"
+                          placeholder={isWeekend(date) ? '—' : '0'}
+                          aria-label="Hours for {weekdayShort(date)}"
+                          aria-invalid={rowErr('hours') ? 'true' : undefined}
+                          class="font-mono tabular-nums"
+                        />
+                        {#if rowErr('hours')}<p class="text-xs text-destructive">{rowErr('hours')}</p>{/if}
+                      </div>
+                    {/if}
+                    <div class="{weekMode === 'clock' ? 'col-span-2' : 'col-span-3'} flex flex-col gap-1 lg:w-20 lg:shrink-0">
+                      <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Break</span>
+                      <Input
+                        type="number"
+                        name="break-{i}"
+                        step="0.25"
+                        min="0"
+                        max="24"
+                        placeholder="0"
+                        aria-label="Break for {weekdayShort(date)}"
+                        aria-invalid={rowErr('break') ? 'true' : undefined}
+                        class="font-mono tabular-nums"
+                      />
+                      {#if rowErr('break')}<p class="text-xs text-destructive">{rowErr('break')}</p>{/if}
+                    </div>
+                    <div class="{weekMode === 'clock' ? 'col-span-4' : 'col-span-6'} flex flex-col gap-1 lg:flex-1">
+                      <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Note</span>
+                      <Input
+                        type="text"
+                        name="note-{i}"
+                        placeholder="Note (optional)"
+                        aria-label="Note for {weekdayShort(date)}"
+                        aria-invalid={rowErr('note') ? 'true' : undefined}
+                      />
+                      {#if rowErr('note')}<p class="text-xs text-destructive">{rowErr('note')}</p>{/if}
+                    </div>
+                  </div>
                 {/if}
-              </Select.Trigger>
-              <Select.Content>
-                <Select.Item value="work">
-                  <span class="inline-flex items-center gap-2 text-muted-foreground">
-                    <Briefcase class="size-3.5" />
-                    Work
-                  </span>
-                </Select.Item>
-                {#each LEAVE_KINDS as k (k)}
-                  {@const ItemIcon = LEAVE_ICON[k]}
-                  <Select.Item value={k}>
-                    <span class="inline-flex items-center gap-2 rounded-md px-1 py-0.5 {KIND_CLASSES[k].badge}">
-                      <ItemIcon class="size-3.5" />
-                      {LEAVE_META[k].label}
-                    </span>
-                  </Select.Item>
-                {/each}
-              </Select.Content>
-            </Select.Root>
-          </div>
-        {/each}
+              </div>
+            </div>
+          {/each}
+        </div>
         <div class="mt-1 flex flex-wrap items-center gap-3">
           <Button type="submit"><Plus class="size-4" /> Add week</Button>
           <Button type="button" variant="outline" onclick={fillDown}>
