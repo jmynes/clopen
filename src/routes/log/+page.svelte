@@ -415,6 +415,7 @@
                   onblur={normalizeTime}
                   aria-label="Clock in for {weekdayShort(date)}"
                   aria-invalid={rowErr('start') ? 'true' : undefined}
+                  class="font-mono tabular-nums"
                 />
                 {#if rowErr('start')}<p class="text-xs text-destructive">{rowErr('start')}</p>{/if}
               </div>
@@ -428,6 +429,7 @@
                   onblur={normalizeTime}
                   aria-label="Clock out for {weekdayShort(date)}"
                   aria-invalid={rowErr('end') ? 'true' : undefined}
+                  class="font-mono tabular-nums"
                 />
                 {#if rowErr('end')}<p class="text-xs text-destructive">{rowErr('end')}</p>{/if}
               </div>
@@ -442,6 +444,7 @@
                   placeholder={isWeekend(date) ? '—' : '0'}
                   aria-label="Hours for {weekdayShort(date)}"
                   aria-invalid={rowErr('hours') ? 'true' : undefined}
+                  class="font-mono tabular-nums"
                 />
                 {#if rowErr('hours')}<p class="text-xs text-destructive">{rowErr('hours')}</p>{/if}
               </div>
@@ -456,6 +459,7 @@
                 placeholder="0"
                 aria-label="Break for {weekdayShort(date)}"
                 aria-invalid={rowErr('break') ? 'true' : undefined}
+                class="font-mono tabular-nums"
               />
               {#if rowErr('break')}<p class="text-xs text-destructive">{rowErr('break')}</p>{/if}
             </div>
