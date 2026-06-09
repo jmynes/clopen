@@ -49,7 +49,7 @@
 <Tooltip.Provider delayDuration={300}>
 <div class="min-h-screen bg-background text-foreground">
   <header class="border-b border-border/70 bg-background/80 backdrop-blur sticky top-0 z-20">
-    <div class="relative mx-auto flex h-14 max-w-5xl items-center justify-between px-4 md:h-auto md:px-6 md:py-4">
+    <div class="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 md:h-auto md:px-6 md:py-4">
       <div class="flex items-center gap-1">
         <!-- Mobile hamburger (animated bars → X) -->
         <button
@@ -63,11 +63,7 @@
           <span class="hamburger-bar {menuOpen ? 'opacity-0' : ''}"></span>
           <span class="hamburger-bar {menuOpen ? '-translate-y-[7px] -rotate-45' : ''}"></span>
         </button>
-        <a
-          href="/"
-          class="flex items-center gap-2 font-semibold tracking-tight max-md:absolute max-md:left-1/2 max-md:-translate-x-1/2"
-          onclick={() => (menuOpen = false)}
-        >
+        <a href="/" class="flex items-center gap-2 font-semibold tracking-tight" onclick={() => (menuOpen = false)}>
           <CalendarClock class="size-5 text-primary" />
           <span>Clopen</span>
         </a>

@@ -190,7 +190,7 @@
 
 <div class="flex flex-col gap-8">
   <!-- header -->
-  <div>
+  <div class="max-md:text-center">
     <p class="text-sm font-medium uppercase tracking-wider text-muted-foreground">Period status</p>
     <h1 class="mt-1 text-2xl font-semibold tracking-tight">Did I make it?</h1>
   </div>
