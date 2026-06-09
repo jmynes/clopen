@@ -259,6 +259,7 @@
     weekAnchor = target < data.epoch ? data.epoch : target;
   }
   const weekAtEpoch = $derived(weekStart <= data.epoch);
+  const weekIsFuture = $derived(weekStart > todayISO());
 
   // Export every entry as CSV (gross hours + break + clock times round-trip).
   function exportCsv() {
@@ -372,6 +373,7 @@
   // The tracking epoch is the floor: once the current bucket reaches it there's
   // nothing older to page back to.
   const entriesAtEpoch = $derived(entriesBucket.start <= data.epoch);
+  const entriesBucketIsFuture = $derived(entriesBucket.start > todayISO());
 
   // Pad missing days with blank rows for every period so unlogged days stand
   // out at a glance. The scrollable container keeps long quarters/years usable.
@@ -926,6 +928,13 @@
           </Tooltip.Root>
           <span class="min-w-44 flex-1 text-center text-sm font-medium tabular-nums md:flex-none">
             {formatWeekRange(weekStart, true)}
+            {#if weekIsFuture}
+              <span
+                class="ml-1 rounded bg-muted px-1.5 py-0.5 align-middle font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+              >
+                Upcoming
+              </span>
+            {/if}
           </span>
           <Tooltip.Root>
             <Tooltip.Trigger>
@@ -1026,6 +1035,7 @@
         <div class="grid gap-3 md:grid-cols-2 lg:contents">
           {#each weekRows as { date, i }, idx (date)}
             {@const rowErr = (col: string) => weekErrors[`${col}-${i}`]}
+            {@const isFuture = date > todayISO()}
             {@const rowWorked = weekTotals[i]}
             {@const leaveKind = leaveRows.get(i) ?? null}
             {@const isLeave = leaveKind !== null}
@@ -1041,7 +1051,12 @@
             >
               <!-- card header below lg: day + entry-type select; dissolves into the flat row at lg -->
               <div class="flex items-center justify-between gap-2 border-b border-border/40 bg-muted/40 px-2.5 py-1.5 lg:contents">
-                <div class="flex h-8 items-center font-mono text-sm uppercase tabular-nums lg:w-24 lg:shrink-0">
+                <div
+                  class="flex h-8 items-center font-mono text-sm uppercase tabular-nums lg:w-24 lg:shrink-0 {isFuture
+                    ? 'opacity-50'
+                    : ''}"
+                  title={isFuture ? 'Future date' : undefined}
+                >
                   <span class="font-medium">{weekdayShort(date)}</span>
                   <span class="ml-1 text-muted-foreground">{formatDay(date).replace(/^\w+,\s/, '')}</span>
                 </div>
@@ -1489,6 +1504,13 @@
         </Tooltip.Root>
         <span class="flex-1 text-center font-mono text-sm font-medium uppercase tabular-nums">
           {entriesBucket.label}
+          {#if entriesBucketIsFuture}
+            <span
+              class="ml-1 rounded bg-muted px-1.5 py-0.5 align-middle font-mono text-[10px] font-medium tracking-wider text-muted-foreground"
+            >
+              Upcoming
+            </span>
+          {/if}
         </span>
         <Tooltip.Root>
           <Tooltip.Trigger>
