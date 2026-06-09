@@ -69,15 +69,17 @@
       <nav class="flex items-center gap-1 text-sm">
         <div class="hidden items-center gap-1 sm:flex">
           {#each links as link (link.href)}
+            {@const Icon = link.icon}
             <a
               href={link.href}
-              class="rounded-md px-3 py-1.5 transition-colors hover:bg-accent hover:text-accent-foreground {isActive(
+              class="flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors hover:bg-accent hover:text-accent-foreground {isActive(
                 link.href,
               )
                 ? 'bg-accent text-accent-foreground font-medium'
                 : 'text-muted-foreground'}"
               aria-current={isActive(link.href) ? 'page' : undefined}
             >
+              <Icon class="size-4 {isActive(link.href) ? 'text-primary' : ''}" />
               {link.label}
             </a>
           {/each}
