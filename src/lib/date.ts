@@ -53,9 +53,10 @@ export function formatDay(iso: string): string {
 }
 
 /**
- * "Jan 5 – 11" — friendly label for a week given its start (ISO). With
- * `withYear`, appends the year(s): "Jan 5 – 11, 2026", or both years when the
- * week straddles a boundary: "Dec 29, 2025 – Jan 4, 2026".
+ * "Jan 05 – 11" — friendly label for a week given its start (ISO); days are
+ * zero-padded for mono alignment. With `withYear`, appends the year(s):
+ * "Jan 05 – 11, 2026", or both years when the week straddles a boundary:
+ * "Dec 29, 2025 – Jan 04, 2026".
  */
 export function formatWeekRange(weekStartISO: string, withYear = false): string {
   const start = utcDate(weekStartISO);
@@ -63,7 +64,7 @@ export function formatWeekRange(weekStartISO: string, withYear = false): string 
   return formatDateRange(start, end, withYear);
 }
 
-/** Generic ISO date-range label; collapses same-month days like "Jun 5 – 13". */
+/** Generic ISO date-range label; collapses same-month days like "Jun 05 – 13". */
 export function formatRangeISO(startISO: string, endISO: string, withYear = false): string {
   return formatDateRange(utcDate(startISO), utcDate(endISO), withYear);
 }
@@ -73,8 +74,9 @@ function formatDateRange(start: Date, end: Date, withYear: boolean): string {
   const startYear = start.getUTCFullYear();
   const endYear = end.getUTCFullYear();
   const sameMonth = start.getUTCMonth() === end.getUTCMonth() && startYear === endYear;
-  const startLabel = `${month.format(start)} ${start.getUTCDate()}`;
-  const endLabel = sameMonth ? `${end.getUTCDate()}` : `${month.format(end)} ${end.getUTCDate()}`;
+  const pad = (d: Date) => String(d.getUTCDate()).padStart(2, '0');
+  const startLabel = `${month.format(start)} ${pad(start)}`;
+  const endLabel = sameMonth ? pad(end) : `${month.format(end)} ${pad(end)}`;
   if (!withYear) return `${startLabel} – ${endLabel}`;
   if (startYear !== endYear) return `${startLabel}, ${startYear} – ${endLabel}, ${endYear}`;
   return `${startLabel} – ${endLabel}, ${endYear}`;

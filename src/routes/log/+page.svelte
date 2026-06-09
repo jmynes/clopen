@@ -837,14 +837,12 @@
         </div>
         <div class="flex flex-col gap-1.5">
           <Label for="add-worked">Worked</Label>
-          <Input
+          <output
             id="add-worked"
-            type="text"
-            readonly
-            tabindex={-1}
-            value={addWorked === null ? '—' : hrs(addWorked)}
-            class="pointer-events-none bg-muted/40 font-mono tabular-nums text-muted-foreground md:w-24"
-          />
+            class="flex h-8 items-center rounded-lg bg-muted/60 px-2.5 font-mono text-sm tabular-nums text-muted-foreground md:w-24"
+          >
+            {addWorked === null ? '—' : hrs(addWorked)}
+          </output>
         </div>
         <div class="flex w-full basis-full flex-col gap-1.5">
           <Label for="note">Note <span class="text-muted-foreground">(optional)</span></Label>
@@ -926,7 +924,7 @@
               {weekAtEpoch ? `Tracking starts ${data.epoch} — your epoch in Settings` : 'Previous week'}
             </Tooltip.Content>
           </Tooltip.Root>
-          <span class="min-w-44 flex-1 text-center text-sm font-medium tabular-nums md:flex-none">
+          <span class="min-w-44 flex-1 text-center font-mono text-sm font-medium uppercase tabular-nums md:flex-none">
             {formatWeekRange(weekStart, true)}
             {#if weekIsFuture}
               <span
@@ -1196,14 +1194,12 @@
                     <div class="{weekMode === 'clock' ? 'col-span-3' : 'col-span-2'} flex flex-col gap-1 lg:w-28 lg:shrink-0">
                       <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Worked</span>
                       <div class="flex items-center gap-1">
-                        <Input
-                          type="text"
-                          readonly
-                          tabindex={-1}
-                          value={rowWorked === null ? '—' : hrs(rowWorked)}
+                        <output
                           aria-label="Worked hours for {weekdayShort(date)}"
-                          class="pointer-events-none min-w-0 bg-muted/40 font-mono tabular-nums text-muted-foreground"
-                        />
+                          class="flex h-8 min-w-0 flex-1 items-center rounded-lg bg-muted/60 px-2.5 font-mono text-sm tabular-nums text-muted-foreground"
+                        >
+                          {rowWorked === null ? '—' : hrs(rowWorked)}
+                        </output>
                         <Tooltip.Root>
                           <Tooltip.Trigger
                             type="button"
@@ -1329,14 +1325,12 @@
                       <div class="{weekMode === 'clock' ? 'col-span-3' : 'col-span-2'} flex flex-col gap-1 lg:w-28 lg:shrink-0">
                         <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Worked</span>
                         <div class="flex items-center gap-1">
-                          <Input
-                            type="text"
-                            readonly
-                            tabindex={-1}
-                            value={shiftWorked === null ? '—' : hrs(shiftWorked)}
+                          <output
                             aria-label="Worked hours for {weekdayShort(date)} shift {j + 2}"
-                            class="pointer-events-none min-w-0 bg-muted/40 font-mono tabular-nums text-muted-foreground"
-                          />
+                            class="flex h-8 min-w-0 flex-1 items-center rounded-lg bg-muted/60 px-2.5 font-mono text-sm tabular-nums text-muted-foreground"
+                          >
+                            {shiftWorked === null ? '—' : hrs(shiftWorked)}
+                          </output>
                           <Tooltip.Root>
                             <Tooltip.Trigger
                               type="button"
