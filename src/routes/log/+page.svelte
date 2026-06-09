@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ArrowDownToLine from '@lucide/svelte/icons/arrow-down-to-line';
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import Download from '@lucide/svelte/icons/download';
@@ -97,6 +98,66 @@
   }
 
   let csvInput = $state<HTMLInputElement | null>(null);
+
+  // ── Spreadsheet-style editing for the weekly grid ────────────────────────
+  let weekForm = $state<HTMLFormElement | null>(null);
+  // Column order per mode; paste/fill distribute across these (notes included).
+  const gridCols = $derived(weekMode === 'clock' ? ['start', 'end', 'break', 'note'] : ['hours', 'break', 'note']);
+
+  function inputByName(name: string): HTMLInputElement | null {
+    const el = weekForm?.querySelector(`[name="${name}"]`);
+    return el instanceof HTMLInputElement ? el : null;
+  }
+
+  // Write a cell, normalizing clock columns ("2pm" → "2:00 PM") like on blur.
+  function setCell(col: string, row: number, raw: string) {
+    const cell = inputByName(`${col}-${row}`);
+    if (!cell) return;
+    if (col === 'start' || col === 'end') {
+      const parsed = parseTimeInput(raw);
+      cell.value = parsed ? formatTime(parsed) : raw.trim();
+    } else {
+      cell.value = raw.trim();
+    }
+  }
+
+  // Copy the first day's in/out/break (or hours/break) down to the rest of the week.
+  function fillDown() {
+    for (const col of gridCols) {
+      if (col === 'note') continue;
+      const first = inputByName(`${col}-0`);
+      if (!first?.value) continue;
+      for (let row = 1; row < 7; row++) setCell(col, row, first.value);
+    }
+  }
+
+  // Paste a block copied from Excel/Sheets (TSV) anchored at the focused cell.
+  function onGridPaste(e: ClipboardEvent) {
+    const text = e.clipboardData?.getData('text/plain') ?? '';
+    if (!text.includes('\t') && !text.includes('\n')) return; // single value → default paste
+    const target = e.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    const match = target.name.match(/^(start|end|break|hours|note)-(\d)$/);
+    if (!match) return;
+    const startCol = gridCols.indexOf(match[1]);
+    const startRow = Number(match[2]);
+    if (startCol < 0) return;
+
+    e.preventDefault();
+    const matrix = text
+      .replace(/\r\n/g, '\n')
+      .replace(/\n+$/, '')
+      .split('\n')
+      .map((line) => line.split('\t'));
+    matrix.forEach((cells, r) => {
+      const row = startRow + r;
+      if (row > 6) return;
+      cells.forEach((value, c) => {
+        const col = gridCols[startCol + c];
+        if (col) setCell(col, row, value);
+      });
+    });
+  }
 </script>
 
 <div class="flex flex-col gap-8">
@@ -247,8 +308,10 @@
       </div>
 
       <form
+        bind:this={weekForm}
         method="POST"
         action="?/addWeek"
+        onpaste={onGridPaste}
         use:enhance={() => {
           return async ({ update }) => {
             await update({ reset: true });
@@ -321,8 +384,12 @@
             <Input type="text" name="note-{i}" placeholder="Note (optional)" aria-label="Note for {weekdayShort(date)}" />
           </div>
         {/each}
-        <div class="mt-1 flex items-center gap-3">
+        <div class="mt-1 flex flex-wrap items-center gap-3">
           <Button type="submit"><Plus class="size-4" /> Add week</Button>
+          <Button type="button" variant="outline" onclick={fillDown}>
+            <ArrowDownToLine class="size-4" /> Fill down
+          </Button>
+          <span class="text-xs text-muted-foreground">Tip: paste a block from a spreadsheet into any cell.</span>
           {#if form?.weekAdded}
             <span class="text-sm text-success">Added {form.weekAdded} {form.weekAdded === 1 ? 'day' : 'days'}.</span>
           {:else if form && 'weekError' in form && form.weekError}
