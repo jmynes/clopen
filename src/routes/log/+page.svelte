@@ -472,7 +472,7 @@
           {@const rowErr = (col: string) => weekErrors[`${col}-${i}`]}
           <div
             class="flex items-start gap-3 rounded-md px-2 py-1 {isWeekend(date)
-              ? 'bg-amber-500/5 ring-1 ring-inset ring-amber-500/15 text-muted-foreground'
+              ? 'bg-amber-500/5 ring-1 ring-inset ring-amber-500/15'
               : i % 2 === 1
                 ? 'bg-muted/70'
                 : ''}"
