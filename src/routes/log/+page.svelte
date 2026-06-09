@@ -645,20 +645,18 @@
             </div>
             {#if isPto}
               <input type="hidden" name="pto-{i}" value="true" />
-              <div class="flex flex-1 items-center gap-2">
-                <span
-                  class="rounded-md bg-emerald-500/15 px-2 py-0.5 font-mono text-xs font-medium uppercase tracking-wider text-emerald-700 dark:text-emerald-400"
-                >
-                  PTO · 8.00h paid
-                </span>
-                <Input
-                  type="text"
-                  name="note-{i}"
-                  placeholder="Reason (optional)"
-                  aria-label="PTO note for {weekdayShort(date)}"
-                  class="flex-1"
-                />
+              <div
+                class="flex w-40 shrink-0 items-center justify-center rounded-md bg-emerald-500/15 px-2 py-0.5 font-mono text-xs font-medium uppercase tracking-wider text-emerald-700 dark:text-emerald-400"
+              >
+                PTO · 8.00h paid
               </div>
+              <Input
+                type="text"
+                name="note-{i}"
+                placeholder="Reason (optional)"
+                aria-label="PTO note for {weekdayShort(date)}"
+                class="flex-1"
+              />
             {:else if weekMode === 'clock'}
               <div class="flex w-40 shrink-0 flex-col gap-1">
                 <Input
