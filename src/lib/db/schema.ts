@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { ENTRY_KINDS } from '$lib/leave-kinds';
 
 /**
  * One logged chunk of work. Multiple entries per calendar day are allowed
@@ -17,8 +18,12 @@ export const timeEntries = sqliteTable('time_entries', {
   startTime: text('start_time'),
   endTime: text('end_time'),
   note: text('note'),
-  /** PTO/vacation day: `hours` is the paid baseline (default 8h), no clock times. */
-  isPto: integer('is_pto', { mode: 'boolean' }).notNull().default(false),
+  /**
+   * Entry kind. `work` is a regular logged shift; everything else is a leave
+   * category (paid or unpaid) that displays as a colored badge. Paid kinds
+   * credit the daily baseline; unpaid kinds record 0h.
+   */
+  entryKind: text('entry_kind', { enum: ENTRY_KINDS }).notNull().default('work'),
   createdAt: integer('created_at').notNull().default(sql`(unixepoch())`),
 });
 

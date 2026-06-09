@@ -30,7 +30,7 @@ export async function addEntry(input: EntryInput, database: Database = defaultDb
       startTime: input.startTime,
       endTime: input.endTime,
       note: input.note,
-      isPto: input.isPto,
+      entryKind: input.entryKind,
     })
     .returning();
   return created;
@@ -46,7 +46,7 @@ export async function updateEntry(id: string, input: EntryInput, database: Datab
       startTime: input.startTime,
       endTime: input.endTime,
       note: input.note,
-      isPto: input.isPto,
+      entryKind: input.entryKind,
     })
     .where(eq(timeEntries.id, id));
 }

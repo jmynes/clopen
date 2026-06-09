@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { type EntryKind, LEAVE_KINDS, LEAVE_META } from '$lib/leave-kinds';
 import { hoursBetween, parseTimeInput } from '$lib/timesheet';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -13,7 +14,7 @@ const clockTime = z.string().transform((v, ctx) => {
   return parsed;
 });
 
-/** Canonical persisted shape. All input modes (hours / clock / PTO) produce this. */
+/** Canonical persisted shape. Every input mode (hours / clock / leave) produces this. */
 export type EntryInput = {
   date: string;
   hours: number;
@@ -21,7 +22,7 @@ export type EntryInput = {
   note: string | null;
   startTime: string | null;
   endTime: string | null;
-  isPto: boolean;
+  entryKind: EntryKind;
 };
 
 const date = z.string().regex(ISO_DATE, 'Date must be YYYY-MM-DD');
@@ -50,28 +51,36 @@ export const entryInput = z
       note: v.note,
       startTime: null,
       endTime: null,
-      isPto: false,
+      entryKind: 'work',
     }),
   );
 
-/** PTO mode: a paid day off. Worked hours come from the daily baseline; no clock times. */
-export const ptoEntryInput = z
+const leaveKind = z.enum(LEAVE_KINDS as unknown as [string, ...string[]]);
+
+/**
+ * Leave mode: PTO / sick / holiday / vacation — paid or unpaid. Paid kinds
+ * credit `dailyHours`; unpaid kinds record 0h. No clock times in either case.
+ */
+export const leaveEntryInput = z
   .object({
     date,
-    hours: z.coerce.number().min(0).max(24).default(8),
+    kind: leaveKind,
+    dailyHours: z.coerce.number().positive().max(24).default(8),
     note,
   })
-  .transform(
-    (v): EntryInput => ({
+  .transform((v): EntryInput => {
+    const kind = v.kind as (typeof LEAVE_KINDS)[number];
+    const paid = LEAVE_META[kind].paid;
+    return {
       date: v.date,
-      hours: v.hours,
+      hours: paid ? v.dailyHours : 0,
       breakHours: 0,
       note: v.note,
       startTime: null,
       endTime: null,
-      isPto: true,
-    }),
-  );
+      entryKind: kind,
+    };
+  });
 
 /** Clock mode: start/end times entered; worked hours are their difference. */
 export const clockEntryInput = z
@@ -98,6 +107,6 @@ export const clockEntryInput = z
       note: v.note,
       startTime: v.startTime,
       endTime: v.endTime,
-      isPto: false,
+      entryKind: 'work',
     }),
   );

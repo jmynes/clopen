@@ -4,8 +4,11 @@
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import Download from '@lucide/svelte/icons/download';
   import Palmtree from '@lucide/svelte/icons/palmtree';
+  import PartyPopper from '@lucide/svelte/icons/party-popper';
   import Pencil from '@lucide/svelte/icons/pencil';
+  import Plane from '@lucide/svelte/icons/plane';
   import Plus from '@lucide/svelte/icons/plus';
+  import Thermometer from '@lucide/svelte/icons/thermometer';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import Upload from '@lucide/svelte/icons/upload';
   import X from '@lucide/svelte/icons/x';
@@ -20,6 +23,7 @@
   import { toCsv } from '$lib/csv';
   import { formatDay, formatRangeISO, formatTime, formatWeekRange, isWeekend, todayISO, weekdayShort } from '$lib/date';
   import type { TimeEntry } from '$lib/db/schema';
+  import { LEAVE_KINDS, LEAVE_META, type LeaveKind } from '$lib/leave-kinds';
   import { addDays, parseTimeInput, weekDates } from '$lib/timesheet';
   import type { ActionData, PageData } from './$types';
 
@@ -69,6 +73,7 @@
   // Input mode for the single-entry form: clock in/out (default) or plain hours.
   let addMode = $state<'hours' | 'clock'>('clock');
   let addModeInput: HTMLInputElement | null = $state(null);
+  let addKindInput: HTMLInputElement | null = $state(null);
 
   // Two toggle options, clock on the left.
   const MODE_OPTIONS = [
@@ -328,17 +333,78 @@
     inputs.forEach((el) => {
       if (/^(start|end|break|hours|note)-\d$/.test(el.name)) el.value = '';
     });
-    ptoRows = new Set();
+    leaveRows = new Map();
   }
 
-  // Per-row PTO toggle for the weekly grid. Marked rows submit hidden pto-{i}.
-  let ptoRows = $state<Set<number>>(new Set());
-  function togglePtoRow(i: number) {
-    const next = new Set(ptoRows);
-    if (next.has(i)) next.delete(i);
-    else next.add(i);
-    ptoRows = next;
+  // Per-row leave selection. Rows present in this map render in leave mode
+  // and submit a hidden leave-{i} value (one of LEAVE_KINDS) on form submit.
+  let leaveRows = $state<Map<number, LeaveKind>>(new Map());
+  function setLeaveRow(i: number, kind: LeaveKind | '') {
+    const next = new Map(leaveRows);
+    if (kind === '') next.delete(i);
+    else next.set(i, kind);
+    leaveRows = next;
   }
+
+  // Lucide icon per leave kind (paid/unpaid share the same icon).
+  const LEAVE_ICON = {
+    pto: Palmtree,
+    sick_paid: Thermometer,
+    sick_unpaid: Thermometer,
+    holiday_paid: PartyPopper,
+    holiday_unpaid: PartyPopper,
+    vacation_unpaid: Plane,
+  } satisfies Record<LeaveKind, typeof Palmtree>;
+
+  // All class strings are spelled out so Tailwind's JIT picks them up. Paid
+  // variants use a filled background; unpaid variants use a dashed outline
+  // with a lighter wash to call out "no pay".
+  const KIND_CLASSES: Record<
+    LeaveKind,
+    { badge: string; row: string; button: string; activeButton: string }
+  > = {
+    pto: {
+      badge: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+      row: 'bg-emerald-500/10 ring-1 ring-inset ring-emerald-500/30',
+      button:
+        'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400',
+      activeButton: 'bg-emerald-500/25 ring-2 ring-inset ring-emerald-500/60',
+    },
+    sick_paid: {
+      badge: 'bg-rose-500/15 text-rose-700 dark:text-rose-300',
+      row: 'bg-rose-500/10 ring-1 ring-inset ring-rose-500/30',
+      button: 'border-rose-500/40 bg-rose-500/10 text-rose-700 hover:bg-rose-500/20 dark:text-rose-400',
+      activeButton: 'bg-rose-500/25 ring-2 ring-inset ring-rose-500/60',
+    },
+    sick_unpaid: {
+      badge: 'bg-rose-500/10 text-rose-700 ring-1 ring-inset ring-rose-500/40 dark:text-rose-300',
+      row: 'bg-rose-500/5 ring-1 ring-inset ring-rose-500/25',
+      button:
+        'border-dashed border-rose-500/50 bg-rose-500/5 text-rose-700 hover:bg-rose-500/15 dark:text-rose-400',
+      activeButton: 'bg-rose-500/15 ring-2 ring-inset ring-rose-500/50',
+    },
+    holiday_paid: {
+      badge: 'bg-violet-500/15 text-violet-700 dark:text-violet-300',
+      row: 'bg-violet-500/10 ring-1 ring-inset ring-violet-500/30',
+      button:
+        'border-violet-500/40 bg-violet-500/10 text-violet-700 hover:bg-violet-500/20 dark:text-violet-400',
+      activeButton: 'bg-violet-500/25 ring-2 ring-inset ring-violet-500/60',
+    },
+    holiday_unpaid: {
+      badge: 'bg-violet-500/10 text-violet-700 ring-1 ring-inset ring-violet-500/40 dark:text-violet-300',
+      row: 'bg-violet-500/5 ring-1 ring-inset ring-violet-500/25',
+      button:
+        'border-dashed border-violet-500/50 bg-violet-500/5 text-violet-700 hover:bg-violet-500/15 dark:text-violet-400',
+      activeButton: 'bg-violet-500/15 ring-2 ring-inset ring-violet-500/50',
+    },
+    vacation_unpaid: {
+      badge: 'bg-sky-500/10 text-sky-700 ring-1 ring-inset ring-sky-500/40 dark:text-sky-300',
+      row: 'bg-sky-500/5 ring-1 ring-inset ring-sky-500/25',
+      button:
+        'border-dashed border-sky-500/50 bg-sky-500/5 text-sky-700 hover:bg-sky-500/15 dark:text-sky-400',
+      activeButton: 'bg-sky-500/15 ring-2 ring-inset ring-sky-500/50',
+    },
+  };
 
   // Copy the first day's in/out/break (or hours/break) down to the rest of the week.
   function fillDown() {
@@ -529,22 +595,29 @@
           {#if addErrors.note}<p id="note-error" class="text-xs text-destructive">{addErrors.note}</p>{/if}
         </div>
         <Button type="submit"><Plus class="size-4" /> Add</Button>
-        <Button
-          type="submit"
-          variant="outline"
-          class="border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400"
-          onclick={(e) => {
-            // Switch mode hidden field to 'pto' for this click only.
-            if (addModeInput) addModeInput.value = 'pto';
-            // Strip browser-required validation on clock/hours fields since PTO doesn't need them.
-            const form = (e.currentTarget as HTMLButtonElement).form;
-            form?.querySelectorAll<HTMLInputElement>('input[required]').forEach((el) => {
-              if (el.name !== 'date') el.removeAttribute('required');
-            });
-          }}
-        >
-          <Palmtree class="size-4" /> PTO
-        </Button>
+        <input type="hidden" name="kind" value="" bind:this={addKindInput} />
+        <div class="flex w-full basis-full flex-wrap items-center gap-2">
+          <span class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Or log leave</span>
+          {#each LEAVE_KINDS as kind (kind)}
+            {@const Icon = LEAVE_ICON[kind]}
+            <Button
+              type="submit"
+              variant="outline"
+              size="sm"
+              class={KIND_CLASSES[kind].button}
+              onclick={(e) => {
+                if (addModeInput) addModeInput.value = 'leave';
+                if (addKindInput) addKindInput.value = kind;
+                const form = (e.currentTarget as HTMLButtonElement).form;
+                form?.querySelectorAll<HTMLInputElement>('input[required]').forEach((el) => {
+                  if (el.name !== 'date') el.removeAttribute('required');
+                });
+              }}
+            >
+              <Icon class="size-4" /> {LEAVE_META[kind].label}
+            </Button>
+          {/each}
+        </div>
       </form>
     </Card.Content>
   </Card.Root>
@@ -629,10 +702,11 @@
         </div>
         {#each weekRowDates as date, i (date)}
           {@const rowErr = (col: string) => weekErrors[`${col}-${i}`]}
-          {@const isPto = ptoRows.has(i)}
+          {@const leaveKind = leaveRows.get(i) ?? null}
+          {@const isLeave = leaveKind !== null}
           <div
-            class="flex items-start gap-3 rounded-md px-2 py-1 {isPto
-              ? 'bg-emerald-500/10 ring-1 ring-inset ring-emerald-500/30'
+            class="flex items-start gap-3 rounded-md px-2 py-1 {isLeave
+              ? KIND_CLASSES[leaveKind].row
               : isWeekend(date)
                 ? 'bg-amber-500/5 ring-1 ring-inset ring-amber-500/15'
                 : i % 2 === 1
@@ -643,18 +717,19 @@
               <span class="font-medium">{weekdayShort(date)}</span>
               <span class="ml-1 text-muted-foreground">{formatDay(date).replace(/^\w+,\s/, '')}</span>
             </div>
-            {#if isPto}
-              <input type="hidden" name="pto-{i}" value="true" />
+            {#if isLeave}
+              {@const meta = LEAVE_META[leaveKind]}
+              <input type="hidden" name="leave-{i}" value={leaveKind} />
               <div
-                class="flex h-8 w-40 shrink-0 items-center justify-center rounded-md bg-emerald-500/15 px-2 font-mono text-xs font-medium uppercase tracking-wider text-emerald-700 dark:text-emerald-400"
+                class="flex h-8 w-40 shrink-0 items-center justify-center rounded-md px-2 font-mono text-xs font-medium uppercase tracking-wider {KIND_CLASSES[leaveKind].badge}"
               >
-                PTO · 8.00h paid
+                {meta.short} · {meta.paid ? '8.00h paid' : 'unpaid'}
               </div>
               <Input
                 type="text"
                 name="note-{i}"
                 placeholder="Reason (optional)"
-                aria-label="PTO note for {weekdayShort(date)}"
+                aria-label="Leave note for {weekdayShort(date)}"
                 class="flex-1"
               />
             {:else if weekMode === 'clock'}
@@ -702,7 +777,7 @@
                 {#if rowErr('hours')}<p class="text-xs text-destructive">{rowErr('hours')}</p>{/if}
               </div>
             {/if}
-            {#if !isPto}
+            {#if !isLeave}
               <div class="flex w-20 shrink-0 flex-col gap-1">
                 <Input
                   type="number"
@@ -728,19 +803,19 @@
                 {#if rowErr('note')}<p class="text-xs text-destructive">{rowErr('note')}</p>{/if}
               </div>
             {/if}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              class="w-24 shrink-0 self-center border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 {isPto
-                ? 'bg-emerald-500/20 ring-2 ring-inset ring-emerald-500/50'
-                : 'bg-emerald-500/10'}"
-              onclick={() => togglePtoRow(i)}
-              aria-pressed={isPto}
-              aria-label="Toggle PTO for {weekdayShort(date)}"
+            <select
+              aria-label="Leave kind for {weekdayShort(date)}"
+              value={leaveKind ?? ''}
+              onchange={(e) => setLeaveRow(i, e.currentTarget.value as LeaveKind | '')}
+              class="h-8 w-32 shrink-0 self-center rounded-md border border-input bg-transparent px-2 text-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none {isLeave
+                ? KIND_CLASSES[leaveKind].button
+                : ''}"
             >
-              <Palmtree class="size-4" /> PTO
-            </Button>
+              <option value="">Work</option>
+              {#each LEAVE_KINDS as k (k)}
+                <option value={k}>{LEAVE_META[k].label}</option>
+              {/each}
+            </select>
           </div>
         {/each}
         <div class="mt-1 flex flex-wrap items-center gap-3">
@@ -857,7 +932,7 @@
               <Table.Head class="w-20 text-right font-mono">Break</Table.Head>
               <Table.Head class="w-24 text-right font-mono">Worked</Table.Head>
               <Table.Head class="w-14 text-center">OT</Table.Head>
-              <Table.Head class="w-16 text-center">PTO</Table.Head>
+              <Table.Head class="w-28 text-center">Type</Table.Head>
               <Table.Head>Note</Table.Head>
               <Table.Head class="w-24 text-right">Actions</Table.Head>
             </Table.Row>
@@ -884,9 +959,10 @@
                 </Table.Row>
               {:else}
                 {@const entry = row.entry}
+                {@const entryLeave = entry.entryKind !== 'work' ? (entry.entryKind as LeaveKind) : null}
                 <Table.Row
-                  class={entry.isPto
-                    ? 'bg-emerald-500/10 ring-1 ring-inset ring-emerald-500/20 hover:bg-emerald-500/15'
+                  class={entryLeave
+                    ? KIND_CLASSES[entryLeave].row + ' hover:bg-muted/30'
                     : 'even:bg-muted/70'}
                 >
                 <Table.Cell class="font-mono text-sm uppercase tabular-nums">
@@ -927,13 +1003,19 @@
                   {hrs(entry.hours - entry.breakHours)}
                 </Table.Cell>
                 <Table.Cell class="text-center">
-                  {#if !entry.isPto && dayTotals[entry.date] > data.dailyHours}
+                  {#if !entryLeave && dayTotals[entry.date] > data.dailyHours}
                     <Badge variant="secondary" class="bg-amber-500/15 text-amber-600 dark:text-amber-400">OT</Badge>
                   {/if}
                 </Table.Cell>
                 <Table.Cell class="text-center">
-                  {#if entry.isPto}
-                    <Badge variant="secondary" class="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">PTO</Badge>
+                  {#if entryLeave}
+                    {@const Icon = LEAVE_ICON[entryLeave]}
+                    <span
+                      class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium uppercase tracking-wider {KIND_CLASSES[entryLeave].badge}"
+                      title={LEAVE_META[entryLeave].label}
+                    >
+                      <Icon class="size-3" /> {LEAVE_META[entryLeave].short}
+                    </span>
                   {/if}
                 </Table.Cell>
                 <Table.Cell class="text-muted-foreground">

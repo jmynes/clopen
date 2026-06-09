@@ -1,7 +1,8 @@
 import { fail } from '@sveltejs/kit';
 import type { z } from 'zod';
 import { parseCsv } from '$lib/csv';
-import { clockEntryInput, type EntryInput, entryInput, ptoEntryInput } from '$lib/schemas/entry';
+import { isLeaveKind } from '$lib/leave-kinds';
+import { clockEntryInput, type EntryInput, entryInput, leaveEntryInput } from '$lib/schemas/entry';
 import {
   addEntry,
   deleteEntriesByDates,
@@ -29,13 +30,14 @@ export const load: PageServerLoad = async () => {
   };
 };
 
-// One entry, from "hours", "clock", or "pto" mode.
-function parseEntry(form: FormData, defaultPtoHours = 8) {
+// One entry, from "hours", "clock", or "leave" mode (leave kind passed in `kind`).
+function parseEntry(form: FormData, dailyHours = 8) {
   const date = form.get('date');
   const note = form.get('note') ?? undefined;
   const mode = form.get('mode');
-  if (mode === 'pto') {
-    return ptoEntryInput.safeParse({ date, note, hours: form.get('hours') ?? defaultPtoHours });
+  if (mode === 'leave') {
+    const kind = String(form.get('kind') ?? '');
+    return leaveEntryInput.safeParse({ date, note, kind, dailyHours });
   }
   const common = { date, breakHours: form.get('breakHours') || undefined, note };
   if (mode === 'clock') {
@@ -204,14 +206,15 @@ export const actions: Actions = {
       parsed:
         | ReturnType<typeof clockEntryInput.safeParse>
         | ReturnType<typeof entryInput.safeParse>
-        | ReturnType<typeof ptoEntryInput.safeParse>;
+        | ReturnType<typeof leaveEntryInput.safeParse>;
     } | null;
     const rows: RowResult[] = Array.from({ length: 7 }, (_, i): RowResult => {
       const date = addDays(weekStart, i);
-      // PTO rows take precedence over the chosen clock/hours mode for that row.
-      if (form.get(`pto-${i}`) === 'true') {
+      // Leave rows take precedence over the chosen clock/hours mode for that row.
+      const leaveValue = String(form.get(`leave-${i}`) ?? '');
+      if (isLeaveKind(leaveValue)) {
         const note = form.get(`note-${i}`) ?? undefined;
-        return { i, parsed: ptoEntryInput.safeParse({ date, note, hours: 8 }) };
+        return { i, parsed: leaveEntryInput.safeParse({ date, note, kind: leaveValue, dailyHours: 8 }) };
       }
       const breakHours = form.get(`break-${i}`) || undefined;
       const note = form.get(`note-${i}`) ?? undefined;
