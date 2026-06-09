@@ -1190,9 +1190,11 @@
               {#if !isLeave}
                 {#each subShifts[i] as shift, j (j)}
                   {@const shiftWorked = subShiftWorked(shift)}
-                  <div class="flex flex-col gap-2 px-2.5 pb-2.5 lg:order-last lg:basis-full lg:flex-row lg:items-start lg:gap-3 lg:p-0 lg:pb-1">
+                  <div class="flex flex-col gap-2 px-2.5 pb-2.5 max-lg:mt-1 max-lg:border-t max-lg:border-border/40 max-lg:pt-2.5 lg:order-last lg:basis-full lg:flex-row lg:items-start lg:gap-3 lg:p-0 lg:pb-1">
                     <div class="flex items-center justify-between lg:hidden">
-                      <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      <span
+                        class="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+                      >
                         Shift {j + 2}
                       </span>
                       <button
