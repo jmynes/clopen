@@ -378,7 +378,8 @@
       activeButton: 'bg-emerald-500/25 ring-2 ring-inset ring-emerald-500/60',
     },
     pto_unpaid: {
-      badge: 'bg-emerald-500/10 text-emerald-700 ring-1 ring-inset ring-emerald-500/40 dark:text-emerald-300',
+      badge:
+        'bg-emerald-500/10 text-emerald-700 border border-dashed border-emerald-500/60 dark:text-emerald-300',
       row: 'bg-emerald-500/5 hover:bg-emerald-500/15! ring-1 ring-inset ring-emerald-500/25',
       button:
         'border-dashed border-emerald-500/50 bg-emerald-500/5 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-400',
@@ -391,7 +392,7 @@
       activeButton: 'bg-rose-500/25 ring-2 ring-inset ring-rose-500/60',
     },
     sick_unpaid: {
-      badge: 'bg-rose-500/10 text-rose-700 ring-1 ring-inset ring-rose-500/40 dark:text-rose-300',
+      badge: 'bg-rose-500/10 text-rose-700 border border-dashed border-rose-500/60 dark:text-rose-300',
       row: 'bg-rose-500/5 hover:bg-rose-500/15! ring-1 ring-inset ring-rose-500/25',
       button:
         'border-dashed border-rose-500/50 bg-rose-500/5 text-rose-700 hover:bg-rose-500/15 dark:text-rose-400',
@@ -405,7 +406,8 @@
       activeButton: 'bg-violet-500/25 ring-2 ring-inset ring-violet-500/60',
     },
     holiday_unpaid: {
-      badge: 'bg-violet-500/10 text-violet-700 ring-1 ring-inset ring-violet-500/40 dark:text-violet-300',
+      badge:
+        'bg-violet-500/10 text-violet-700 border border-dashed border-violet-500/60 dark:text-violet-300',
       row: 'bg-violet-500/5 hover:bg-violet-500/15! ring-1 ring-inset ring-violet-500/25',
       button:
         'border-dashed border-violet-500/50 bg-violet-500/5 text-violet-700 hover:bg-violet-500/15 dark:text-violet-400',
@@ -418,7 +420,7 @@
       activeButton: 'bg-sky-500/25 ring-2 ring-inset ring-sky-500/60',
     },
     vacation_unpaid: {
-      badge: 'bg-sky-500/10 text-sky-700 ring-1 ring-inset ring-sky-500/40 dark:text-sky-300',
+      badge: 'bg-sky-500/10 text-sky-700 border border-dashed border-sky-500/60 dark:text-sky-300',
       row: 'bg-sky-500/5 hover:bg-sky-500/15! ring-1 ring-inset ring-sky-500/25',
       button:
         'border-dashed border-sky-500/50 bg-sky-500/5 text-sky-700 hover:bg-sky-500/15 dark:text-sky-400',
@@ -728,9 +730,10 @@
           {@const rowErr = (col: string) => weekErrors[`${col}-${i}`]}
           {@const leaveKind = leaveRows.get(i) ?? null}
           {@const isLeave = leaveKind !== null}
+          {@const rowUnpaid = isLeave ? !LEAVE_META[leaveKind].paid : false}
           <div
             class="flex items-start gap-3 rounded-md px-2 py-1 {isLeave
-              ? KIND_CLASSES[leaveKind].row
+              ? KIND_CLASSES[leaveKind].row + (rowUnpaid ? ' unpaid-hatch' : '')
               : isWeekend(date)
                 ? 'bg-amber-500/5 ring-1 ring-inset ring-amber-500/15'
                 : i % 2 === 1
