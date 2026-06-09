@@ -23,6 +23,7 @@
   import { Label } from '$lib/components/ui/label';
   import * as Select from '$lib/components/ui/select';
   import * as Table from '$lib/components/ui/table';
+  import * as Tooltip from '$lib/components/ui/tooltip';
   import { toCsv } from '$lib/csv';
   import { formatDay, formatRangeISO, formatTime, formatWeekRange, isWeekend, todayISO, weekdayShort } from '$lib/date';
   import type { TimeEntry } from '$lib/db/schema';
@@ -714,13 +715,13 @@
            (month, year, nav, This week) once the md:contents wrapper dissolves. -->
       <div class="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
         <div class="flex items-center gap-2 md:order-3">
-          <Button variant="outline" size="icon" aria-label="Previous week" onclick={() => (weekAnchor = addDays(weekStart, -7))}>
+          <Button variant="outline" size="icon" title="Previous week" aria-label="Previous week" onclick={() => (weekAnchor = addDays(weekStart, -7))}>
             <ChevronLeft class="size-4" />
           </Button>
           <span class="min-w-44 flex-1 text-center text-sm font-medium tabular-nums md:flex-none">
             {formatWeekRange(weekStart, true)}
           </span>
-          <Button variant="outline" size="icon" aria-label="Next week" onclick={() => (weekAnchor = addDays(weekStart, 7))}>
+          <Button variant="outline" size="icon" title="Next week" aria-label="Next week" onclick={() => (weekAnchor = addDays(weekStart, 7))}>
             <ChevronRight class="size-4" />
           </Button>
         </div>
@@ -958,7 +959,7 @@
         </div>
         <div class="mt-1 flex flex-wrap items-center gap-3">
           <Button type="submit" class="hover:bg-primary/75"><Plus class="size-4" /> Add week</Button>
-          <Button type="button" variant="outline" onclick={fillDown}>
+          <Button type="button" variant="outline" title="Copy the first day's values down the week" onclick={fillDown}>
             <ArrowDownToLine class="size-4" /> Fill down
           </Button>
           <span class="hidden text-xs text-muted-foreground lg:inline">Tip: paste a block from a spreadsheet into any cell.</span>
@@ -1020,19 +1021,27 @@
             <Upload class="size-4" /> Import CSV
           </Button>
         </form>
-        <Button
-          variant="outline"
-          size="sm"
-          type="button"
-          aria-label={entriesExpanded ? 'Collapse entries' : 'Expand entries'}
-          onclick={() => (entriesExpanded = !entriesExpanded)}
-        >
-          {#if entriesExpanded}
-            <Minimize2 class="size-4" />
-          {:else}
-            <Maximize2 class="size-4" />
-          {/if}
-        </Button>
+        <Tooltip.Root>
+          <Tooltip.Trigger>
+            {#snippet child({ props })}
+              <Button
+                {...props}
+                variant="outline"
+                size="sm"
+                type="button"
+                aria-label={entriesExpanded ? 'Collapse entries' : 'Expand entries'}
+                onclick={() => (entriesExpanded = !entriesExpanded)}
+              >
+                {#if entriesExpanded}
+                  <Minimize2 class="size-4" />
+                {:else}
+                  <Maximize2 class="size-4" />
+                {/if}
+              </Button>
+            {/snippet}
+          </Tooltip.Trigger>
+          <Tooltip.Content>{entriesExpanded ? 'Exit fullscreen' : 'Fullscreen entries'}</Tooltip.Content>
+        </Tooltip.Root>
       </div>
     </Card.Header>
     <Card.Content class={entriesExpanded ? 'flex min-h-0 flex-1 flex-col' : ''}>
@@ -1054,6 +1063,7 @@
           variant="outline"
           size="icon"
           class="shrink-0"
+          title={entriesAtEpoch ? 'Already at the tracking epoch' : 'Previous period'}
           aria-label="Previous period"
           disabled={entriesAtEpoch}
           onclick={() => shiftEntriesPage(-1)}
@@ -1067,6 +1077,7 @@
           variant="outline"
           size="icon"
           class="shrink-0"
+          title="Next period"
           aria-label="Next period"
           onclick={() => shiftEntriesPage(1)}
         >
@@ -1152,7 +1163,7 @@
                   {#if entry.endTime}
                     {@render clockTime(entry.endTime)}
                     {#if entry.startTime && entry.endTime < entry.startTime}
-                      <span class="ml-1 text-xs text-muted-foreground">+1d</span>
+                      <span title="Ends the next day" class="ml-1 text-xs text-muted-foreground">+1d</span>
                     {/if}
                   {:else}
                     —
@@ -1167,7 +1178,7 @@
                 <Table.Cell class="text-center">
                   {#if !entryLeave && dayTotals[entry.date] > data.dailyHours}
                     <span
-                      class="inline-flex items-center rounded-md bg-amber-500/15 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400"
+                      title="Worked past the daily baseline" class="inline-flex items-center rounded-md bg-amber-500/15 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400"
                     >
                       OT
                     </span>
@@ -1256,7 +1267,7 @@
                     </span>
                     {#if !entryLeave && dayTotals[entry.date] > data.dailyHours}
                       <span
-                        class="inline-flex items-center rounded-md bg-amber-500/15 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400"
+                        title="Worked past the daily baseline" class="inline-flex items-center rounded-md bg-amber-500/15 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400"
                       >
                         OT
                       </span>
@@ -1278,7 +1289,7 @@
                       <span class="mx-0.5">→</span>
                       {@render clockTime(entry.endTime)}
                       {#if entry.endTime < entry.startTime}
-                        <span class="ml-1 text-xs">+1d</span>
+                        <span title="Ends the next day" class="ml-1 text-xs">+1d</span>
                       {/if}
                       {#if entry.breakHours > 0}
                         <span class="ml-1 text-xs">· {hrs(entry.breakHours)} break</span>
@@ -1683,10 +1694,10 @@
   >
     {@render iconNote()}
   </button>
-  <button type="button" class={ROW_BTN} aria-label="Edit entry" onclick={() => openEdit(entry)}>
+  <button type="button" class={ROW_BTN} title="Edit entry" aria-label="Edit entry" onclick={() => openEdit(entry)}>
     {@render iconPencil()}
   </button>
-  <button type="button" class={ROW_BTN} aria-label="Delete entry" onclick={() => confirmDelete(entry)}>
+  <button type="button" class={ROW_BTN} title="Delete entry" aria-label="Delete entry" onclick={() => confirmDelete(entry)}>
     {@render iconTrash()}
   </button>
 {/snippet}
@@ -1714,7 +1725,7 @@
           class="ml-0.5 {ep.meridiem === 'AM' ? 'text-rose-500 dark:text-rose-400' : 'text-sky-500 dark:text-sky-400'}"
           >{ep.meridiem}</span
         >{/if}
-      {#if e.endTime < e.startTime}<span class="ml-1 text-xs text-muted-foreground">+1d</span>{/if}
+      {#if e.endTime < e.startTime}<span title="Ends the next day" class="ml-1 text-xs text-muted-foreground">+1d</span>{/if}
     </div>
   {/if}
   <div class="font-mono text-sm tabular-nums text-muted-foreground">

@@ -209,13 +209,13 @@
         <option value={v}>{label}</option>
       {/each}
     </select>
-    <Button variant="outline" size="icon" class="shrink-0" aria-label="Previous period" onclick={() => shiftPage(-1)}>
+    <Button variant="outline" size="icon" class="shrink-0" title="Previous period" aria-label="Previous period" onclick={() => shiftPage(-1)}>
       <ChevronLeft class="size-4" />
     </Button>
     <span class="flex-1 text-center font-mono text-sm font-medium uppercase tabular-nums">
       {bucket.label}
     </span>
-    <Button variant="outline" size="icon" class="shrink-0" aria-label="Next period" onclick={() => shiftPage(1)}>
+    <Button variant="outline" size="icon" class="shrink-0" title="Next period" aria-label="Next period" onclick={() => shiftPage(1)}>
       <ChevronRight class="size-4" />
     </Button>
     <Button variant="outline" size="sm" class="shrink-0" onclick={() => (anchor = data.today)}>Today</Button>

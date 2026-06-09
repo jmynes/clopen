@@ -8,6 +8,7 @@
   import { onMount } from 'svelte';
   import { page } from '$app/state';
   import favicon from '$lib/assets/favicon.svg';
+  import * as Tooltip from '$lib/components/ui/tooltip';
   import '../app.css';
 
   let { children } = $props();
@@ -45,6 +46,7 @@
   <title>Clopen</title>
 </svelte:head>
 
+<Tooltip.Provider delayDuration={300}>
 <div class="min-h-screen bg-background text-foreground">
   <header class="border-b border-border/70 bg-background/80 backdrop-blur sticky top-0 z-20">
     <div class="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 md:h-auto md:px-6 md:py-4">
@@ -95,30 +97,36 @@
               ? 'translate-x-full'
               : ''}"
           ></span>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={!dark}
-            aria-label="Light mode"
-            onclick={() => setTheme(false)}
-            class="relative z-10 inline-flex h-6 w-9 items-center justify-center rounded-full transition-colors {!dark
-              ? 'text-amber-600'
-              : 'text-muted-foreground hover:text-foreground'}"
-          >
-            <Sun class="size-4" />
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={dark}
-            aria-label="Dark mode"
-            onclick={() => setTheme(true)}
-            class="relative z-10 inline-flex h-6 w-9 items-center justify-center rounded-full transition-colors {dark
-              ? 'text-sky-300'
-              : 'text-muted-foreground hover:text-foreground'}"
-          >
-            <Moon class="size-4" />
-          </button>
+          <Tooltip.Root>
+            <Tooltip.Trigger
+              type="button"
+              role="radio"
+              aria-checked={!dark}
+              aria-label="Light mode"
+              onclick={() => setTheme(false)}
+              class="relative z-10 inline-flex h-6 w-9 items-center justify-center rounded-full transition-colors {!dark
+                ? 'text-amber-600'
+                : 'text-muted-foreground hover:text-foreground'}"
+            >
+              <Sun class="size-4" />
+            </Tooltip.Trigger>
+            <Tooltip.Content>Light mode</Tooltip.Content>
+          </Tooltip.Root>
+          <Tooltip.Root>
+            <Tooltip.Trigger
+              type="button"
+              role="radio"
+              aria-checked={dark}
+              aria-label="Dark mode"
+              onclick={() => setTheme(true)}
+              class="relative z-10 inline-flex h-6 w-9 items-center justify-center rounded-full transition-colors {dark
+                ? 'text-sky-300'
+                : 'text-muted-foreground hover:text-foreground'}"
+            >
+              <Moon class="size-4" />
+            </Tooltip.Trigger>
+            <Tooltip.Content>Dark mode</Tooltip.Content>
+          </Tooltip.Root>
         </div>
       </nav>
     </div>
@@ -184,6 +192,7 @@
     </div>
   </nav>
 </div>
+</Tooltip.Provider>
 
 <style>
   /* Same animated hamburger as hexhive/punt: three bars that morph into an X. */
