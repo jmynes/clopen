@@ -46,8 +46,8 @@
   // Friendly label for an initial HH:MM value (edit dialog); '' stays ''.
   const timeLabel = (hhmm: string | null) => (hhmm ? formatTime(hhmm, data.timeFormat) : '');
   // Mode-aware placeholders for clock inputs.
-  const startPlaceholder = $derived(data.timeFormat === '24h' ? '09:00' : '09:00 am');
-  const endPlaceholder = $derived(data.timeFormat === '24h' ? '17:30' : '05:30 pm');
+  const startPlaceholder = $derived(data.timeFormat === '24h' ? '09:00' : '09:00 AM');
+  const endPlaceholder = $derived(data.timeFormat === '24h' ? '17:30' : '05:30 PM');
 
   // Split a formatted clock string into (digits, meridiem) for color-coded rendering.
   function splitMeridiem(formatted: string): { time: string; meridiem: 'AM' | 'PM' | '' } {
@@ -411,9 +411,9 @@
                 ? 'bg-muted/70'
                 : ''}"
           >
-            <div class="w-28 shrink-0 pt-2 font-mono text-sm tabular-nums">
-              <span class="font-medium uppercase">{weekdayShort(date)}</span>
-              <span class="ml-1 text-muted-foreground">{formatDay(date).replace(/^\w+,\s/, '').toUpperCase()}</span>
+            <div class="w-28 shrink-0 pt-2 font-mono text-sm uppercase tabular-nums">
+              <span class="font-medium">{weekdayShort(date)}</span>
+              <span class="ml-1 text-muted-foreground">{formatDay(date).replace(/^\w+,\s/, '')}</span>
             </div>
             {#if weekMode === 'clock'}
               <div class="flex w-40 shrink-0 flex-col gap-1">
@@ -562,9 +562,9 @@
           <Table.Body>
             {#each data.entries as entry (entry.id)}
               <Table.Row class="even:bg-muted/70">
-                <Table.Cell class="font-mono text-sm tabular-nums">
-                  <span class="uppercase text-muted-foreground">{weekdayShort(entry.date)}</span>
-                  <span class="ml-1 uppercase">{formatDay(entry.date).replace(/^\w+,\s/, '').toUpperCase()}</span>
+                <Table.Cell class="font-mono text-sm uppercase tabular-nums">
+                  <span class="text-muted-foreground">{weekdayShort(entry.date)}</span>
+                  <span class="ml-1">{formatDay(entry.date).replace(/^\w+,\s/, '')}</span>
                 </Table.Cell>
                 <Table.Cell class="font-mono text-sm tabular-nums">
                   {#if entry.startTime}
