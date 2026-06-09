@@ -228,7 +228,7 @@
   // inlined) — with ~365 rows in a year view, per-row components are the
   // difference between an instant and a multi-second period switch.
   const ROW_BTN =
-    'inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-transparent transition-all outline-none select-none hover:bg-muted hover:text-foreground active:translate-y-px focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:hover:bg-muted/50';
+    'inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-transparent transition-all outline-none select-none hover:bg-muted hover:text-foreground active:translate-y-px focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-35 dark:hover:bg-muted/50';
 
   // Per-entry note accordion. Rows without an override follow the expandNotes
   // setting, so toggling the setting flips every untouched row at once.
@@ -1104,7 +1104,7 @@
               <Table.Head class="w-24 text-right font-mono">Worked</Table.Head>
               <Table.Head class="w-14 text-center">OT</Table.Head>
               <Table.Head class="w-36 text-center">Leave</Table.Head>
-              <Table.Head class="w-32 text-right">Actions</Table.Head>
+              <Table.Head class="w-32 pr-4 text-right">Actions</Table.Head>
             </Table.Row>
           </Table.Header>
           <Table.Body>
@@ -1124,7 +1124,7 @@
                   <Table.Cell class="text-center"></Table.Cell>
                   <Table.Cell class="text-center"></Table.Cell>
                   <!-- Match the action-cell height (icon buttons are size-8) so blank rows line up with entry rows exactly. -->
-                  <Table.Cell class="text-right"><span class="inline-block h-8 align-middle"></span></Table.Cell>
+                  <Table.Cell class="pr-4 text-right"><span class="inline-block h-8 align-middle"></span></Table.Cell>
                 </Table.Row>
               {:else}
                 {@const entry = row.entry}
@@ -1185,9 +1185,9 @@
                     </span>
                   {/if}
                 </Table.Cell>
-                <Table.Cell class="text-right">
+                <Table.Cell class="pr-4 text-right">
                   <div class="flex justify-end gap-1">
-                    {@render rowActions(entry, true)}
+                    {@render rowActions(entry)}
                   </div>
                 </Table.Cell>
               </Table.Row>
@@ -1669,20 +1669,20 @@
   </svg>
 {/snippet}
 
-{#snippet rowActions(entry: TimeEntry, spacer = false)}
-  {#if entry.note}
-    <button
-      type="button"
-      class="{ROW_BTN} {isNoteOpen(entry.id) ? 'bg-accent' : ''}"
-      aria-label={isNoteOpen(entry.id) ? 'Hide note' : 'Show note'}
-      aria-expanded={isNoteOpen(entry.id)}
-      onclick={() => toggleNote(entry.id)}
-    >
-      {@render iconNote()}
-    </button>
-  {:else if spacer}
-    <span class="inline-block size-8"></span>
-  {/if}
+{#snippet rowActions(entry: TimeEntry)}
+  <!-- Always present so the affordance is visible even when no row in the
+       current period has a note; disabled + dimmed when there's none. -->
+  <button
+    type="button"
+    class="{ROW_BTN} {entry.note && isNoteOpen(entry.id) ? 'bg-accent' : ''}"
+    disabled={!entry.note}
+    title={entry.note ? undefined : 'No note'}
+    aria-label={entry.note ? (isNoteOpen(entry.id) ? 'Hide note' : 'Show note') : 'No note'}
+    aria-expanded={entry.note ? isNoteOpen(entry.id) : undefined}
+    onclick={() => toggleNote(entry.id)}
+  >
+    {@render iconNote()}
+  </button>
   <button type="button" class={ROW_BTN} aria-label="Edit entry" onclick={() => openEdit(entry)}>
     {@render iconPencil()}
   </button>
