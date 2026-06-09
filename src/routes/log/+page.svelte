@@ -990,10 +990,10 @@
         <div
           class="hidden items-center gap-3 px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground lg:flex"
         >
-          <span class="w-28 shrink-0">Day</span>
+          <span class="w-24 shrink-0">Day</span>
           {#if weekMode === 'clock'}
-            <span class="w-32 shrink-0">In</span>
-            <span class="w-32 shrink-0">Out</span>
+            <span class="w-28 shrink-0">In</span>
+            <span class="w-28 shrink-0">Out</span>
           {:else}
             <span class="w-20 shrink-0">Hours</span>
           {/if}
@@ -1020,7 +1020,7 @@
             >
               <!-- card header below lg: day + entry-type select; dissolves into the flat row at lg -->
               <div class="flex items-center justify-between gap-2 border-b border-border/40 bg-muted/40 px-2.5 py-1.5 lg:contents">
-                <div class="flex h-8 items-center font-mono text-sm uppercase tabular-nums lg:w-28 lg:shrink-0">
+                <div class="flex h-8 items-center font-mono text-sm uppercase tabular-nums lg:w-24 lg:shrink-0">
                   <span class="font-medium">{weekdayShort(date)}</span>
                   <span class="ml-1 text-muted-foreground">{formatDay(date).replace(/^\w+,\s/, '')}</span>
                 </div>
@@ -1101,7 +1101,7 @@
                 {:else}
                   <div class="grid grid-cols-6 gap-2 lg:contents">
                     {#if weekMode === 'clock'}
-                      <div class="col-span-3 flex flex-col gap-1 lg:w-32 lg:shrink-0">
+                      <div class="col-span-3 flex flex-col gap-1 lg:w-28 lg:shrink-0">
                         <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">In</span>
                         <Input
                           type="text"
@@ -1116,7 +1116,7 @@
                         />
                         {#if rowErr('start')}<p class="text-xs text-destructive">{rowErr('start')}</p>{/if}
                       </div>
-                      <div class="col-span-3 flex flex-col gap-1 lg:w-32 lg:shrink-0">
+                      <div class="col-span-3 flex flex-col gap-1 lg:w-28 lg:shrink-0">
                         <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Out</span>
                         <Input
                           type="text"
@@ -1206,9 +1206,9 @@
                       </button>
                     </div>
                     <div class="grid grid-cols-6 gap-2 lg:contents">
-                      <div class="hidden lg:block lg:w-28 lg:shrink-0"></div>
+                      <div class="hidden lg:block lg:w-24 lg:shrink-0"></div>
                       {#if weekMode === 'clock'}
-                        <div class="col-span-3 flex flex-col gap-1 lg:w-32 lg:shrink-0">
+                        <div class="col-span-3 flex flex-col gap-1 lg:w-28 lg:shrink-0">
                           <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">In</span>
                           <Input
                             type="text"
@@ -1227,7 +1227,7 @@
                           />
                           {#if weekErrors[`start-${i}-${j + 1}`]}<p class="text-xs text-destructive">{weekErrors[`start-${i}-${j + 1}`]}</p>{/if}
                         </div>
-                        <div class="col-span-3 flex flex-col gap-1 lg:w-32 lg:shrink-0">
+                        <div class="col-span-3 flex flex-col gap-1 lg:w-28 lg:shrink-0">
                           <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Out</span>
                           <Input
                             type="text"
