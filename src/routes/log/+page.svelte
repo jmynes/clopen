@@ -1104,7 +1104,7 @@
               <Table.Head class="w-24 text-right font-mono">Worked</Table.Head>
               <Table.Head class="w-14 text-center">OT</Table.Head>
               <Table.Head class="w-36 text-center">Leave</Table.Head>
-              <Table.Head class="w-32 pr-4 text-right">Actions</Table.Head>
+              <Table.Head class="w-32 pr-4 text-center">Actions</Table.Head>
             </Table.Row>
           </Table.Header>
           <Table.Body>
