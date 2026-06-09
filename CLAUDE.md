@@ -76,7 +76,10 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   - `settings` (single row, `id = 'default'`): `hourlyRate` (default 38.4615 =
     80k / 2080h), `dailyHours`, `workdays` (JSON `[1..7]`, ISO weekday numbers),
     `weekStartsOn` (1 = Mon, 7 = Sun; default 7), `epoch` (ISO date, default
-    `2025-03-16`), `timeFormat` (`'12h' | '24h'`).
+    `2025-03-16`), `timeFormat` (`'12h' | '24h'`), `hideWeekendsEntries` /
+    `hideWeekendsGrid` (booleans, default false — hide blank Sat/Sun rows in the
+    entries views, and Sat/Sun rows in the weekly grid which implies the former;
+    weekend days with entries always show).
 - `src/lib/db/index.ts` — Drizzle/libSQL client, **lazy-constructed via Proxy**
   so module load doesn't open a connection during SvelteKit's build analyse pass.
   Local default `file:./local.db`.
@@ -122,8 +125,8 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   capped at ~14 visible rows with a sticky header, pads unlogged days with
   em-dashes, tints leave rows in their color family (and darkens on hover
   rather than overwriting), and renders delete in a confirm dialog.
-- `src/routes/settings/+page.*` — pay rate, daily hours, workdays, tracking
-  epoch, week-start, time format.
+- `src/routes/settings/+page.*` — pay rate, daily hours, workdays, weekend
+  visibility toggles, tracking epoch, week-start, time format.
 
 ## CSV import format
 

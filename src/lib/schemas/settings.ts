@@ -13,6 +13,8 @@ export const settingsInput = z.object({
     .refine((v) => v === 1 || v === 7, 'Week must start on Monday or Sunday'),
   epoch: z.string().regex(ISO_DATE, 'Epoch must be a date like 2025-03-16'),
   timeFormat: z.enum(['12h', '24h']).default('12h'),
+  hideWeekendsEntries: z.boolean().default(false),
+  hideWeekendsGrid: z.boolean().default(false),
 });
 
 export type SettingsInput = z.infer<typeof settingsInput>;

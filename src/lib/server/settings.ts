@@ -16,6 +16,8 @@ const DEFAULTS = {
   weekStartsOn: 7,
   epoch: '2025-03-16',
   timeFormat: '12h',
+  hideWeekendsEntries: false,
+  hideWeekendsGrid: false,
 } satisfies Settings;
 
 /** Read the single settings row, seeding defaults on first access. */
@@ -35,6 +37,8 @@ export async function updateSettings(input: SettingsInput, database: Database = 
     weekStartsOn: input.weekStartsOn,
     epoch: input.epoch,
     timeFormat: input.timeFormat,
+    hideWeekendsEntries: input.hideWeekendsEntries,
+    hideWeekendsGrid: input.hideWeekendsGrid,
   };
   await database
     .insert(settings)
@@ -48,6 +52,8 @@ export async function updateSettings(input: SettingsInput, database: Database = 
         weekStartsOn: row.weekStartsOn,
         epoch: row.epoch,
         timeFormat: row.timeFormat,
+        hideWeekendsEntries: row.hideWeekendsEntries,
+        hideWeekendsGrid: row.hideWeekendsGrid,
       },
     });
 }

@@ -10,6 +10,8 @@ export const load: PageServerLoad = async () => {
     weekStartsOn: row.weekStartsOn,
     epoch: row.epoch,
     timeFormat: row.timeFormat,
+    hideWeekendsEntries: row.hideWeekendsEntries,
+    hideWeekendsGrid: row.hideWeekendsGrid,
   };
 };
 
@@ -24,6 +26,8 @@ export const actions: Actions = {
       weekStartsOn: form.get('weekStartsOn'),
       epoch: form.get('epoch'),
       timeFormat: form.get('timeFormat'),
+      hideWeekendsEntries: form.has('hideWeekendsEntries'),
+      hideWeekendsGrid: form.has('hideWeekendsGrid'),
     });
     if (!parsed.success) {
       return fail(400, { error: parsed.error.issues.map((i) => i.message).join('; ') });

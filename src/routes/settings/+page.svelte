@@ -88,6 +88,43 @@
           </div>
         </fieldset>
 
+        <fieldset class="flex flex-col gap-2">
+          <legend class="mb-1 text-sm font-medium">Weekends</legend>
+          <label
+            class="flex cursor-pointer items-start gap-2 rounded-md border border-input px-3 py-2 text-sm has-checked:border-primary has-checked:bg-accent"
+          >
+            <input
+              type="checkbox"
+              name="hideWeekendsEntries"
+              checked={data.hideWeekendsEntries}
+              class="mt-0.5 accent-primary"
+            />
+            <span>
+              <span class="font-medium">Hide empty weekends in Entries</span>
+              <span class="block text-xs text-muted-foreground">
+                Blank Sat/Sun rows are hidden from the entries list. Weekends with logged time still show.
+              </span>
+            </span>
+          </label>
+          <label
+            class="flex cursor-pointer items-start gap-2 rounded-md border border-input px-3 py-2 text-sm has-checked:border-primary has-checked:bg-accent"
+          >
+            <input
+              type="checkbox"
+              name="hideWeekendsGrid"
+              checked={data.hideWeekendsGrid}
+              class="mt-0.5 accent-primary"
+            />
+            <span>
+              <span class="font-medium">Hide weekends in Log a week</span>
+              <span class="block text-xs text-muted-foreground">
+                The weekly grid shows only weekday rows, and empty weekends are hidden from Entries too. Toggle off
+                temporarily to log an odd weekend shift.
+              </span>
+            </span>
+          </label>
+        </fieldset>
+
         <div class="flex flex-col gap-1.5">
           <Label for="epoch">Tracking since</Label>
           <p class="text-xs text-muted-foreground">

@@ -166,6 +166,12 @@
   let weekAnchor = $state(todayISO());
   const weekRowDates = $derived(weekDates(weekAnchor, data.weekStartsOn));
   const weekStart = $derived(weekRowDates[0]);
+  // Visible grid rows. `i` stays the day offset from weekStart (the server maps
+  // field names hours-{i} etc. back to weekStart + i), so hiding weekends must
+  // not renumber the remaining rows.
+  const weekRows = $derived(
+    weekRowDates.map((date, i) => ({ date, i })).filter((r) => !data.hideWeekendsGrid || !isWeekend(r.date)),
+  );
   // The weekly grid shares the same modes, also defaulting to clock in/out.
   let weekMode = $state<'hours' | 'clock'>('clock');
 
@@ -263,6 +269,9 @@
 
   // Pad missing days with blank rows for every period so unlogged days stand
   // out at a glance. The scrollable container keeps long quarters/years usable.
+  // Either weekend setting suppresses the blank Sat/Sun padding; days with
+  // actual entries always show.
+  const hideBlankWeekends = $derived(data.hideWeekendsEntries || data.hideWeekendsGrid);
   type DisplayRow = { kind: 'entry'; entry: TimeEntry } | { kind: 'blank'; date: string };
   const displayRows = $derived.by<DisplayRow[]>(() => {
     const byDate = new Map<string, TimeEntry[]>();
@@ -280,7 +289,7 @@
       const dayEntries = byDate.get(cursor);
       if (dayEntries && dayEntries.length > 0) {
         for (const entry of dayEntries) rows.push({ kind: 'entry', entry });
-      } else {
+      } else if (!hideBlankWeekends || !isWeekend(cursor)) {
         rows.push({ kind: 'blank', date: cursor });
       }
       cursor = addDays(cursor, -1);
@@ -428,13 +437,16 @@
     },
   };
 
-  // Copy the first day's in/out/break (or hours/break) down to the rest of the week.
+  // Copy the first visible day's in/out/break (or hours/break) down to the
+  // rest of the visible week (row 0 may be a hidden weekend).
   function fillDown() {
+    const rows = weekRows.map((r) => r.i);
+    if (rows.length < 2) return;
     for (const col of gridCols) {
       if (col === 'note') continue;
-      const first = inputByName(`${col}-0`);
+      const first = inputByName(`${col}-${rows[0]}`);
       if (!first?.value) continue;
-      for (let row = 1; row < 7; row++) setCell(col, row, first.value);
+      for (const row of rows.slice(1)) setCell(col, row, first.value);
     }
   }
 
@@ -741,7 +753,7 @@
           <span class="w-40 shrink-0 text-center">Leave</span>
         </div>
         <div class="grid gap-3 sm:grid-cols-2 lg:contents">
-          {#each weekRowDates as date, i (date)}
+          {#each weekRows as { date, i }, idx (date)}
             {@const rowErr = (col: string) => weekErrors[`${col}-${i}`]}
             {@const leaveKind = leaveRows.get(i) ?? null}
             {@const isLeave = leaveKind !== null}
@@ -751,7 +763,7 @@
                 ? KIND_CLASSES[leaveKind].row + (rowUnpaid ? ' unpaid-hatch' : '')
                 : isWeekend(date)
                   ? 'bg-amber-500/5 ring-1 ring-inset ring-amber-500/20'
-                  : i % 2 === 1
+                  : idx % 2 === 1
                     ? 'max-lg:ring-1 max-lg:ring-inset max-lg:ring-border lg:bg-muted/70'
                     : 'max-lg:ring-1 max-lg:ring-inset max-lg:ring-border'}"
             >

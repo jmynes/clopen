@@ -44,6 +44,13 @@ export const settings = sqliteTable('settings', {
   epoch: text('epoch').notNull().default('2025-03-16'),
   /** Clock display: '12h' (default, e.g. 09:00 AM) or '24h' (e.g. 09:00). */
   timeFormat: text('time_format').notNull().default('12h'),
+  /** Hide blank Sat/Sun rows in the Entries list (weekends with entries still show). */
+  hideWeekendsEntries: integer('hide_weekends_entries', { mode: 'boolean' }).notNull().default(false),
+  /**
+   * Hide Sat/Sun rows in the Log-a-week grid. Implies hiding blank weekends in
+   * Entries too; toggle off temporarily to log an odd weekend shift.
+   */
+  hideWeekendsGrid: integer('hide_weekends_grid', { mode: 'boolean' }).notNull().default(false),
 });
 
 export type TimeEntry = typeof timeEntries.$inferSelect;

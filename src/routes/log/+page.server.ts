@@ -27,6 +27,8 @@ export const load: PageServerLoad = async () => {
     dailyHours: settings.dailyHours,
     weekStartsOn: row.weekStartsOn,
     timeFormat: row.timeFormat as '12h' | '24h',
+    hideWeekendsEntries: row.hideWeekendsEntries,
+    hideWeekendsGrid: row.hideWeekendsGrid,
   };
 };
 
