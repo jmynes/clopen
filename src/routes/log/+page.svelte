@@ -450,7 +450,10 @@
   // every input event and after any programmatic write.
   let weekTotals = $state<(number | null)[]>(Array(7).fill(null));
   function recomputeWeekTotals() {
-    weekTotals = weekRowDates.map((_, i) => {
+    // Build into a local and assign once — recompute runs inside a tracking
+    // $effect, so reading weekTotals here would make the effect re-run on its
+    // own write and loop.
+    const mains = weekRowDates.map((_, i) => {
       if (leaveRows.has(i)) return null;
       const brk = Number(inputByName(`break-${i}`)?.value) || 0;
       if (weekMode === 'clock') {
@@ -465,7 +468,7 @@
     });
     // Fold in the controlled sub-shifts (a day with only a complete sub-shift
     // still shows a total).
-    weekTotals = weekTotals.map((main, i) => {
+    weekTotals = mains.map((main, i) => {
       let total = main;
       for (const sh of subShifts[i] ?? []) {
         const sbrk = Number(sh.brk) || 0;
