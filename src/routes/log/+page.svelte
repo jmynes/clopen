@@ -23,7 +23,8 @@
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
-  const hrs = (n: number) => `${n.toLocaleString('en-US', { maximumFractionDigits: 2 })}h`;
+  const hrs = (n: number) =>
+    `${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}h`;
 
   // Inline field-error lookups for each form on this page.
   function errorsFrom(key: 'fieldErrors' | 'editFieldErrors' | 'weekFieldErrors'): Record<string, string> {
@@ -47,6 +48,13 @@
   // Mode-aware placeholders for clock inputs.
   const startPlaceholder = $derived(data.timeFormat === '24h' ? '09:00' : '09:00 am');
   const endPlaceholder = $derived(data.timeFormat === '24h' ? '17:30' : '05:30 pm');
+
+  // Split a formatted clock string into (digits, meridiem) for color-coded rendering.
+  function splitMeridiem(formatted: string): { time: string; meridiem: 'AM' | 'PM' | '' } {
+    if (formatted.endsWith(' AM')) return { time: formatted.slice(0, -3), meridiem: 'AM' };
+    if (formatted.endsWith(' PM')) return { time: formatted.slice(0, -3), meridiem: 'PM' };
+    return { time: formatted, meridiem: '' };
+  }
 
   // Per-day totals of *net* worked hours (after breaks) drive the overtime badge.
   const dayTotals = $derived(
@@ -559,11 +567,25 @@
                   <span class="ml-1 uppercase">{formatDay(entry.date).replace(/^\w+,\s/, '').toUpperCase()}</span>
                 </Table.Cell>
                 <Table.Cell class="font-mono text-sm tabular-nums">
-                  {entry.startTime ? formatTime(entry.startTime, data.timeFormat) : '—'}
+                  {#if entry.startTime}
+                    {@const p = splitMeridiem(formatTime(entry.startTime, data.timeFormat))}
+                    {p.time}{#if p.meridiem}<span
+                        class="ml-1 {p.meridiem === 'AM'
+                          ? 'text-red-600 dark:text-red-400'
+                          : 'text-blue-600 dark:text-blue-400'}">{p.meridiem}</span
+                      >{/if}
+                  {:else}
+                    —
+                  {/if}
                 </Table.Cell>
                 <Table.Cell class="font-mono text-sm tabular-nums">
                   {#if entry.endTime}
-                    {formatTime(entry.endTime, data.timeFormat)}
+                    {@const p = splitMeridiem(formatTime(entry.endTime, data.timeFormat))}
+                    {p.time}{#if p.meridiem}<span
+                        class="ml-1 {p.meridiem === 'AM'
+                          ? 'text-red-600 dark:text-red-400'
+                          : 'text-blue-600 dark:text-blue-400'}">{p.meridiem}</span
+                      >{/if}
                     {#if entry.startTime && entry.endTime < entry.startTime}
                       <span class="ml-1 text-xs text-muted-foreground">+1d</span>
                     {/if}
