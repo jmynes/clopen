@@ -989,7 +989,7 @@
         <div
           class="hidden items-center gap-3 px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground lg:flex"
         >
-          <span class="w-32 shrink-0">Day</span>
+          <span class="w-24 shrink-0">Day</span>
           {#if weekMode === 'clock'}
             <span class="w-28 shrink-0">In</span>
             <span class="w-28 shrink-0">Out</span>
@@ -997,7 +997,7 @@
             <span class="w-20 shrink-0">Hours</span>
           {/if}
           <span class="w-20 shrink-0">Break</span>
-          <span class="w-20 shrink-0">Worked</span>
+          <span class="w-28 shrink-0">Worked</span>
           <span class="flex-1">Note</span>
           <span class="w-40 shrink-0">Leave</span>
         </div>
@@ -1019,17 +1019,7 @@
             >
               <!-- card header below lg: day + entry-type select; dissolves into the flat row at lg -->
               <div class="flex items-center justify-between gap-2 border-b border-border/40 bg-muted/40 px-2.5 py-1.5 lg:contents">
-                <div class="flex h-8 items-center gap-1 font-mono text-sm uppercase tabular-nums lg:w-32 lg:shrink-0">
-                  <button
-                    type="button"
-                    class="{ROW_BTN} -ml-1"
-                    disabled={isLeave}
-                    title={isLeave ? 'Leave days have no shifts' : 'Add a shift'}
-                    aria-label="Add a shift for {weekdayShort(date)}"
-                    onclick={() => addSubShift(i)}
-                  >
-                    <Plus class="size-4" />
-                  </button>
+                <div class="flex h-8 items-center font-mono text-sm uppercase tabular-nums lg:w-24 lg:shrink-0">
                   <span class="font-medium">{weekdayShort(date)}</span>
                   <span class="ml-1 text-muted-foreground">{formatDay(date).replace(/^\w+,\s/, '')}</span>
                 </div>
@@ -1159,16 +1149,27 @@
                       />
                       {#if rowErr('break')}<p class="text-xs text-destructive">{rowErr('break')}</p>{/if}
                     </div>
-                    <div class="{weekMode === 'clock' ? 'col-span-3' : 'col-span-2'} flex flex-col gap-1 lg:w-20 lg:shrink-0">
+                    <div class="{weekMode === 'clock' ? 'col-span-3' : 'col-span-2'} flex flex-col gap-1 lg:w-28 lg:shrink-0">
                       <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Worked</span>
-                      <Input
-                        type="text"
-                        readonly
-                        tabindex={-1}
-                        value={rowWorked === null ? '—' : hrs(rowWorked)}
-                        aria-label="Worked hours for {weekdayShort(date)}"
-                        class="pointer-events-none bg-muted/40 font-mono tabular-nums text-muted-foreground"
-                      />
+                      <div class="flex items-center gap-1">
+                        <Input
+                          type="text"
+                          readonly
+                          tabindex={-1}
+                          value={rowWorked === null ? '—' : hrs(rowWorked)}
+                          aria-label="Worked hours for {weekdayShort(date)}"
+                          class="pointer-events-none min-w-0 bg-muted/40 font-mono tabular-nums text-muted-foreground"
+                        />
+                        <button
+                          type="button"
+                          class={ROW_BTN}
+                          title="Add a shift"
+                          aria-label="Add a shift for {weekdayShort(date)}"
+                          onclick={() => addSubShift(i)}
+                        >
+                          <Plus class="size-4" />
+                        </button>
+                      </div>
                     </div>
                     <div class="col-span-6 flex flex-col gap-1 lg:flex-1">
                       <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Note</span>
@@ -1203,7 +1204,7 @@
                       </button>
                     </div>
                     <div class="grid grid-cols-6 gap-2 lg:contents">
-                      <div class="hidden lg:block lg:w-32 lg:shrink-0"></div>
+                      <div class="hidden lg:block lg:w-24 lg:shrink-0"></div>
                       {#if weekMode === 'clock'}
                         <div class="col-span-3 flex flex-col gap-1 lg:w-28 lg:shrink-0">
                           <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">In</span>
@@ -1277,16 +1278,27 @@
                         />
                         {#if weekErrors[`break-${i}-${j + 1}`]}<p class="text-xs text-destructive">{weekErrors[`break-${i}-${j + 1}`]}</p>{/if}
                       </div>
-                      <div class="{weekMode === 'clock' ? 'col-span-3' : 'col-span-2'} flex flex-col gap-1 lg:w-20 lg:shrink-0">
+                      <div class="{weekMode === 'clock' ? 'col-span-3' : 'col-span-2'} flex flex-col gap-1 lg:w-28 lg:shrink-0">
                         <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Worked</span>
-                        <Input
-                          type="text"
-                          readonly
-                          tabindex={-1}
-                          value={shiftWorked === null ? '—' : hrs(shiftWorked)}
-                          aria-label="Worked hours for {weekdayShort(date)} shift {j + 2}"
-                          class="pointer-events-none bg-muted/40 font-mono tabular-nums text-muted-foreground"
-                        />
+                        <div class="flex items-center gap-1">
+                          <Input
+                            type="text"
+                            readonly
+                            tabindex={-1}
+                            value={shiftWorked === null ? '—' : hrs(shiftWorked)}
+                            aria-label="Worked hours for {weekdayShort(date)} shift {j + 2}"
+                            class="pointer-events-none min-w-0 bg-muted/40 font-mono tabular-nums text-muted-foreground"
+                          />
+                          <button
+                            type="button"
+                            class="{ROW_BTN} hidden lg:inline-flex"
+                            title="Remove this shift"
+                            aria-label="Remove shift {j + 2} for {weekdayShort(date)}"
+                            onclick={() => removeSubShift(i, j)}
+                          >
+                            <Minus class="size-4" />
+                          </button>
+                        </div>
                       </div>
                       <div class="col-span-6 flex flex-col gap-1 lg:flex-1">
                         <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Note</span>
@@ -1299,17 +1311,6 @@
                           aria-invalid={weekErrors[`note-${i}-${j + 1}`] ? 'true' : undefined}
                         />
                         {#if weekErrors[`note-${i}-${j + 1}`]}<p class="text-xs text-destructive">{weekErrors[`note-${i}-${j + 1}`]}</p>{/if}
-                      </div>
-                      <div class="hidden lg:flex lg:h-8 lg:w-8 lg:shrink-0 lg:items-center">
-                        <button
-                          type="button"
-                          class={ROW_BTN}
-                          title="Remove this shift"
-                          aria-label="Remove shift {j + 2} for {weekdayShort(date)}"
-                          onclick={() => removeSubShift(i, j)}
-                        >
-                          <Minus class="size-4" />
-                        </button>
                       </div>
                     </div>
                   </div>
