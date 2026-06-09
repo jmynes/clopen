@@ -892,10 +892,10 @@
 </Dialog.Root>
 
 {#snippet entrySummary(e: ConflictEntry)}
-  <div class="font-mono text-sm tabular-nums">
-    {#if e.startTime && e.endTime}
-      {@const sp = splitMeridiem(formatTime(e.startTime, data.timeFormat))}
-      {@const ep = splitMeridiem(formatTime(e.endTime, data.timeFormat))}
+  {#if e.startTime && e.endTime}
+    {@const sp = splitMeridiem(formatTime(e.startTime, data.timeFormat))}
+    {@const ep = splitMeridiem(formatTime(e.endTime, data.timeFormat))}
+    <div class="font-mono text-sm tabular-nums">
       <span>{sp.time}</span>{#if sp.meridiem}<span
           class="ml-0.5 {sp.meridiem === 'AM' ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}"
           >{sp.meridiem}</span
@@ -906,9 +906,12 @@
           >{ep.meridiem}</span
         >{/if}
       {#if e.endTime < e.startTime}<span class="ml-1 text-xs text-muted-foreground">+1d</span>{/if}
+    </div>
+  {/if}
+  <div class="font-mono text-sm tabular-nums text-muted-foreground">
+    {hrs(e.hours - e.breakHours)} worked{#if e.breakHours > 0}
+      <span class="text-xs"> · {hrs(e.breakHours)} break</span>
     {/if}
-    <span class="ml-2 text-muted-foreground">{hrs(e.hours - e.breakHours)} worked</span>
-    {#if e.breakHours > 0}<span class="ml-1 text-xs text-muted-foreground">· {hrs(e.breakHours)} break</span>{/if}
   </div>
   {#if e.note}<p class="text-xs text-muted-foreground">{e.note}</p>{/if}
 {/snippet}
