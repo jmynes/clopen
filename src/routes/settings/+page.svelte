@@ -32,7 +32,17 @@
 
   <Card.Root class="max-w-xl">
     <Card.Content class="p-6">
-      <form method="POST" use:enhance class="flex flex-col gap-6">
+      <!-- reset: false — a reset would revert checkboxes to defaultChecked, which is
+           false for all of them after a client-side navigation (no SSR attributes),
+           wiping the workdays selection on every save. -->
+      <form
+        method="POST"
+        use:enhance={() =>
+          async ({ update }) => {
+            await update({ reset: false });
+          }}
+        class="flex flex-col gap-6"
+      >
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div class="flex flex-col gap-1.5">
             <Label for="hourlyRate">Hourly rate (USD)</Label>
