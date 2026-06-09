@@ -25,8 +25,9 @@
   onMount(() => {
     dark = document.documentElement.classList.contains('dark');
   });
-  function toggleTheme() {
-    dark = !dark;
+  function setTheme(next: boolean) {
+    if (next === dark) return;
+    dark = next;
     document.documentElement.classList.toggle('dark', dark);
     try {
       localStorage.setItem('theme', dark ? 'dark' : 'light');
@@ -60,22 +61,42 @@
             {link.label}
           </a>
         {/each}
-        <button
-          type="button"
-          role="switch"
-          aria-checked={dark}
-          aria-label="Toggle dark mode"
-          onclick={toggleTheme}
-          class="relative ml-2 inline-flex h-7 w-14 shrink-0 cursor-pointer items-center rounded-full border border-input bg-muted/50 transition-colors hover:bg-muted focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+        <div
+          role="radiogroup"
+          aria-label="Theme"
+          class="relative ml-2 inline-flex h-8 items-center rounded-full border border-input bg-muted/40 p-1"
         >
-          <Sun class="absolute left-1.5 size-3.5 text-amber-500" aria-hidden="true" />
-          <Moon class="absolute right-1.5 size-3.5 text-sky-400" aria-hidden="true" />
           <span
-            class="pointer-events-none inline-block size-5 transform rounded-full bg-background shadow ring-1 ring-border transition-transform {dark
-              ? 'translate-x-8'
-              : 'translate-x-1'}"
+            aria-hidden="true"
+            class="absolute top-1 bottom-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-background shadow-sm ring-1 ring-border transition-transform duration-300 ease-out {dark
+              ? 'translate-x-full'
+              : ''}"
           ></span>
-        </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={!dark}
+            aria-label="Light mode"
+            onclick={() => setTheme(false)}
+            class="relative z-10 inline-flex h-6 w-9 items-center justify-center rounded-full transition-colors {!dark
+              ? 'text-amber-600'
+              : 'text-muted-foreground hover:text-foreground'}"
+          >
+            <Sun class="size-4" />
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={dark}
+            aria-label="Dark mode"
+            onclick={() => setTheme(true)}
+            class="relative z-10 inline-flex h-6 w-9 items-center justify-center rounded-full transition-colors {dark
+              ? 'text-sky-300'
+              : 'text-muted-foreground hover:text-foreground'}"
+          >
+            <Moon class="size-4" />
+          </button>
+        </div>
       </nav>
     </div>
   </header>

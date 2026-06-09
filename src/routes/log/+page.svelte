@@ -19,6 +19,7 @@
   import * as Dialog from '$lib/components/ui/dialog';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
+  import * as Select from '$lib/components/ui/select';
   import * as Table from '$lib/components/ui/table';
   import { toCsv } from '$lib/csv';
   import { formatDay, formatRangeISO, formatTime, formatWeekRange, isWeekend, todayISO, weekdayShort } from '$lib/date';
@@ -148,9 +149,12 @@
   }
   // Edit dialog mirrors the same toggle, defaulting to whichever the entry used.
   let editMode = $state<'hours' | 'clock'>('hours');
+  // Editable entry kind. 'work' shows the clock/hours fields; leave kinds hide them.
+  let editKind = $state<'work' | LeaveKind>('work');
 
   function openEdit(entry: TimeEntry) {
     editing = entry;
+    editKind = entry.entryKind as 'work' | LeaveKind;
     editMode = entry.startTime && entry.endTime ? 'clock' : 'hours';
     editOpen = true;
   }
@@ -349,10 +353,12 @@
   // Lucide icon per leave kind (paid/unpaid share the same icon).
   const LEAVE_ICON = {
     pto: Palmtree,
+    pto_unpaid: Palmtree,
     sick_paid: Thermometer,
     sick_unpaid: Thermometer,
     holiday_paid: PartyPopper,
     holiday_unpaid: PartyPopper,
+    vacation_paid: Plane,
     vacation_unpaid: Plane,
   } satisfies Record<LeaveKind, typeof Palmtree>;
 
@@ -369,6 +375,13 @@
       button:
         'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400',
       activeButton: 'bg-emerald-500/25 ring-2 ring-inset ring-emerald-500/60',
+    },
+    pto_unpaid: {
+      badge: 'bg-emerald-500/10 text-emerald-700 ring-1 ring-inset ring-emerald-500/40 dark:text-emerald-300',
+      row: 'bg-emerald-500/5 ring-1 ring-inset ring-emerald-500/25',
+      button:
+        'border-dashed border-emerald-500/50 bg-emerald-500/5 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-400',
+      activeButton: 'bg-emerald-500/15 ring-2 ring-inset ring-emerald-500/50',
     },
     sick_paid: {
       badge: 'bg-rose-500/15 text-rose-700 dark:text-rose-300',
@@ -396,6 +409,12 @@
       button:
         'border-dashed border-violet-500/50 bg-violet-500/5 text-violet-700 hover:bg-violet-500/15 dark:text-violet-400',
       activeButton: 'bg-violet-500/15 ring-2 ring-inset ring-violet-500/50',
+    },
+    vacation_paid: {
+      badge: 'bg-sky-500/15 text-sky-700 dark:text-sky-300',
+      row: 'bg-sky-500/10 ring-1 ring-inset ring-sky-500/30',
+      button: 'border-sky-500/40 bg-sky-500/10 text-sky-700 hover:bg-sky-500/20 dark:text-sky-400',
+      activeButton: 'bg-sky-500/25 ring-2 ring-inset ring-sky-500/60',
     },
     vacation_unpaid: {
       badge: 'bg-sky-500/10 text-sky-700 ring-1 ring-inset ring-sky-500/40 dark:text-sky-300',
@@ -803,19 +822,38 @@
                 {#if rowErr('note')}<p class="text-xs text-destructive">{rowErr('note')}</p>{/if}
               </div>
             {/if}
-            <select
-              aria-label="Leave kind for {weekdayShort(date)}"
-              value={leaveKind ?? ''}
-              onchange={(e) => setLeaveRow(i, e.currentTarget.value as LeaveKind | '')}
-              class="h-8 w-32 shrink-0 self-center rounded-md border border-input bg-transparent px-2 text-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none {isLeave
-                ? KIND_CLASSES[leaveKind].button
-                : ''}"
+            <Select.Root
+              type="single"
+              value={leaveKind ?? 'work'}
+              onValueChange={(v) => setLeaveRow(i, v === 'work' ? '' : (v as LeaveKind))}
             >
-              <option value="">Work</option>
-              {#each LEAVE_KINDS as k (k)}
-                <option value={k}>{LEAVE_META[k].label}</option>
-              {/each}
-            </select>
+              <Select.Trigger
+                aria-label="Type for {weekdayShort(date)}"
+                class="h-8 w-32 shrink-0 self-center {isLeave ? KIND_CLASSES[leaveKind].button : ''}"
+              >
+                {#if isLeave}
+                  {@const Icon = LEAVE_ICON[leaveKind]}
+                  <Icon class="size-3.5" />
+                  <span class="text-xs">{LEAVE_META[leaveKind].short}</span>
+                {:else}
+                  <span class="text-xs text-muted-foreground">Work</span>
+                {/if}
+              </Select.Trigger>
+              <Select.Content>
+                <Select.Item value="work">
+                  <span class="text-muted-foreground">Work</span>
+                </Select.Item>
+                {#each LEAVE_KINDS as k (k)}
+                  {@const ItemIcon = LEAVE_ICON[k]}
+                  <Select.Item value={k}>
+                    <span class="inline-flex items-center gap-2 rounded-md px-1 py-0.5 {KIND_CLASSES[k].badge}">
+                      <ItemIcon class="size-3.5" />
+                      {LEAVE_META[k].label}
+                    </span>
+                  </Select.Item>
+                {/each}
+              </Select.Content>
+            </Select.Root>
           </div>
         {/each}
         <div class="mt-1 flex flex-wrap items-center gap-3">
@@ -1068,7 +1106,10 @@
         class="flex flex-col gap-4"
       >
         <input type="hidden" name="id" value={editing.id} />
-        <input type="hidden" name="mode" value={editMode} />
+        <input type="hidden" name="mode" value={editKind === 'work' ? editMode : 'leave'} />
+        {#if editKind !== 'work'}
+          <input type="hidden" name="kind" value={editKind} />
+        {/if}
         <div class="flex flex-col gap-1.5">
           <Label for="edit-date">Date</Label>
           <Input
@@ -1082,21 +1123,50 @@
           />
           {#if editErrors.date}<p class="text-xs text-destructive">{editErrors.date}</p>{/if}
         </div>
-        <div class="inline-flex w-fit rounded-md border border-input p-0.5 text-sm">
-          {#each MODE_OPTIONS as opt (opt.m)}
-            <button
+
+        <!-- entry kind chooser -->
+        <div class="flex flex-col gap-1.5">
+          <span class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Type</span>
+          <div class="flex flex-wrap gap-1.5">
+            <Button
               type="button"
-              onclick={() => (editMode = opt.m)}
-              class="rounded-[0.3rem] px-3 py-1 transition-colors {editMode === opt.m
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:text-foreground'}"
+              variant={editKind === 'work' ? 'default' : 'outline'}
+              size="sm"
+              onclick={() => (editKind = 'work')}
             >
-              {opt.label}
-            </button>
-          {/each}
+              Work
+            </Button>
+            {#each LEAVE_KINDS as k (k)}
+              {@const KindIcon = LEAVE_ICON[k]}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                class={KIND_CLASSES[k].button + (editKind === k ? ' ' + KIND_CLASSES[k].activeButton : '')}
+                onclick={() => (editKind = k)}
+              >
+                <KindIcon class="size-3.5" /> {LEAVE_META[k].label}
+              </Button>
+            {/each}
+          </div>
         </div>
-        <div class="grid grid-cols-2 gap-4">
-          {#if editMode === 'clock'}
+
+        {#if editKind === 'work'}
+          <div class="inline-flex w-fit rounded-md border border-input p-0.5 text-sm">
+            {#each MODE_OPTIONS as opt (opt.m)}
+              <button
+                type="button"
+                onclick={() => (editMode = opt.m)}
+                class="rounded-[0.3rem] px-3 py-1 transition-colors {editMode === opt.m
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'}"
+              >
+                {opt.label}
+              </button>
+            {/each}
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            {#if editMode === 'clock'}
             <div class="flex flex-col gap-1.5">
               <Label for="edit-start">Clock in</Label>
               <Input
@@ -1161,6 +1231,7 @@
             {#if editErrors.breakHours}<p class="text-xs text-destructive">{editErrors.breakHours}</p>{/if}
           </div>
         </div>
+        {/if}
         <div class="flex flex-col gap-1.5">
           <Label for="edit-note">Note</Label>
           <Input

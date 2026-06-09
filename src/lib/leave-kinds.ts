@@ -8,20 +8,24 @@
 export const ENTRY_KINDS = [
   'work',
   'pto',
+  'pto_unpaid',
   'sick_paid',
   'sick_unpaid',
   'holiday_paid',
   'holiday_unpaid',
+  'vacation_paid',
   'vacation_unpaid',
 ] as const;
 export type EntryKind = (typeof ENTRY_KINDS)[number];
 
 export const LEAVE_KINDS = [
   'pto',
+  'pto_unpaid',
   'sick_paid',
   'sick_unpaid',
   'holiday_paid',
   'holiday_unpaid',
+  'vacation_paid',
   'vacation_unpaid',
 ] as const;
 export type LeaveKind = (typeof LEAVE_KINDS)[number];
@@ -43,10 +47,12 @@ export type LeaveMeta = {
 
 export const LEAVE_META: Record<LeaveKind, LeaveMeta> = {
   pto: { label: 'PTO', short: 'PTO', paid: true, color: 'emerald' },
+  pto_unpaid: { label: 'UPTO (unpaid)', short: 'UPTO', paid: false, color: 'emerald' },
   sick_paid: { label: 'Sick (paid)', short: 'Sick', paid: true, color: 'rose' },
   sick_unpaid: { label: 'Sick (unpaid)', short: 'Sick', paid: false, color: 'rose' },
   holiday_paid: { label: 'Holiday (paid)', short: 'Holiday', paid: true, color: 'violet' },
   holiday_unpaid: { label: 'Holiday (unpaid)', short: 'Holiday', paid: false, color: 'violet' },
+  vacation_paid: { label: 'Vacation (paid)', short: 'Vacation', paid: true, color: 'sky' },
   vacation_unpaid: { label: 'Vacation (unpaid)', short: 'Vacation', paid: false, color: 'sky' },
 };
 
