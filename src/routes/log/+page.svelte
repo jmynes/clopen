@@ -29,8 +29,14 @@
     }, {}),
   );
 
-  // Input mode for the single-entry form: type hours directly, or clock in/out.
-  let addMode = $state<'hours' | 'clock'>('hours');
+  // Input mode for the single-entry form: clock in/out (default) or plain hours.
+  let addMode = $state<'hours' | 'clock'>('clock');
+
+  // Two toggle options, clock on the left.
+  const MODE_OPTIONS = [
+    { m: 'clock', label: 'Clock in/out' },
+    { m: 'hours', label: 'Hours' },
+  ] as const;
 
   let editing = $state<TimeEntry | null>(null);
   let editOpen = $state(false);
@@ -49,6 +55,8 @@
   let weekAnchor = $state(todayISO());
   const weekRowDates = $derived(weekDates(weekAnchor, data.weekStartsOn));
   const weekStart = $derived(weekRowDates[0]);
+  // The weekly grid shares the same modes, also defaulting to clock in/out.
+  let weekMode = $state<'hours' | 'clock'>('clock');
 </script>
 
 <div class="flex flex-col gap-8">
@@ -66,10 +74,10 @@
     </Card.Header>
     <Card.Content class="flex flex-col gap-4">
       <div class="inline-flex w-fit rounded-md border border-input p-0.5 text-sm">
-        {#each [{ m: 'hours', label: 'Hours' }, { m: 'clock', label: 'Clock in/out' }] as opt (opt.m)}
+        {#each MODE_OPTIONS as opt (opt.m)}
           <button
             type="button"
-            onclick={() => (addMode = opt.m as 'hours' | 'clock')}
+            onclick={() => (addMode = opt.m)}
             class="rounded-[0.3rem] px-3 py-1 transition-colors {addMode === opt.m
               ? 'bg-primary text-primary-foreground'
               : 'text-muted-foreground hover:text-foreground'}"
@@ -97,11 +105,11 @@
         {#if addMode === 'clock'}
           <div class="flex flex-col gap-1.5">
             <Label for="startTime">Clock in</Label>
-            <Input id="startTime" type="time" name="startTime" required class="w-32" />
+            <Input id="startTime" type="time" name="startTime" required class="w-36" />
           </div>
           <div class="flex flex-col gap-1.5">
             <Label for="endTime">Clock out</Label>
-            <Input id="endTime" type="time" name="endTime" required class="w-32" />
+            <Input id="endTime" type="time" name="endTime" required class="w-36" />
           </div>
         {:else}
           <div class="flex flex-col gap-1.5">
@@ -130,7 +138,7 @@
     <Card.Header class="flex flex-row flex-wrap items-center justify-between gap-2">
       <div>
         <Card.Title>Log a week</Card.Title>
-        <Card.Description>Fill hours for each day, then add them all at once.</Card.Description>
+        <Card.Description>Fill each day, then add them all at once.</Card.Description>
       </div>
       <div class="flex items-center gap-2">
         <Button variant="outline" size="icon" aria-label="Previous week" onclick={() => (weekAnchor = addDays(weekStart, -7))}>
@@ -143,7 +151,21 @@
         <Button variant="ghost" size="sm" onclick={() => (weekAnchor = todayISO())}>This week</Button>
       </div>
     </Card.Header>
-    <Card.Content>
+    <Card.Content class="flex flex-col gap-4">
+      <div class="inline-flex w-fit rounded-md border border-input p-0.5 text-sm">
+        {#each MODE_OPTIONS as opt (opt.m)}
+          <button
+            type="button"
+            onclick={() => (weekMode = opt.m)}
+            class="rounded-[0.3rem] px-3 py-1 transition-colors {weekMode === opt.m
+              ? 'bg-primary text-primary-foreground'
+              : 'text-muted-foreground hover:text-foreground'}"
+          >
+            {opt.label}
+          </button>
+        {/each}
+      </div>
+
       <form
         method="POST"
         action="?/addWeek"
@@ -155,9 +177,15 @@
         class="flex flex-col gap-3"
       >
         <input type="hidden" name="weekStart" value={weekStart} />
+        <input type="hidden" name="mode" value={weekMode} />
         <div class="flex items-center gap-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
           <span class="w-28 shrink-0">Day</span>
-          <span class="w-20 shrink-0">Hours</span>
+          {#if weekMode === 'clock'}
+            <span class="w-36 shrink-0">In</span>
+            <span class="w-36 shrink-0">Out</span>
+          {:else}
+            <span class="w-20 shrink-0">Hours</span>
+          {/if}
           <span class="w-20 shrink-0">Break</span>
           <span class="flex-1">Note</span>
         </div>
@@ -167,16 +195,21 @@
               <span class="font-medium">{weekdayShort(date)}</span>
               <span class="ml-1 text-muted-foreground">{formatDay(date).replace(/^\w+,\s/, '')}</span>
             </div>
-            <Input
-              type="number"
-              name="hours-{i}"
-              step="0.25"
-              min="0.25"
-              max="24"
-              placeholder={isWeekend(date) ? '—' : '0'}
-              aria-label="Hours for {weekdayShort(date)}"
-              class="w-20"
-            />
+            {#if weekMode === 'clock'}
+              <Input type="time" name="start-{i}" aria-label="Clock in for {weekdayShort(date)}" class="w-36" />
+              <Input type="time" name="end-{i}" aria-label="Clock out for {weekdayShort(date)}" class="w-36" />
+            {:else}
+              <Input
+                type="number"
+                name="hours-{i}"
+                step="0.25"
+                min="0.25"
+                max="24"
+                placeholder={isWeekend(date) ? '—' : '0'}
+                aria-label="Hours for {weekdayShort(date)}"
+                class="w-20"
+              />
+            {/if}
             <Input
               type="number"
               name="break-{i}"
@@ -293,10 +326,10 @@
           <Input id="edit-date" type="date" name="date" value={editing.date} max={todayISO()} required />
         </div>
         <div class="inline-flex w-fit rounded-md border border-input p-0.5 text-sm">
-          {#each [{ m: 'hours', label: 'Hours' }, { m: 'clock', label: 'Clock in/out' }] as opt (opt.m)}
+          {#each MODE_OPTIONS as opt (opt.m)}
             <button
               type="button"
-              onclick={() => (editMode = opt.m as 'hours' | 'clock')}
+              onclick={() => (editMode = opt.m)}
               class="rounded-[0.3rem] px-3 py-1 transition-colors {editMode === opt.m
                 ? 'bg-primary text-primary-foreground'
                 : 'text-muted-foreground hover:text-foreground'}"

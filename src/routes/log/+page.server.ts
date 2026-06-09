@@ -68,41 +68,39 @@ export const actions: Actions = {
     return { deleted: true };
   },
 
-  // Bulk-insert a whole week: one row per day (Mon–Sun). Only rows with hours
-  // are added; each is validated like a single entry.
+  // Bulk-insert a whole week: one row per day. Only filled rows are added,
+  // each validated like a single entry in the chosen mode (clock or hours).
   addWeek: async ({ request }) => {
     const form = await request.formData();
     const weekStart = String(form.get('weekStart') ?? '');
     if (!ISO_DATE.test(weekStart)) return fail(400, { weekError: 'Invalid week' });
+    const clock = form.get('mode') === 'clock';
 
     // weekStart is the first day of the grid; each row is the next day after it,
     // so this is independent of which weekday the week starts on.
-    const dates = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-    const rows = dates
-      .map((date, i) => ({
-        date,
-        hours: String(form.get(`hours-${i}`) ?? '').trim(),
-        breakHours: form.get(`break-${i}`) || undefined,
-        note: form.get(`note-${i}`),
-      }))
-      .filter((row) => row.hours !== '');
+    const parsed = Array.from({ length: 7 }, (_, i) => {
+      const date = addDays(weekStart, i);
+      const breakHours = form.get(`break-${i}`) || undefined;
+      const note = form.get(`note-${i}`) ?? undefined;
+      if (clock) {
+        const startTime = String(form.get(`start-${i}`) ?? '').trim();
+        const endTime = String(form.get(`end-${i}`) ?? '').trim();
+        if (!startTime && !endTime) return null; // empty row
+        return clockEntryInput.safeParse({ date, startTime, endTime, breakHours, note });
+      }
+      const hours = String(form.get(`hours-${i}`) ?? '').trim();
+      if (!hours) return null; // empty row
+      return entryInput.safeParse({ date, hours, breakHours, note });
+    }).filter((p) => p !== null);
 
-    if (rows.length === 0) return fail(400, { weekError: 'Enter hours for at least one day' });
+    if (parsed.length === 0) return fail(400, { weekError: 'Fill in at least one day' });
 
-    const parsed = rows.map((row) =>
-      entryInput.safeParse({
-        date: row.date,
-        hours: row.hours,
-        breakHours: row.breakHours,
-        note: row.note ?? undefined,
-      }),
-    );
     const bad = parsed.find((p) => !p.success);
     if (bad && !bad.success) return fail(400, { weekError: flattenError(bad.error) });
 
     for (const p of parsed) {
       if (p.success) await addEntry(p.data);
     }
-    return { weekAdded: rows.length };
+    return { weekAdded: parsed.length };
   },
 };
