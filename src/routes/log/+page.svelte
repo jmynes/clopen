@@ -176,6 +176,89 @@
 
   let csvInput = $state<HTMLInputElement | null>(null);
 
+  // ── Entries pagination ───────────────────────────────────────────────────
+  type Period = 'week' | 'biweek' | 'month' | 'quarter' | 'year';
+  const PERIOD_LABELS: Record<Period, string> = {
+    week: 'Weekly',
+    biweek: 'Bi-weekly',
+    month: 'Monthly',
+    quarter: 'Quarterly',
+    year: 'Yearly',
+  };
+  let entriesPeriod = $state<Period>('year');
+  let entriesAnchor = $state(todayISO());
+
+  function shiftMonth(anchor: string, n: number): string {
+    const [y, m] = anchor.slice(0, 7).split('-').map(Number);
+    const d = new Date(Date.UTC(y, m - 1 + n, 1));
+    return d.toISOString().slice(0, 10);
+  }
+  function lastDayOf(yearMonth01: string): string {
+    const [y, m] = yearMonth01.slice(0, 7).split('-').map(Number);
+    const d = new Date(Date.UTC(y, m, 0));
+    return d.toISOString().slice(0, 10);
+  }
+
+  const entriesBucket = $derived.by(() => {
+    const anchor = entriesAnchor;
+    const wsOn = data.weekStartsOn;
+    switch (entriesPeriod) {
+      case 'week': {
+        const start = weekDates(anchor, wsOn)[0];
+        const end = addDays(start, 6);
+        return { start, end, label: formatWeekRange(start, true) };
+      }
+      case 'biweek': {
+        const wk = weekDates(anchor, wsOn)[0];
+        const start = addDays(wk, -7);
+        const end = addDays(wk, 6);
+        return { start, end, label: formatWeekRange(start, true) + ' → ' + formatDay(end).replace(/^\w+,\s/, '') };
+      }
+      case 'month': {
+        const start = anchor.slice(0, 7) + '-01';
+        const end = lastDayOf(start);
+        const y = Number(anchor.slice(0, 4));
+        return { start, end, label: `${MONTHS[Number(anchor.slice(5, 7)) - 1]} ${y}` };
+      }
+      case 'quarter': {
+        const y = Number(anchor.slice(0, 4));
+        const m = Number(anchor.slice(5, 7));
+        const qm = Math.floor((m - 1) / 3) * 3 + 1;
+        const start = `${y}-${String(qm).padStart(2, '0')}-01`;
+        const end = lastDayOf(`${y}-${String(qm + 2).padStart(2, '0')}-01`);
+        return { start, end, label: `Q${Math.floor((m - 1) / 3) + 1} ${y}` };
+      }
+      case 'year': {
+        const y = Number(anchor.slice(0, 4));
+        return { start: `${y}-01-01`, end: `${y}-12-31`, label: String(y) };
+      }
+    }
+  });
+
+  const pagedEntries = $derived(
+    data.entries.filter((e) => e.date >= entriesBucket.start && e.date <= entriesBucket.end),
+  );
+
+  function shiftEntriesPage(dir: -1 | 1) {
+    switch (entriesPeriod) {
+      case 'week':
+        entriesAnchor = addDays(entriesAnchor, 7 * dir);
+        return;
+      case 'biweek':
+        entriesAnchor = addDays(entriesAnchor, 14 * dir);
+        return;
+      case 'month':
+        entriesAnchor = shiftMonth(entriesAnchor, dir);
+        return;
+      case 'quarter':
+        entriesAnchor = shiftMonth(entriesAnchor, 3 * dir);
+        return;
+      case 'year':
+        entriesAnchor = shiftMonth(entriesAnchor, 12 * dir);
+        return;
+    }
+  }
+
   // ── Spreadsheet-style editing for the weekly grid ────────────────────────
   let weekForm = $state<HTMLFormElement | null>(null);
   // Column order per mode; paste/fill distribute across these (notes included).
@@ -587,9 +670,31 @@
     <Card.Header class="flex flex-row flex-wrap items-center justify-between gap-2">
       <div>
         <Card.Title>Entries</Card.Title>
-        <Card.Description>{data.entries.length} total · newest first</Card.Description>
+        <Card.Description>
+          {pagedEntries.length} in this {entriesPeriod === 'biweek' ? 'bi-week' : entriesPeriod} · {data.entries.length} total
+        </Card.Description>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex flex-wrap items-center gap-2">
+        <select
+          aria-label="Pagination period"
+          value={entriesPeriod}
+          onchange={(e) => {
+            entriesPeriod = e.currentTarget.value as Period;
+          }}
+          class="h-9 rounded-md border border-input bg-transparent px-2 text-sm focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+        >
+          {#each Object.entries(PERIOD_LABELS) as [v, label] (v)}
+            <option value={v}>{label}</option>
+          {/each}
+        </select>
+        <Button variant="outline" size="icon" aria-label="Previous period" onclick={() => shiftEntriesPage(-1)}>
+          <ChevronLeft class="size-4" />
+        </Button>
+        <span class="min-w-36 text-center font-mono text-sm font-medium uppercase tabular-nums">{entriesBucket.label}</span>
+        <Button variant="outline" size="icon" aria-label="Next period" onclick={() => shiftEntriesPage(1)}>
+          <ChevronRight class="size-4" />
+        </Button>
+        <Button variant="ghost" size="sm" onclick={() => (entriesAnchor = todayISO())}>Today</Button>
         <Button variant="outline" size="sm" onclick={exportCsv} disabled={data.entries.length === 0}>
           <Download class="size-4" /> Export CSV
         </Button>
@@ -625,9 +730,12 @@
       {/if}
       {#if data.entries.length === 0}
         <p class="py-8 text-center text-sm text-muted-foreground">No entries yet. Add your first above.</p>
+      {:else if pagedEntries.length === 0}
+        <p class="py-8 text-center text-sm text-muted-foreground">No entries in this {entriesPeriod}.</p>
       {:else}
+        <div class="max-h-[calc(14*2.75rem+2.5rem)] overflow-y-auto rounded-md border border-input">
         <Table.Root>
-          <Table.Header>
+          <Table.Header class="sticky top-0 z-10 bg-background">
             <Table.Row>
               <Table.Head class="w-32">Date</Table.Head>
               <Table.Head class="w-24 font-mono">In</Table.Head>
@@ -640,7 +748,7 @@
             </Table.Row>
           </Table.Header>
           <Table.Body>
-            {#each data.entries as entry (entry.id)}
+            {#each pagedEntries as entry (entry.id)}
               <Table.Row class="even:bg-muted/70">
                 <Table.Cell class="font-mono text-sm uppercase tabular-nums">
                   <span class="text-muted-foreground">{weekdayShort(entry.date)}</span>
@@ -704,6 +812,7 @@
             {/each}
           </Table.Body>
         </Table.Root>
+        </div>
       {/if}
     </Card.Content>
   </Card.Root>
