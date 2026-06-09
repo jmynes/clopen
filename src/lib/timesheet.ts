@@ -83,6 +83,48 @@ export function expectedHours(asOf: string, yearStart: string, dailyHours: numbe
 }
 
 /** Hours that count toward the baseline: worked hours minus break/lunch. */
+/**
+ * Parse a loosely-typed clock time into canonical `HH:MM` (24-hour), or null.
+ * Accepts e.g. `2pm`, `230pm`, `2:30 PM`, `2:00` (assumes AM), `14:00`, `0930`.
+ * A meridiem on an already-24h hour (`14:00 pm`) is treated as redundant.
+ */
+export function parseTimeInput(raw: string): string | null {
+  const s = raw.trim().toLowerCase();
+  if (!s) return null;
+
+  const meridiem = s.includes('p') ? 'pm' : s.includes('a') ? 'am' : null;
+  const core = s.replace(/[^0-9:]/g, '');
+  if (!core) return null;
+
+  let h: number;
+  let m: number;
+  if (core.includes(':')) {
+    const [hp, mp] = core.split(':');
+    if (hp === '') return null;
+    h = Number(hp);
+    m = Number(mp === '' ? '0' : mp);
+  } else if (core.length <= 2) {
+    h = Number(core);
+    m = 0;
+  } else if (core.length === 3) {
+    h = Number(core.slice(0, 1));
+    m = Number(core.slice(1));
+  } else if (core.length === 4) {
+    h = Number(core.slice(0, 2));
+    m = Number(core.slice(2));
+  } else {
+    return null;
+  }
+  if (!Number.isInteger(h) || !Number.isInteger(m)) return null;
+
+  // Only adjust a 12-hour hour; leave 13–23 alone even if a meridiem was typed.
+  if (meridiem === 'pm' && h < 12) h += 12;
+  else if (meridiem === 'am' && h === 12) h = 0;
+
+  if (h < 0 || h > 23 || m < 0 || m > 59) return null;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
 /** Hours between two `HH:MM` clock times (end − start); negative if end precedes start. */
 export function hoursBetween(start: string, end: string): number {
   const [sh, sm] = start.split(':').map(Number);

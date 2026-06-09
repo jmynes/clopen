@@ -1,8 +1,17 @@
 import { z } from 'zod';
-import { hoursBetween } from '$lib/timesheet';
+import { hoursBetween, parseTimeInput } from '$lib/timesheet';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-const HHMM = /^\d{2}:\d{2}$/;
+
+// Accepts loose input (2pm, 230pm, 2:00, 14:00) and normalizes to HH:MM.
+const clockTime = z.string().transform((v, ctx) => {
+  const parsed = parseTimeInput(v);
+  if (parsed === null) {
+    ctx.addIssue({ code: 'custom', message: 'Enter a time like 2:30pm' });
+    return z.NEVER;
+  }
+  return parsed;
+});
 
 /** Canonical persisted shape. Both input modes (hours / clock) produce this. */
 export type EntryInput = {
@@ -47,8 +56,8 @@ export const entryInput = z
 export const clockEntryInput = z
   .object({
     date,
-    startTime: z.string().regex(HHMM, 'Start must be HH:MM'),
-    endTime: z.string().regex(HHMM, 'End must be HH:MM'),
+    startTime: clockTime,
+    endTime: clockTime,
     breakHours,
     note,
   })

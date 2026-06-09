@@ -12,14 +12,22 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import * as Table from '$lib/components/ui/table';
-  import { formatDay, formatTimeRange, formatWeekRange, isWeekend, todayISO, weekdayShort } from '$lib/date';
+  import { formatDay, formatTime, formatTimeRange, formatWeekRange, isWeekend, todayISO, weekdayShort } from '$lib/date';
   import type { TimeEntry } from '$lib/db/schema';
-  import { addDays, weekDates } from '$lib/timesheet';
+  import { addDays, parseTimeInput, weekDates } from '$lib/timesheet';
   import type { ActionData, PageData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
   const hrs = (n: number) => `${n.toLocaleString('en-US', { maximumFractionDigits: 2 })}h`;
+
+  // Reformat a free-typed time ("2pm", "230", "14:00") to a friendly label on blur.
+  function normalizeTime(e: FocusEvent & { currentTarget: HTMLInputElement }) {
+    const parsed = parseTimeInput(e.currentTarget.value);
+    if (parsed) e.currentTarget.value = formatTime(parsed);
+  }
+  // Friendly label for an initial HH:MM value (edit dialog); '' stays ''.
+  const timeLabel = (hhmm: string | null) => (hhmm ? formatTime(hhmm) : '');
 
   // Per-day totals of *net* worked hours (after breaks) drive the overtime badge.
   const dayTotals = $derived(
@@ -105,11 +113,31 @@
         {#if addMode === 'clock'}
           <div class="flex flex-col gap-1.5">
             <Label for="startTime">Clock in</Label>
-            <Input id="startTime" type="time" name="startTime" required class="w-40" />
+            <Input
+              id="startTime"
+              type="text"
+              name="startTime"
+              inputmode="numeric"
+              autocomplete="off"
+              placeholder="9:00 am"
+              onblur={normalizeTime}
+              required
+              class="w-40"
+            />
           </div>
           <div class="flex flex-col gap-1.5">
             <Label for="endTime">Clock out</Label>
-            <Input id="endTime" type="time" name="endTime" required class="w-40" />
+            <Input
+              id="endTime"
+              type="text"
+              name="endTime"
+              inputmode="numeric"
+              autocomplete="off"
+              placeholder="5:30 pm"
+              onblur={normalizeTime}
+              required
+              class="w-40"
+            />
           </div>
         {:else}
           <div class="flex flex-col gap-1.5">
@@ -196,8 +224,26 @@
               <span class="ml-1 text-muted-foreground">{formatDay(date).replace(/^\w+,\s/, '')}</span>
             </div>
             {#if weekMode === 'clock'}
-              <Input type="time" name="start-{i}" aria-label="Clock in for {weekdayShort(date)}" class="w-40 shrink-0" />
-              <Input type="time" name="end-{i}" aria-label="Clock out for {weekdayShort(date)}" class="w-40 shrink-0" />
+              <Input
+                type="text"
+                name="start-{i}"
+                inputmode="numeric"
+                autocomplete="off"
+                placeholder="9:00 am"
+                onblur={normalizeTime}
+                aria-label="Clock in for {weekdayShort(date)}"
+                class="w-40 shrink-0"
+              />
+              <Input
+                type="text"
+                name="end-{i}"
+                inputmode="numeric"
+                autocomplete="off"
+                placeholder="5:30 pm"
+                onblur={normalizeTime}
+                aria-label="Clock out for {weekdayShort(date)}"
+                class="w-40 shrink-0"
+              />
             {:else}
               <Input
                 type="number"
@@ -342,11 +388,31 @@
           {#if editMode === 'clock'}
             <div class="flex flex-col gap-1.5">
               <Label for="edit-start">Clock in</Label>
-              <Input id="edit-start" type="time" name="startTime" value={editing.startTime ?? ''} required />
+              <Input
+                id="edit-start"
+                type="text"
+                name="startTime"
+                inputmode="numeric"
+                autocomplete="off"
+                placeholder="9:00 am"
+                value={timeLabel(editing.startTime)}
+                onblur={normalizeTime}
+                required
+              />
             </div>
             <div class="flex flex-col gap-1.5">
               <Label for="edit-end">Clock out</Label>
-              <Input id="edit-end" type="time" name="endTime" value={editing.endTime ?? ''} required />
+              <Input
+                id="edit-end"
+                type="text"
+                name="endTime"
+                inputmode="numeric"
+                autocomplete="off"
+                placeholder="5:30 pm"
+                value={timeLabel(editing.endTime)}
+                onblur={normalizeTime}
+                required
+              />
             </div>
           {:else}
             <div class="flex flex-col gap-1.5">

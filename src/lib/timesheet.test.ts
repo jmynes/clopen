@@ -6,6 +6,7 @@ import {
   hoursBetween,
   loggedHours,
   makeWholeStatus,
+  parseTimeInput,
   type WorkSettings,
   weekDates,
   weeklyBreakdown,
@@ -110,6 +111,43 @@ describe('hoursBetween', () => {
 
   it('is negative when end precedes start (caller rejects it)', () => {
     expect(hoursBetween('17:00', '09:00')).toBe(-8);
+  });
+});
+
+describe('parseTimeInput', () => {
+  it('normalizes loose 12-hour input', () => {
+    expect(parseTimeInput('2pm')).toBe('14:00');
+    expect(parseTimeInput('230pm')).toBe('14:30');
+    expect(parseTimeInput('2:30pm')).toBe('14:30');
+    expect(parseTimeInput('2:30 PM')).toBe('14:30');
+    expect(parseTimeInput('2 pm')).toBe('14:00');
+  });
+
+  it('assumes AM when no meridiem is given', () => {
+    expect(parseTimeInput('2:00')).toBe('02:00');
+    expect(parseTimeInput('9')).toBe('09:00');
+    expect(parseTimeInput('230')).toBe('02:30');
+  });
+
+  it('accepts 24-hour input and ignores a redundant meridiem', () => {
+    expect(parseTimeInput('14:00')).toBe('14:00');
+    expect(parseTimeInput('1430')).toBe('14:30');
+    expect(parseTimeInput('0930')).toBe('09:30');
+    expect(parseTimeInput('14:00 pm')).toBe('14:00');
+  });
+
+  it('handles the 12 o’clock edge cases', () => {
+    expect(parseTimeInput('12am')).toBe('00:00');
+    expect(parseTimeInput('12pm')).toBe('12:00');
+    expect(parseTimeInput('12:30am')).toBe('00:30');
+  });
+
+  it('returns null for blank or out-of-range input', () => {
+    expect(parseTimeInput('')).toBeNull();
+    expect(parseTimeInput('  ')).toBeNull();
+    expect(parseTimeInput('abc')).toBeNull();
+    expect(parseTimeInput('25:00')).toBeNull();
+    expect(parseTimeInput('2:99')).toBeNull();
   });
 });
 
