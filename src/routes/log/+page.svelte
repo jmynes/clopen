@@ -1132,7 +1132,7 @@
 
         <!-- entry kind chooser -->
         <div class="flex flex-col gap-1.5">
-          <span class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Leave</span>
+          <span class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Entry type</span>
           <div class="flex items-stretch gap-2">
             <Button
               type="button"
