@@ -778,15 +778,19 @@
             {#each displayRows as row, idx (row.kind === 'entry' ? row.entry.id : `blank-${row.date}`)}
               {#if row.kind === 'blank'}
                 <Table.Row
-                  class={`h-11 ${idx % 2 === 1 ? 'bg-muted/70' : ''} ${isWeekend(row.date) ? 'bg-amber-500/5' : ''}`}
+                  class={`h-11 text-muted-foreground/60 ${idx % 2 === 1 ? 'bg-muted/70' : ''} ${isWeekend(row.date) ? 'bg-amber-500/5' : ''}`}
                 >
-                  <Table.Cell class="font-mono text-sm uppercase tabular-nums opacity-60">
-                    <span class="text-muted-foreground">{weekdayShort(row.date)}</span>
+                  <Table.Cell class="font-mono text-sm uppercase tabular-nums">
+                    <span>{weekdayShort(row.date)}</span>
                     <span class="ml-1">{formatDay(row.date).replace(/^\w+,\s/, '')}</span>
                   </Table.Cell>
-                  <Table.Cell colspan={7} class="text-center text-xs italic text-muted-foreground/70">
-                    not logged
-                  </Table.Cell>
+                  <Table.Cell class="font-mono text-sm tabular-nums">—</Table.Cell>
+                  <Table.Cell class="font-mono text-sm tabular-nums">—</Table.Cell>
+                  <Table.Cell class="text-right font-mono text-sm tabular-nums">—</Table.Cell>
+                  <Table.Cell class="text-right font-mono tabular-nums">—</Table.Cell>
+                  <Table.Cell class="text-center"></Table.Cell>
+                  <Table.Cell></Table.Cell>
+                  <Table.Cell class="text-right"></Table.Cell>
                 </Table.Row>
               {:else}
                 {@const entry = row.entry}
