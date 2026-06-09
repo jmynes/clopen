@@ -40,7 +40,7 @@
               id="hourlyRate"
               type="number"
               name="hourlyRate"
-              step="0.01"
+              step="any"
               min="0"
               value={data.settings.hourlyRate}
               required

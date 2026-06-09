@@ -10,7 +10,7 @@ type Database = typeof defaultDb;
 const DEFAULT_ID = 'default';
 const DEFAULTS = {
   id: DEFAULT_ID,
-  hourlyRate: 38.46,
+  hourlyRate: 38.4615,
   dailyHours: 8,
   workdays: '[1,2,3,4,5]',
   weekStartsOn: 7,
