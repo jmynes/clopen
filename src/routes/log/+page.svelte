@@ -795,7 +795,7 @@
             {#each displayRows as row, idx (row.kind === 'entry' ? row.entry.id : `blank-${row.date}`)}
               {#if row.kind === 'blank'}
                 <Table.Row
-                  class={`h-11 text-muted-foreground/60 ${idx % 2 === 1 ? 'bg-muted/70' : ''} ${isWeekend(row.date) ? 'bg-amber-500/5' : ''}`}
+                  class={`h-12 text-muted-foreground/60 [&_td]:py-3 ${idx % 2 === 1 ? 'bg-muted/70' : ''} ${isWeekend(row.date) ? 'bg-amber-500/5' : ''}`}
                 >
                   <Table.Cell class="font-mono text-sm uppercase tabular-nums">
                     <span>{weekdayShort(row.date)}</span>
