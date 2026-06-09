@@ -232,7 +232,7 @@
               <div class="mt-1 flex flex-wrap justify-center gap-1.5">
                 {#each orderedWeekdays as day (day.n)}
                   <label
-                    class="flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-input px-3 py-2 text-sm has-checked:border-primary has-checked:bg-accent md:basis-[calc(25%-4.5px)] md:px-1"
+                    class="flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-input px-3 py-2 font-mono text-sm has-checked:border-primary has-checked:bg-accent md:basis-[calc(25%-4.5px)] md:px-1"
                   >
                     <input
                       type="checkbox"
