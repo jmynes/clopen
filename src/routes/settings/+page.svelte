@@ -79,6 +79,15 @@
         </fieldset>
 
         <div class="flex flex-col gap-1.5">
+          <Label for="epoch">Tracking since</Label>
+          <p class="text-xs text-muted-foreground">
+            Earliest date that counts toward the make-whole baseline. The dashboard's year view still drives expected
+            earnings — this just keeps year-one from accruing hours before you started.
+          </p>
+          <Input id="epoch" type="date" name="epoch" value={data.epoch} required class="w-48" />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
           <Label for="weekStartsOn">Week starts on</Label>
           <p class="text-xs text-muted-foreground">Controls the weekly grid order and how weeks group on the dashboard.</p>
           <select

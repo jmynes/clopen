@@ -5,7 +5,7 @@ import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
   const row = await getSettings();
-  return { settings: toWorkSettings(row), weekStartsOn: row.weekStartsOn };
+  return { settings: toWorkSettings(row), weekStartsOn: row.weekStartsOn, epoch: row.epoch };
 };
 
 export const actions: Actions = {
@@ -17,6 +17,7 @@ export const actions: Actions = {
       dailyHours: form.get('dailyHours'),
       workdays,
       weekStartsOn: form.get('weekStartsOn'),
+      epoch: form.get('epoch'),
     });
     if (!parsed.success) {
       return fail(400, { error: parsed.error.issues.map((i) => i.message).join('; ') });

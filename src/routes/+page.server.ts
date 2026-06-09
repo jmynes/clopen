@@ -15,10 +15,14 @@ export const load: PageServerLoad = async ({ url }) => {
   const settings = toWorkSettings(settingsRow);
   const entries = await listEntries();
 
-  const status = makeWholeStatus({ entries, asOf, settings });
+  // Year-view stays the default; epoch only clamps the lower bound so we don't
+  // accrue expected hours from before the user started tracking (year-one math).
+  const yearStart = yearStartOf(asOf);
+  const effectiveStart = settingsRow.epoch > yearStart ? settingsRow.epoch : yearStart;
+  const status = makeWholeStatus({ entries, asOf, settings, epoch: settingsRow.epoch });
   const weeks = weeklyBreakdown({
     entries,
-    yearStart: yearStartOf(asOf),
+    yearStart: effectiveStart,
     asOf,
     settings,
     weekStartsOn: settingsRow.weekStartsOn,

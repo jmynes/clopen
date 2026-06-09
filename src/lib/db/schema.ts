@@ -33,6 +33,8 @@ export const settings = sqliteTable('settings', {
   workdays: text('workdays').notNull().default('[1,2,3,4,5]'),
   /** ISO weekday the week starts on: 1 = Monday, 7 = Sunday. */
   weekStartsOn: integer('week_starts_on').notNull().default(7),
+  /** Earliest date that counts toward accrual; clamps year-to-date math. */
+  epoch: text('epoch').notNull().default('2025-03-16'),
 });
 
 export type TimeEntry = typeof timeEntries.$inferSelect;

@@ -140,12 +140,17 @@ export function makeWholeStatus(params: {
   entries: EntryLike[];
   asOf: string;
   settings: WorkSettings;
+  /** Earliest date that counts toward accrual; defaults to Jan 1 of asOf. */
+  epoch?: string;
 }): MakeWholeStatus {
-  const { entries, asOf, settings } = params;
+  const { entries, asOf, settings, epoch } = params;
+  // Effective start is the later of "year of asOf" and the user's epoch — so
+  // year-one math doesn't backfill expected hours before they started tracking.
   const yearStart = yearStartOf(asOf);
-  const inRange = entries.filter((e) => e.date >= yearStart && e.date <= asOf);
+  const effectiveStart = epoch && epoch > yearStart ? epoch : yearStart;
+  const inRange = entries.filter((e) => e.date >= effectiveStart && e.date <= asOf);
 
-  const expected = expectedHours(asOf, yearStart, settings.dailyHours, settings.workdays);
+  const expected = expectedHours(asOf, effectiveStart, settings.dailyHours, settings.workdays);
   const logged = loggedHours(inRange);
   const net = round2(logged - expected);
   const deficit = round2(Math.max(0, -net));

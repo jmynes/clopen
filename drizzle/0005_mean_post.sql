@@ -1,0 +1,1 @@
+ALTER TABLE `settings` ADD `epoch` text DEFAULT '2025-03-16' NOT NULL;
