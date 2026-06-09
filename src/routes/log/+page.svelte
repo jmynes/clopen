@@ -239,6 +239,34 @@
     data.entries.filter((e) => e.date >= entriesBucket.start && e.date <= entriesBucket.end),
   );
 
+  // For shorter periods (week/biweek/month) we pad missing days with blank
+  // rows so the user can see at a glance which days went unlogged. For longer
+  // periods this would dump hundreds of blank rows, so we just list real ones.
+  type DisplayRow = { kind: 'entry'; entry: TimeEntry } | { kind: 'blank'; date: string };
+  const displayRows = $derived.by<DisplayRow[]>(() => {
+    const padBlanks = entriesPeriod === 'week' || entriesPeriod === 'biweek' || entriesPeriod === 'month';
+    if (!padBlanks) return pagedEntries.map((entry) => ({ kind: 'entry', entry }) as DisplayRow);
+    const byDate = new Map<string, TimeEntry[]>();
+    for (const e of pagedEntries) {
+      const list = byDate.get(e.date) ?? [];
+      list.push(e);
+      byDate.set(e.date, list);
+    }
+    const rows: DisplayRow[] = [];
+    // Walk dates from end → start so newest stays on top.
+    let cursor = entriesBucket.end;
+    while (cursor >= entriesBucket.start) {
+      const dayEntries = byDate.get(cursor);
+      if (dayEntries && dayEntries.length > 0) {
+        for (const entry of dayEntries) rows.push({ kind: 'entry', entry });
+      } else {
+        rows.push({ kind: 'blank', date: cursor });
+      }
+      cursor = addDays(cursor, -1);
+    }
+    return rows;
+  });
+
   function shiftEntriesPage(dir: -1 | 1) {
     switch (entriesPeriod) {
       case 'week':
@@ -748,8 +776,18 @@
             </Table.Row>
           </Table.Header>
           <Table.Body>
-            {#each pagedEntries as entry (entry.id)}
-              <Table.Row class="even:bg-muted/70">
+            {#each displayRows as row, idx (row.kind === 'entry' ? row.entry.id : `blank-${row.date}`)}
+              {#if row.kind === 'blank'}
+                <Table.Row class={`${idx % 2 === 1 ? 'bg-muted/70' : ''} ${isWeekend(row.date) ? 'bg-amber-500/5' : ''}`}>
+                  <Table.Cell class="font-mono text-sm uppercase tabular-nums opacity-60">
+                    <span class="text-muted-foreground">{weekdayShort(row.date)}</span>
+                    <span class="ml-1">{formatDay(row.date).replace(/^\w+,\s/, '')}</span>
+                  </Table.Cell>
+                  <Table.Cell colspan={7} class="text-center text-xs italic text-muted-foreground/70">not logged</Table.Cell>
+                </Table.Row>
+              {:else}
+                {@const entry = row.entry}
+                <Table.Row class="even:bg-muted/70">
                 <Table.Cell class="font-mono text-sm uppercase tabular-nums">
                   <span class="text-muted-foreground">{weekdayShort(entry.date)}</span>
                   <span class="ml-1">{formatDay(entry.date).replace(/^\w+,\s/, '')}</span>
@@ -809,6 +847,7 @@
                   </div>
                 </Table.Cell>
               </Table.Row>
+              {/if}
             {/each}
           </Table.Body>
         </Table.Root>
