@@ -393,7 +393,13 @@
         </div>
         {#each weekRowDates as date, i (date)}
           {@const rowErr = (col: string) => weekErrors[`${col}-${i}`]}
-          <div class="flex items-start gap-3 rounded-md px-2 py-1 {i % 2 === 1 ? 'bg-muted/70' : ''} {isWeekend(date) ? 'opacity-70' : ''}">
+          <div
+            class="flex items-start gap-3 rounded-md px-2 py-1 {isWeekend(date)
+              ? 'bg-amber-500/5 ring-1 ring-inset ring-amber-500/15 text-muted-foreground'
+              : i % 2 === 1
+                ? 'bg-muted/70'
+                : ''}"
+          >
             <div class="w-28 shrink-0 pt-2 text-sm">
               <span class="font-medium">{weekdayShort(date)}</span>
               <span class="ml-1 text-muted-foreground">{formatDay(date).replace(/^\w+,\s/, '')}</span>
