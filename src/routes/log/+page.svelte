@@ -1155,7 +1155,10 @@
               variant={editKind === 'work' ? 'default' : 'outline'}
               size="sm"
               class="h-auto"
-              onclick={() => (editKind = 'work')}
+              onclick={() => {
+                editKind = 'work';
+                editMode = 'clock';
+              }}
             >
               <Briefcase class="size-3.5" /> Work
             </Button>
