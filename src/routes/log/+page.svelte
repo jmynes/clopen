@@ -474,10 +474,30 @@
     },
   };
 
-  // Copy the first visible day's in/out/break (or hours/break) down to the
-  // rest of the visible week (row 0 may be a hidden weekend).
+  // The grid cell that last received focus — fill-down's source.
+  let lastTouched = $state<{ col: string; row: number } | null>(null);
+  function onGridFocusIn(e: FocusEvent) {
+    const t = e.target;
+    if (!(t instanceof HTMLInputElement)) return;
+    const m = t.name.match(/^(start|end|break|hours|note)-(\d)$/);
+    if (m) lastTouched = { col: m[1], row: Number(m[2]) };
+  }
+
+  // Copy the last touched field down to the visible rows below it. Falls back
+  // to the original behavior — first visible day's in/out/break (or
+  // hours/break) down the whole week — when nothing has been touched yet (or
+  // the touched cell vanished with a week/mode change, or is empty).
   function fillDown() {
     const rows = weekRows.map((r) => r.i);
+    if (lastTouched) {
+      const { col, row } = lastTouched;
+      const src = inputByName(`${col}-${row}`);
+      const from = rows.indexOf(row);
+      if (src?.value && from !== -1) {
+        for (const r of rows.slice(from + 1)) setCell(col, r, src.value);
+        return;
+      }
+    }
     if (rows.length < 2) return;
     for (const col of gridCols) {
       if (col === 'note') continue;
@@ -799,6 +819,7 @@
         method="POST"
         action="?/addWeek"
         onpaste={onGridPaste}
+        onfocusin={onGridFocusIn}
         onkeydown={onGridKeydown}
         use:enhance={conflictAwareEnhance({ resetOnSuccess: true })}
         class="flex flex-col gap-3"
@@ -985,7 +1006,7 @@
         </div>
         <div class="mt-1 flex flex-wrap items-center gap-3">
           <Button type="submit" class="hover:bg-primary/75"><Plus class="size-4" /> Add week</Button>
-          <Button type="button" variant="outline" title="Copy the first day's values down the week" onclick={fillDown}>
+          <Button type="button" variant="outline" title="Copy the last touched field down the week" onclick={fillDown}>
             <ArrowDownToLine class="size-4" /> Fill down
           </Button>
           <span class="hidden text-xs text-muted-foreground lg:inline">Tip: paste a block from a spreadsheet into any cell.</span>
