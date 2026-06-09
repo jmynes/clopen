@@ -29,12 +29,12 @@ export function isWeekend(iso: string): boolean {
   return dow === 0 || dow === 6;
 }
 
-/** "9:00 AM" — 12-hour label for an `HH:MM` time. */
+/** "09:00 AM" — 12-hour label for an `HH:MM` time; hour is zero-padded for column alignment. */
 export function formatTime(hhmm: string): string {
   const [h, m] = hhmm.split(':').map(Number);
   const period = h < 12 ? 'AM' : 'PM';
   const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+  return `${String(h12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${period}`;
 }
 
 /** "9:00 AM – 5:00 PM" — labeled clock range; appends "(+1d)" for overnight shifts. */
