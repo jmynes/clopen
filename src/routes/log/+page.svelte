@@ -837,19 +837,24 @@
             >
               <Select.Trigger
                 aria-label="Leave kind for {weekdayShort(date)}"
-                class="h-8 w-32 shrink-0 self-center {isLeave ? KIND_CLASSES[leaveKind].button : ''}"
+                class="h-8 w-40 shrink-0 self-center {isLeave ? KIND_CLASSES[leaveKind].button : ''}"
               >
                 {#if isLeave}
                   {@const Icon = LEAVE_ICON[leaveKind]}
+                  {@const meta = LEAVE_META[leaveKind]}
                   <Icon class="size-3.5" />
-                  <span class="text-xs">{LEAVE_META[leaveKind].short}</span>
+                  <span class="text-xs">{meta.short}{meta.paid ? '' : ' (unpaid)'}</span>
                 {:else}
+                  <Briefcase class="size-3.5 text-muted-foreground" />
                   <span class="text-xs text-muted-foreground">Work</span>
                 {/if}
               </Select.Trigger>
               <Select.Content>
                 <Select.Item value="work">
-                  <span class="text-muted-foreground">Work</span>
+                  <span class="inline-flex items-center gap-2 text-muted-foreground">
+                    <Briefcase class="size-3.5" />
+                    Work
+                  </span>
                 </Select.Item>
                 {#each LEAVE_KINDS as k (k)}
                   {@const ItemIcon = LEAVE_ICON[k]}
@@ -978,7 +983,7 @@
               <Table.Head class="w-16 font-mono">Break</Table.Head>
               <Table.Head class="w-24 text-right font-mono">Worked</Table.Head>
               <Table.Head class="w-14 text-center">OT</Table.Head>
-              <Table.Head class="w-28 text-center">Leave</Table.Head>
+              <Table.Head class="w-36 text-center">Leave</Table.Head>
               <Table.Head>Note</Table.Head>
               <Table.Head class="w-24 text-right">Actions</Table.Head>
             </Table.Row>
@@ -1059,11 +1064,12 @@
                 <Table.Cell class="text-center">
                   {#if entryLeave}
                     {@const Icon = LEAVE_ICON[entryLeave]}
+                    {@const meta = LEAVE_META[entryLeave]}
                     <span
-                      class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium uppercase tracking-wider {KIND_CLASSES[entryLeave].badge}"
-                      title={LEAVE_META[entryLeave].label}
+                      class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide {KIND_CLASSES[entryLeave].badge}"
+                      title={meta.label}
                     >
-                      <Icon class="size-3" /> {LEAVE_META[entryLeave].short}
+                      <Icon class="size-3" /> {meta.short}{meta.paid ? '' : ' (Unpaid)'}
                     </span>
                   {/if}
                 </Table.Cell>
