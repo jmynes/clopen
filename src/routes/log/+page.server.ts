@@ -1,6 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import type { z } from 'zod';
-import { entryInput } from '$lib/schemas/entry';
+import { clockEntryInput, entryInput } from '$lib/schemas/entry';
 import { addEntry, deleteEntry, listEntries, updateEntry } from '$lib/server/entries';
 import { getSettings, toWorkSettings } from '$lib/server/settings';
 import { addDays } from '$lib/timesheet';
@@ -15,13 +15,17 @@ export const load: PageServerLoad = async () => {
   return { entries, dailyHours: settings.dailyHours, weekStartsOn: row.weekStartsOn };
 };
 
+// One entry, from either the "hours" or "clock" input mode.
 function parseEntry(form: FormData) {
-  return entryInput.safeParse({
+  const common = {
     date: form.get('date'),
-    hours: form.get('hours'),
     breakHours: form.get('breakHours') || undefined,
     note: form.get('note') ?? undefined,
-  });
+  };
+  if (form.get('mode') === 'clock') {
+    return clockEntryInput.safeParse({ ...common, startTime: form.get('startTime'), endTime: form.get('endTime') });
+  }
+  return entryInput.safeParse({ ...common, hours: form.get('hours') });
 }
 
 function flattenError(parsed: z.ZodError): string {

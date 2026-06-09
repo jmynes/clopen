@@ -3,6 +3,7 @@ import {
   addDays,
   countWorkdays,
   expectedHours,
+  hoursBetween,
   loggedHours,
   makeWholeStatus,
   type WorkSettings,
@@ -97,6 +98,18 @@ describe('weekDates', () => {
       '2026-01-02',
       '2026-01-03',
     ]);
+  });
+});
+
+describe('hoursBetween', () => {
+  it('computes whole and fractional hours between two HH:MM times', () => {
+    expect(hoursBetween('09:00', '17:00')).toBe(8);
+    expect(hoursBetween('09:30', '17:00')).toBe(7.5);
+    expect(hoursBetween('08:15', '16:45')).toBe(8.5);
+  });
+
+  it('is negative when end precedes start (caller rejects it)', () => {
+    expect(hoursBetween('17:00', '09:00')).toBe(-8);
   });
 });
 

@@ -83,6 +83,13 @@ export function expectedHours(asOf: string, yearStart: string, dailyHours: numbe
 }
 
 /** Hours that count toward the baseline: worked hours minus break/lunch. */
+/** Hours between two `HH:MM` clock times (end − start); negative if end precedes start. */
+export function hoursBetween(start: string, end: string): number {
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  return round2((eh * 60 + em - (sh * 60 + sm)) / 60);
+}
+
 export function loggedHours(entries: EntryLike[]): number {
   return round2(entries.reduce((sum, e) => sum + e.hours - (e.breakHours ?? 0), 0));
 }

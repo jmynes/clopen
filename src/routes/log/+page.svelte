@@ -12,7 +12,7 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import * as Table from '$lib/components/ui/table';
-  import { formatDay, formatWeekRange, isWeekend, todayISO, weekdayShort } from '$lib/date';
+  import { formatDay, formatTimeRange, formatWeekRange, isWeekend, todayISO, weekdayShort } from '$lib/date';
   import type { TimeEntry } from '$lib/db/schema';
   import { addDays, weekDates } from '$lib/timesheet';
   import type { ActionData, PageData } from './$types';
@@ -29,11 +29,17 @@
     }, {}),
   );
 
+  // Input mode for the single-entry form: type hours directly, or clock in/out.
+  let addMode = $state<'hours' | 'clock'>('hours');
+
   let editing = $state<TimeEntry | null>(null);
   let editOpen = $state(false);
+  // Edit dialog mirrors the same toggle, defaulting to whichever the entry used.
+  let editMode = $state<'hours' | 'clock'>('hours');
 
   function openEdit(entry: TimeEntry) {
     editing = entry;
+    editMode = entry.startTime && entry.endTime ? 'clock' : 'hours';
     editOpen = true;
   }
 
@@ -58,7 +64,21 @@
     <Card.Header>
       <Card.Title>Add an entry</Card.Title>
     </Card.Header>
-    <Card.Content>
+    <Card.Content class="flex flex-col gap-4">
+      <div class="inline-flex w-fit rounded-md border border-input p-0.5 text-sm">
+        {#each [{ m: 'hours', label: 'Hours' }, { m: 'clock', label: 'Clock in/out' }] as opt (opt.m)}
+          <button
+            type="button"
+            onclick={() => (addMode = opt.m as 'hours' | 'clock')}
+            class="rounded-[0.3rem] px-3 py-1 transition-colors {addMode === opt.m
+              ? 'bg-primary text-primary-foreground'
+              : 'text-muted-foreground hover:text-foreground'}"
+          >
+            {opt.label}
+          </button>
+        {/each}
+      </div>
+
       <form
         method="POST"
         action="?/add"
@@ -67,16 +87,28 @@
             await update({ reset: true });
           };
         }}
-        class="flex flex-col gap-4 sm:flex-row sm:items-end"
+        class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end"
       >
+        <input type="hidden" name="mode" value={addMode} />
         <div class="flex flex-col gap-1.5">
           <Label for="date">Date</Label>
           <Input id="date" type="date" name="date" value={todayISO()} max={todayISO()} required class="w-44" />
         </div>
-        <div class="flex flex-col gap-1.5">
-          <Label for="hours">Hours</Label>
-          <Input id="hours" type="number" name="hours" step="0.25" min="0.25" max="24" placeholder="8" required class="w-24" />
-        </div>
+        {#if addMode === 'clock'}
+          <div class="flex flex-col gap-1.5">
+            <Label for="startTime">Clock in</Label>
+            <Input id="startTime" type="time" name="startTime" required class="w-32" />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <Label for="endTime">Clock out</Label>
+            <Input id="endTime" type="time" name="endTime" required class="w-32" />
+          </div>
+        {:else}
+          <div class="flex flex-col gap-1.5">
+            <Label for="hours">Hours</Label>
+            <Input id="hours" type="number" name="hours" step="0.25" min="0.25" max="24" placeholder="8" required class="w-24" />
+          </div>
+        {/if}
         <div class="flex flex-col gap-1.5">
           <Label for="breakHours">Break <span class="text-muted-foreground">(h)</span></Label>
           <Input id="breakHours" type="number" name="breakHours" step="0.25" min="0" max="24" placeholder="0" class="w-24" />
@@ -88,7 +120,7 @@
         <Button type="submit"><Plus class="size-4" /> Add</Button>
       </form>
       {#if form && 'error' in form && form.error}
-        <p class="mt-3 text-sm text-destructive">{form.error}</p>
+        <p class="text-sm text-destructive">{form.error}</p>
       {/if}
     </Card.Content>
   </Card.Root>
@@ -207,7 +239,12 @@
                     </div>
                   {/if}
                 </Table.Cell>
-                <Table.Cell class="text-muted-foreground">{entry.note ?? ''}</Table.Cell>
+                <Table.Cell class="text-muted-foreground">
+                  {#if entry.startTime && entry.endTime}
+                    <div class="font-mono text-xs tabular-nums">{formatTimeRange(entry.startTime, entry.endTime)}</div>
+                  {/if}
+                  {#if entry.note}<div>{entry.note}</div>{/if}
+                </Table.Cell>
                 <Table.Cell class="text-right">
                   <div class="flex justify-end gap-1">
                     <Button variant="ghost" size="icon" onclick={() => openEdit(entry)} aria-label="Edit entry">
@@ -250,15 +287,40 @@
         class="flex flex-col gap-4"
       >
         <input type="hidden" name="id" value={editing.id} />
+        <input type="hidden" name="mode" value={editMode} />
         <div class="flex flex-col gap-1.5">
           <Label for="edit-date">Date</Label>
           <Input id="edit-date" type="date" name="date" value={editing.date} max={todayISO()} required />
         </div>
+        <div class="inline-flex w-fit rounded-md border border-input p-0.5 text-sm">
+          {#each [{ m: 'hours', label: 'Hours' }, { m: 'clock', label: 'Clock in/out' }] as opt (opt.m)}
+            <button
+              type="button"
+              onclick={() => (editMode = opt.m as 'hours' | 'clock')}
+              class="rounded-[0.3rem] px-3 py-1 transition-colors {editMode === opt.m
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground'}"
+            >
+              {opt.label}
+            </button>
+          {/each}
+        </div>
         <div class="grid grid-cols-2 gap-4">
-          <div class="flex flex-col gap-1.5">
-            <Label for="edit-hours">Hours</Label>
-            <Input id="edit-hours" type="number" name="hours" step="0.25" min="0.25" max="24" value={editing.hours} required />
-          </div>
+          {#if editMode === 'clock'}
+            <div class="flex flex-col gap-1.5">
+              <Label for="edit-start">Clock in</Label>
+              <Input id="edit-start" type="time" name="startTime" value={editing.startTime ?? ''} required />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <Label for="edit-end">Clock out</Label>
+              <Input id="edit-end" type="time" name="endTime" value={editing.endTime ?? ''} required />
+            </div>
+          {:else}
+            <div class="flex flex-col gap-1.5">
+              <Label for="edit-hours">Hours</Label>
+              <Input id="edit-hours" type="number" name="hours" step="0.25" min="0.25" max="24" value={editing.hours} required />
+            </div>
+          {/if}
           <div class="flex flex-col gap-1.5">
             <Label for="edit-break">Break (h)</Label>
             <Input id="edit-break" type="number" name="breakHours" step="0.25" min="0" max="24" value={editing.breakHours} />

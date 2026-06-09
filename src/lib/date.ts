@@ -29,6 +29,19 @@ export function isWeekend(iso: string): boolean {
   return dow === 0 || dow === 6;
 }
 
+/** "9:00 AM" — 12-hour label for an `HH:MM` time. */
+export function formatTime(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  const period = h < 12 ? 'AM' : 'PM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+}
+
+/** "9:00 AM – 5:00 PM" — labeled clock range. */
+export function formatTimeRange(start: string, end: string): string {
+  return `${formatTime(start)} – ${formatTime(end)}`;
+}
+
 /** "Mon, Jan 5" — friendly label for an ISO date. */
 export function formatDay(iso: string): string {
   return LONG_FMT.format(utcDate(iso));
