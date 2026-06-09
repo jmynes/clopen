@@ -909,15 +909,20 @@
                   {...props}
                   variant="outline"
                   size="icon"
+                  class={weekAtEpoch ? 'opacity-50' : ''}
                   aria-label="Previous week"
-                  disabled={weekAtEpoch}
-                  onclick={() => (weekAnchor = addDays(weekStart, -7))}
+                  aria-disabled={weekAtEpoch}
+                  onclick={() => {
+                    if (!weekAtEpoch) weekAnchor = addDays(weekStart, -7);
+                  }}
                 >
                   <ChevronLeft class="size-4" />
                 </Button>
               {/snippet}
             </Tooltip.Trigger>
-            <Tooltip.Content>{weekAtEpoch ? 'Already at the tracking epoch' : 'Previous week'}</Tooltip.Content>
+            <Tooltip.Content>
+              {weekAtEpoch ? `Tracking starts ${data.epoch} — your epoch in Settings` : 'Previous week'}
+            </Tooltip.Content>
           </Tooltip.Root>
           <span class="min-w-44 flex-1 text-center text-sm font-medium tabular-nums md:flex-none">
             {formatWeekRange(weekStart, true)}
@@ -1458,30 +1463,50 @@
             <option value={v}>{label}</option>
           {/each}
         </select>
-        <Button
-          variant="outline"
-          size="icon"
-          class="shrink-0"
-          title={entriesAtEpoch ? 'Already at the tracking epoch' : 'Previous period'}
-          aria-label="Previous period"
-          disabled={entriesAtEpoch}
-          onclick={() => shiftEntriesPage(-1)}
-        >
-          <ChevronLeft class="size-4" />
-        </Button>
+        <Tooltip.Root>
+          <Tooltip.Trigger>
+            {#snippet child({ props })}
+              <!-- aria-disabled, not disabled: a disabled button drops pointer
+                   events and the explanatory tooltip could never show -->
+              <Button
+                {...props}
+                variant="outline"
+                size="icon"
+                class="shrink-0 {entriesAtEpoch ? 'opacity-50' : ''}"
+                aria-label="Previous period"
+                aria-disabled={entriesAtEpoch}
+                onclick={() => {
+                  if (!entriesAtEpoch) shiftEntriesPage(-1);
+                }}
+              >
+                <ChevronLeft class="size-4" />
+              </Button>
+            {/snippet}
+          </Tooltip.Trigger>
+          <Tooltip.Content>
+            {entriesAtEpoch ? `Tracking starts ${data.epoch} — your epoch in Settings` : 'Previous period'}
+          </Tooltip.Content>
+        </Tooltip.Root>
         <span class="flex-1 text-center font-mono text-sm font-medium uppercase tabular-nums">
           {entriesBucket.label}
         </span>
-        <Button
-          variant="outline"
-          size="icon"
-          class="shrink-0"
-          title="Next period"
-          aria-label="Next period"
-          onclick={() => shiftEntriesPage(1)}
-        >
-          <ChevronRight class="size-4" />
-        </Button>
+        <Tooltip.Root>
+          <Tooltip.Trigger>
+            {#snippet child({ props })}
+              <Button
+                {...props}
+                variant="outline"
+                size="icon"
+                class="shrink-0"
+                aria-label="Next period"
+                onclick={() => shiftEntriesPage(1)}
+              >
+                <ChevronRight class="size-4" />
+              </Button>
+            {/snippet}
+          </Tooltip.Trigger>
+          <Tooltip.Content>Next period</Tooltip.Content>
+        </Tooltip.Root>
         <Button variant="outline" size="sm" class="shrink-0" onclick={() => (entriesAnchor = todayISO())}>Today</Button>
       </div>
       {#if form?.imported}
