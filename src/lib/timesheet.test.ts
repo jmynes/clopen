@@ -1,0 +1,191 @@
+import { describe, expect, it } from 'vitest';
+import {
+  countWorkdays,
+  expectedHours,
+  loggedHours,
+  makeWholeStatus,
+  type WorkSettings,
+  weeklyBreakdown,
+  yearStartOf,
+} from './timesheet';
+
+// Reference calendar facts used throughout (all dates ISO, local-naive):
+//   2026-01-01 = Thursday
+//   2026-01-03 = Saturday, 2026-01-04 = Sunday
+//   2026-01-05 = Monday  … 2026-01-11 = Sunday
+const MON_FRI = [1, 2, 3, 4, 5];
+const ALL_DAYS = [1, 2, 3, 4, 5, 6, 7];
+
+const settings: WorkSettings = { hourlyRate: 25, dailyHours: 8, workdays: MON_FRI };
+
+describe('countWorkdays', () => {
+  it('counts a single workday inclusively', () => {
+    expect(countWorkdays('2026-01-01', '2026-01-01', MON_FRI)).toBe(1); // Thursday
+  });
+
+  it('excludes weekends across a Thu→Wed span', () => {
+    // Thu,Fri,(Sat,Sun),Mon,Tue,Wed -> 5 workdays
+    expect(countWorkdays('2026-01-01', '2026-01-07', MON_FRI)).toBe(5);
+  });
+
+  it('counts exactly 5 for a full Mon–Sun week', () => {
+    expect(countWorkdays('2026-01-05', '2026-01-11', MON_FRI)).toBe(5);
+  });
+
+  it('returns 0 for a weekend-only span', () => {
+    expect(countWorkdays('2026-01-03', '2026-01-04', MON_FRI)).toBe(0);
+  });
+
+  it('returns 0 when end precedes start', () => {
+    expect(countWorkdays('2026-01-10', '2026-01-01', MON_FRI)).toBe(0);
+  });
+
+  it('honors a custom workday set (includes Saturday)', () => {
+    // Mon–Sat. Jan 1–7: Thu,Fri,Sat,Mon,Tue,Wed = 6 (only Sunday excluded)
+    expect(countWorkdays('2026-01-01', '2026-01-07', [1, 2, 3, 4, 5, 6])).toBe(6);
+  });
+
+  it('iterates across a leap day (2028-02-29 exists)', () => {
+    // Feb 28, Feb 29, Mar 1 — counting all days proves Feb 29 is traversed.
+    expect(countWorkdays('2028-02-28', '2028-03-01', ALL_DAYS)).toBe(3);
+  });
+});
+
+describe('expectedHours', () => {
+  it('is workdays × dailyHours', () => {
+    expect(expectedHours('2026-01-07', '2026-01-01', 8, MON_FRI)).toBe(40); // 5 × 8
+  });
+});
+
+describe('loggedHours', () => {
+  it('sums hours, including multiple entries on one day', () => {
+    expect(
+      loggedHours([
+        { date: '2026-01-01', hours: 5 },
+        { date: '2026-01-01', hours: 4 },
+      ]),
+    ).toBe(9);
+  });
+
+  it('is 0 for no entries', () => {
+    expect(loggedHours([])).toBe(0);
+  });
+});
+
+describe('yearStartOf', () => {
+  it('returns Jan 1 of the as-of year', () => {
+    expect(yearStartOf('2026-06-09')).toBe('2026-01-01');
+  });
+});
+
+describe('makeWholeStatus', () => {
+  it('reports a deficit when behind the Mon–Fri baseline', () => {
+    // Year-to-date 2026-01-07: expected 40h. Logged 30h.
+    const status = makeWholeStatus({
+      asOf: '2026-01-07',
+      settings,
+      entries: [
+        { date: '2026-01-01', hours: 8 },
+        { date: '2026-01-02', hours: 8 },
+        { date: '2026-01-05', hours: 8 },
+        { date: '2026-01-06', hours: 6 },
+      ],
+    });
+    expect(status.expected).toBe(40);
+    expect(status.logged).toBe(30);
+    expect(status.net).toBe(-10);
+    expect(status.deficit).toBe(10);
+    expect(status.surplus).toBe(0);
+    expect(status.owedDollars).toBe(250);
+    expect(status.surplusDollars).toBe(0);
+  });
+
+  it('banks overtime into a surplus', () => {
+    const status = makeWholeStatus({
+      asOf: '2026-01-07',
+      settings,
+      entries: [
+        { date: '2026-01-01', hours: 12 },
+        { date: '2026-01-02', hours: 12 },
+        { date: '2026-01-05', hours: 12 },
+        { date: '2026-01-06', hours: 9 },
+      ], // 45h vs 40 expected
+    });
+    expect(status.net).toBe(5);
+    expect(status.surplus).toBe(5);
+    expect(status.deficit).toBe(0);
+    expect(status.surplusDollars).toBe(125);
+  });
+
+  it('lets later overtime offset an earlier shortfall (net to whole)', () => {
+    const status = makeWholeStatus({
+      asOf: '2026-01-07',
+      settings,
+      entries: [
+        { date: '2026-01-01', hours: 4 }, // short
+        { date: '2026-01-02', hours: 4 }, // short
+        { date: '2026-01-05', hours: 16 }, // overtime catch-up
+        { date: '2026-01-06', hours: 16 },
+      ], // 40h total
+    });
+    expect(status.net).toBe(0);
+    expect(status.deficit).toBe(0);
+    expect(status.surplus).toBe(0);
+  });
+
+  it('ignores entries before the year start and after the as-of date', () => {
+    const status = makeWholeStatus({
+      asOf: '2026-01-07',
+      settings,
+      entries: [
+        { date: '2025-12-31', hours: 8 }, // prior year — ignored
+        { date: '2026-01-01', hours: 8 },
+        { date: '2026-02-01', hours: 8 }, // future — ignored
+      ],
+    });
+    expect(status.logged).toBe(8);
+    expect(status.expected).toBe(40);
+    expect(status.deficit).toBe(32);
+  });
+});
+
+describe('weeklyBreakdown', () => {
+  it('splits a partial first week from a full second week', () => {
+    const weeks = weeklyBreakdown({
+      yearStart: '2026-01-01',
+      asOf: '2026-01-11',
+      settings,
+      entries: [
+        { date: '2026-01-02', hours: 8 }, // week 1 (Fri)
+        { date: '2026-01-05', hours: 8 }, // week 2 (Mon)
+        { date: '2026-01-06', hours: 8 }, // week 2 (Tue)
+      ],
+    });
+    expect(weeks).toHaveLength(2);
+
+    // Week 1: Monday Dec 29 2025; in-range workdays are Thu+Fri = 2 → 16h target.
+    expect(weeks[0].weekStart).toBe('2025-12-29');
+    expect(weeks[0].target).toBe(16);
+    expect(weeks[0].logged).toBe(8);
+    expect(weeks[0].net).toBe(-8);
+
+    // Week 2: Jan 5–11, full Mon–Fri = 40h target, 16h logged.
+    expect(weeks[1].weekStart).toBe('2026-01-05');
+    expect(weeks[1].target).toBe(40);
+    expect(weeks[1].logged).toBe(16);
+    expect(weeks[1].net).toBe(-24);
+  });
+
+  it('clips the final week target at a mid-week as-of date', () => {
+    const weeks = weeklyBreakdown({
+      yearStart: '2026-01-05',
+      asOf: '2026-01-07', // Wednesday
+      settings,
+      entries: [],
+    });
+    expect(weeks).toHaveLength(1);
+    // Mon,Tue,Wed = 3 workdays → 24h target.
+    expect(weeks[0].weekStart).toBe('2026-01-05');
+    expect(weeks[0].target).toBe(24);
+  });
+});
