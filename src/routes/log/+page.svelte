@@ -105,11 +105,11 @@
         {#if addMode === 'clock'}
           <div class="flex flex-col gap-1.5">
             <Label for="startTime">Clock in</Label>
-            <Input id="startTime" type="time" name="startTime" required class="w-36" />
+            <Input id="startTime" type="time" name="startTime" required class="w-40" />
           </div>
           <div class="flex flex-col gap-1.5">
             <Label for="endTime">Clock out</Label>
-            <Input id="endTime" type="time" name="endTime" required class="w-36" />
+            <Input id="endTime" type="time" name="endTime" required class="w-40" />
           </div>
         {:else}
           <div class="flex flex-col gap-1.5">
@@ -181,8 +181,8 @@
         <div class="flex items-center gap-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
           <span class="w-28 shrink-0">Day</span>
           {#if weekMode === 'clock'}
-            <span class="w-36 shrink-0">In</span>
-            <span class="w-36 shrink-0">Out</span>
+            <span class="w-40 shrink-0">In</span>
+            <span class="w-40 shrink-0">Out</span>
           {:else}
             <span class="w-20 shrink-0">Hours</span>
           {/if}
@@ -196,8 +196,8 @@
               <span class="ml-1 text-muted-foreground">{formatDay(date).replace(/^\w+,\s/, '')}</span>
             </div>
             {#if weekMode === 'clock'}
-              <Input type="time" name="start-{i}" aria-label="Clock in for {weekdayShort(date)}" class="w-36" />
-              <Input type="time" name="end-{i}" aria-label="Clock out for {weekdayShort(date)}" class="w-36" />
+              <Input type="time" name="start-{i}" aria-label="Clock in for {weekdayShort(date)}" class="w-40 shrink-0" />
+              <Input type="time" name="end-{i}" aria-label="Clock out for {weekdayShort(date)}" class="w-40 shrink-0" />
             {:else}
               <Input
                 type="number"
@@ -207,7 +207,7 @@
                 max="24"
                 placeholder={isWeekend(date) ? '—' : '0'}
                 aria-label="Hours for {weekdayShort(date)}"
-                class="w-20"
+                class="w-20 shrink-0"
               />
             {/if}
             <Input
@@ -218,7 +218,7 @@
               max="24"
               placeholder="0"
               aria-label="Break for {weekdayShort(date)}"
-              class="w-20"
+              class="w-20 shrink-0"
             />
             <Input type="text" name="note-{i}" placeholder="Note (optional)" aria-label="Note for {weekdayShort(date)}" />
           </div>
