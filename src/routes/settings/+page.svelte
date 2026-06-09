@@ -113,17 +113,26 @@
           </label>
           <div class="flex flex-col gap-1.5">
             <Label for="otMultiplier">Multiplier (× hourly rate)</Label>
-            <Input
-              id="otMultiplier"
-              type="number"
-              name="otMultiplier"
-              step="0.05"
-              min="1"
-              max="10"
-              value={data.otMultiplier}
-              required
-              class="w-full md:w-28"
-            />
+            <!-- inputs can't render ::after, so the × suffix is an overlaid span -->
+            <div class="relative w-full md:w-28">
+              <Input
+                id="otMultiplier"
+                type="number"
+                name="otMultiplier"
+                step="0.05"
+                min="1"
+                max="10"
+                value={data.otMultiplier}
+                required
+                class="pr-7 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+              <span
+                aria-hidden="true"
+                class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground"
+              >
+                ×
+              </span>
+            </div>
           </div>
         </fieldset>
 
