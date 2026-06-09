@@ -701,27 +701,7 @@
           {pagedEntries.length} in this {entriesPeriod === 'biweek' ? 'bi-week' : entriesPeriod} · {data.entries.length} total
         </Card.Description>
       </div>
-      <div class="flex flex-wrap items-center gap-2">
-        <select
-          aria-label="Pagination period"
-          value={entriesPeriod}
-          onchange={(e) => {
-            entriesPeriod = e.currentTarget.value as Period;
-          }}
-          class="h-9 rounded-md border border-input bg-transparent px-2 text-sm focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
-        >
-          {#each Object.entries(PERIOD_LABELS) as [v, label] (v)}
-            <option value={v}>{label}</option>
-          {/each}
-        </select>
-        <Button variant="outline" size="icon" aria-label="Previous period" onclick={() => shiftEntriesPage(-1)}>
-          <ChevronLeft class="size-4" />
-        </Button>
-        <span class="min-w-36 text-center font-mono text-sm font-medium uppercase tabular-nums">{entriesBucket.label}</span>
-        <Button variant="outline" size="icon" aria-label="Next period" onclick={() => shiftEntriesPage(1)}>
-          <ChevronRight class="size-4" />
-        </Button>
-        <Button variant="ghost" size="sm" onclick={() => (entriesAnchor = todayISO())}>Today</Button>
+      <div class="flex shrink-0 items-center gap-2">
         <Button variant="outline" size="sm" onclick={exportCsv} disabled={data.entries.length === 0}>
           <Download class="size-4" /> Export CSV
         </Button>
@@ -746,6 +726,43 @@
       </div>
     </Card.Header>
     <Card.Content>
+      <!-- pagination controls: always a single dedicated row above the table -->
+      <div class="mb-3 flex items-center gap-2">
+        <select
+          aria-label="Pagination period"
+          value={entriesPeriod}
+          onchange={(e) => {
+            entriesPeriod = e.currentTarget.value as Period;
+          }}
+          class="h-9 shrink-0 rounded-md border border-input bg-transparent px-2 text-sm focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+        >
+          {#each Object.entries(PERIOD_LABELS) as [v, label] (v)}
+            <option value={v}>{label}</option>
+          {/each}
+        </select>
+        <Button
+          variant="outline"
+          size="icon"
+          class="shrink-0"
+          aria-label="Previous period"
+          onclick={() => shiftEntriesPage(-1)}
+        >
+          <ChevronLeft class="size-4" />
+        </Button>
+        <span class="flex-1 text-center font-mono text-sm font-medium uppercase tabular-nums">
+          {entriesBucket.label}
+        </span>
+        <Button
+          variant="outline"
+          size="icon"
+          class="shrink-0"
+          aria-label="Next period"
+          onclick={() => shiftEntriesPage(1)}
+        >
+          <ChevronRight class="size-4" />
+        </Button>
+        <Button variant="ghost" size="sm" class="shrink-0" onclick={() => (entriesAnchor = todayISO())}>Today</Button>
+      </div>
       {#if form?.imported}
         <p class="mb-3 text-sm text-success">
           Imported {form.imported} {form.imported === 1 ? 'entry' : 'entries'}{form.skipped
