@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, lte } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, lte } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { db as defaultDb } from '$lib/db';
 import { type TimeEntry, timeEntries } from '$lib/db/schema';
@@ -51,4 +51,20 @@ export async function updateEntry(id: string, input: EntryInput, database: Datab
 
 export async function deleteEntry(id: string, database: Database = defaultDb): Promise<void> {
   await database.delete(timeEntries).where(eq(timeEntries.id, id));
+}
+
+/** Returns the subset of `dates` that already have at least one entry. */
+export async function findExistingDates(dates: string[], database: Database = defaultDb): Promise<string[]> {
+  if (dates.length === 0) return [];
+  const rows = await database
+    .selectDistinct({ date: timeEntries.date })
+    .from(timeEntries)
+    .where(inArray(timeEntries.date, dates));
+  return rows.map((r) => r.date);
+}
+
+/** Bulk delete every entry whose date is in `dates`. Used when overwriting on conflict. */
+export async function deleteEntriesByDates(dates: string[], database: Database = defaultDb): Promise<void> {
+  if (dates.length === 0) return;
+  await database.delete(timeEntries).where(inArray(timeEntries.date, dates));
 }

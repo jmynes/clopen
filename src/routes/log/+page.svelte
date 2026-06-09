@@ -75,6 +75,51 @@
 
   let editing = $state<TimeEntry | null>(null);
   let editOpen = $state(false);
+
+  // Conflict-resolution state shared by the add/addWeek/importCsv forms.
+  let conflictForm = $state<HTMLFormElement | null>(null);
+  let conflictDates = $state<string[]>([]);
+  function clearConflictStrategy(formEl: HTMLFormElement) {
+    formEl.querySelector('input[name="conflictStrategy"]')?.remove();
+  }
+  function resolveConflict(strategy: 'overwrite' | 'skip' | 'cancel') {
+    const formEl = conflictForm;
+    if (!formEl || strategy === 'cancel') {
+      conflictForm = null;
+      conflictDates = [];
+      return;
+    }
+    let input = formEl.querySelector<HTMLInputElement>('input[name="conflictStrategy"]');
+    if (!input) {
+      input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'conflictStrategy';
+      formEl.appendChild(input);
+    }
+    input.value = strategy;
+    conflictDates = [];
+    formEl.requestSubmit();
+  }
+  // Re-runnable enhance factory: closes over a `resetOnSuccess` flag so the
+  // weekly grid (which resets) and import form (which doesn't) share one path.
+  function conflictAwareEnhance(opts: { resetOnSuccess?: boolean } = {}) {
+    return ({ formElement, formData }: { formElement: HTMLFormElement; formData: FormData }) => {
+      // If this is the user's first submit (not a retry), strip any stale
+      // conflictStrategy from a previous round so the server re-detects.
+      if (!formData.has('conflictStrategy')) clearConflictStrategy(formElement);
+      return async ({ result, update }: { result: { type: string; data?: Record<string, unknown> }; update: (o?: { reset?: boolean }) => Promise<void> }) => {
+        const data = result.data;
+        const conflicts = data?.duplicates;
+        if (result.type === 'failure' && Array.isArray(conflicts) && conflicts.length > 0) {
+          conflictForm = formElement;
+          conflictDates = conflicts as string[];
+          return;
+        }
+        clearConflictStrategy(formElement);
+        await update({ reset: opts.resetOnSuccess && result.type === 'success' });
+      };
+    };
+  }
   // Edit dialog mirrors the same toggle, defaulting to whichever the entry used.
   let editMode = $state<'hours' | 'clock'>('hours');
 
@@ -231,11 +276,7 @@
       <form
         method="POST"
         action="?/add"
-        use:enhance={() => {
-          return async ({ update }) => {
-            await update({ reset: true });
-          };
-        }}
+        use:enhance={conflictAwareEnhance({ resetOnSuccess: true })}
         class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end"
       >
         <input type="hidden" name="mode" value={addMode} />
@@ -401,11 +442,7 @@
         action="?/addWeek"
         onpaste={onGridPaste}
         onkeydown={onGridKeydown}
-        use:enhance={() => {
-          return async ({ update }) => {
-            await update({ reset: true });
-          };
-        }}
+        use:enhance={conflictAwareEnhance({ resetOnSuccess: true })}
         class="flex flex-col gap-3"
       >
         <input type="hidden" name="weekStart" value={weekStart} />
@@ -538,7 +575,7 @@
           method="POST"
           action="?/importCsv"
           enctype="multipart/form-data"
-          use:enhance={() => async ({ update }) => update()}
+          use:enhance={conflictAwareEnhance()}
         >
           <input
             bind:this={csvInput}
@@ -779,5 +816,33 @@
         </Dialog.Footer>
       </form>
     {/if}
+  </Dialog.Content>
+</Dialog.Root>
+
+<!-- duplicate-date conflict resolution -->
+<Dialog.Root open={conflictDates.length > 0} onOpenChange={(o) => !o && resolveConflict('cancel')}>
+  <Dialog.Content class="sm:max-w-md">
+    <Dialog.Header>
+      <Dialog.Title>Entries already exist</Dialog.Title>
+      <Dialog.Description>
+        {conflictDates.length === 1
+          ? 'An entry already exists for this date.'
+          : `Entries already exist for ${conflictDates.length} of these dates.`}
+        Choose how to handle the conflict — other rows in the batch are unaffected by your choice.
+      </Dialog.Description>
+    </Dialog.Header>
+    <ul class="max-h-40 overflow-y-auto rounded-md border border-input bg-muted/40 p-2 font-mono text-sm">
+      {#each conflictDates as d (d)}
+        <li class="uppercase">
+          <span class="text-muted-foreground">{weekdayShort(d)}</span>
+          <span class="ml-1">{formatDay(d).replace(/^\w+,\s/, '')}</span>
+        </li>
+      {/each}
+    </ul>
+    <Dialog.Footer class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <Button variant="ghost" onclick={() => resolveConflict('cancel')}>Cancel everything</Button>
+      <Button variant="outline" onclick={() => resolveConflict('skip')}>Keep existing</Button>
+      <Button variant="destructive" onclick={() => resolveConflict('overwrite')}>Overwrite</Button>
+    </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>

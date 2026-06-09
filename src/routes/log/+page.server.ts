@@ -2,7 +2,14 @@ import { fail } from '@sveltejs/kit';
 import type { z } from 'zod';
 import { parseCsv } from '$lib/csv';
 import { clockEntryInput, type EntryInput, entryInput } from '$lib/schemas/entry';
-import { addEntry, deleteEntry, listEntries, updateEntry } from '$lib/server/entries';
+import {
+  addEntry,
+  deleteEntriesByDates,
+  deleteEntry,
+  findExistingDates,
+  listEntries,
+  updateEntry,
+} from '$lib/server/entries';
 import { getSettings, toWorkSettings } from '$lib/server/settings';
 import { addDays } from '$lib/timesheet';
 import type { Actions, PageServerLoad } from './$types';
@@ -49,6 +56,31 @@ function fieldErrorsOf(parsed: z.ZodError, prefix = ''): Record<string, string> 
   return out;
 }
 
+type ConflictStrategy = 'overwrite' | 'skip' | undefined;
+
+function parseStrategy(v: FormDataEntryValue | null): ConflictStrategy {
+  return v === 'overwrite' || v === 'skip' ? v : undefined;
+}
+
+// Decide which incoming entries actually get inserted given a strategy.
+// Returns `ok: false` with the list of duplicate dates when no strategy was
+// supplied — the caller surfaces that to the client so the user can choose.
+async function applyConflictStrategy(
+  inputs: EntryInput[],
+  strategy: ConflictStrategy,
+): Promise<{ ok: true; toInsert: EntryInput[]; overwroteCount: number } | { ok: false; duplicates: string[] }> {
+  const dates = [...new Set(inputs.map((i) => i.date))];
+  const existing = await findExistingDates(dates);
+  if (existing.length === 0) return { ok: true, toInsert: inputs, overwroteCount: 0 };
+  if (!strategy) return { ok: false, duplicates: existing };
+  if (strategy === 'overwrite') {
+    await deleteEntriesByDates(existing);
+    return { ok: true, toInsert: inputs, overwroteCount: existing.length };
+  }
+  const skipSet = new Set(existing);
+  return { ok: true, toInsert: inputs.filter((i) => !skipSet.has(i.date)), overwroteCount: 0 };
+}
+
 export const actions: Actions = {
   add: async ({ request }) => {
     const form = await request.formData();
@@ -63,8 +95,11 @@ export const actions: Actions = {
         },
       });
     }
-    await addEntry(parsed.data);
-    return { added: true };
+    const strategy = parseStrategy(form.get('conflictStrategy'));
+    const resolved = await applyConflictStrategy([parsed.data], strategy);
+    if (!resolved.ok) return fail(409, { conflict: true, duplicates: resolved.duplicates });
+    for (const e of resolved.toInsert) await addEntry(e);
+    return { added: resolved.toInsert.length, overwrote: resolved.overwroteCount };
   },
 
   update: async ({ request }) => {
@@ -140,10 +175,14 @@ export const actions: Actions = {
       return fail(400, { weekFieldErrors, weekError: 'Fix the highlighted fields' });
     }
 
-    for (const { parsed } of filled) {
-      if (parsed.success) await addEntry(parsed.data);
-    }
-    return { weekAdded: filled.length };
+    const validInputs = filled
+      .map(({ parsed }) => (parsed.success ? parsed.data : null))
+      .filter((v): v is EntryInput => v !== null);
+    const strategy = parseStrategy(form.get('conflictStrategy'));
+    const resolved = await applyConflictStrategy(validInputs, strategy);
+    if (!resolved.ok) return fail(409, { weekConflict: true, duplicates: resolved.duplicates });
+    for (const e of resolved.toInsert) await addEntry(e);
+    return { weekAdded: resolved.toInsert.length, weekOverwrote: resolved.overwroteCount };
   },
 
   // Import arbitrarily many rows from a CSV file. Header columns are matched by
@@ -196,8 +235,15 @@ export const actions: Actions = {
     if (inputs.length === 0) {
       return fail(400, { importError: errors[0] ?? 'No valid rows found' });
     }
-    for (const input of inputs) await addEntry(input);
-    return { imported: inputs.length, skipped: errors.length };
+    const strategy = parseStrategy(form.get('conflictStrategy'));
+    const resolved = await applyConflictStrategy(inputs, strategy);
+    if (!resolved.ok) return fail(409, { importConflict: true, duplicates: resolved.duplicates });
+    for (const input of resolved.toInsert) await addEntry(input);
+    return {
+      imported: resolved.toInsert.length,
+      skipped: errors.length + (inputs.length - resolved.toInsert.length),
+      overwrote: resolved.overwroteCount,
+    };
   },
 };
 
