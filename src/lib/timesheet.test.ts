@@ -106,6 +106,14 @@ describe('loggedHours', () => {
   it('is 0 for no entries', () => {
     expect(loggedHours([])).toBe(0);
   });
+
+  it('deducts break/lunch time from the hours that count', () => {
+    expect(loggedHours([{ date: '2026-01-05', hours: 9, breakHours: 1 }])).toBe(8);
+  });
+
+  it('treats a missing break as zero', () => {
+    expect(loggedHours([{ date: '2026-01-05', hours: 8 }])).toBe(8);
+  });
 });
 
 describe('yearStartOf', () => {
@@ -134,6 +142,20 @@ describe('makeWholeStatus', () => {
     expect(status.surplus).toBe(0);
     expect(status.owedDollars).toBe(250);
     expect(status.surplusDollars).toBe(0);
+  });
+
+  it('counts break time as removed hours toward the deficit', () => {
+    const status = makeWholeStatus({
+      asOf: '2026-01-07',
+      settings,
+      entries: [
+        { date: '2026-01-01', hours: 9, breakHours: 1 }, // net 8
+        { date: '2026-01-02', hours: 8 }, // net 8
+      ],
+    });
+    expect(status.logged).toBe(16); // 9-1 + 8
+    expect(status.expected).toBe(40);
+    expect(status.deficit).toBe(24);
   });
 
   it('banks overtime into a surplus', () => {

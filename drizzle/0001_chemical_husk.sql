@@ -1,0 +1,1 @@
+ALTER TABLE `time_entries` ADD `break_hours` real DEFAULT 0 NOT NULL;

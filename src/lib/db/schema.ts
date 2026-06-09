@@ -11,6 +11,8 @@ export const timeEntries = sqliteTable('time_entries', {
   id: text('id').primaryKey(),
   date: text('date').notNull(),
   hours: real('hours').notNull(),
+  /** Unpaid break/lunch deducted from `hours`; net worked = hours − breakHours. */
+  breakHours: real('break_hours').notNull().default(0),
   note: text('note'),
   createdAt: integer('created_at').notNull().default(sql`(unixepoch())`),
 });

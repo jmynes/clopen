@@ -18,6 +18,7 @@ function parseEntry(form: FormData) {
   return entryInput.safeParse({
     date: form.get('date'),
     hours: form.get('hours'),
+    breakHours: form.get('breakHours') || undefined,
     note: form.get('note') ?? undefined,
   });
 }
@@ -71,13 +72,23 @@ export const actions: Actions = {
 
     const dates = weekDates(weekStart);
     const rows = dates
-      .map((date, i) => ({ date, hours: String(form.get(`hours-${i}`) ?? '').trim(), note: form.get(`note-${i}`) }))
+      .map((date, i) => ({
+        date,
+        hours: String(form.get(`hours-${i}`) ?? '').trim(),
+        breakHours: form.get(`break-${i}`) || undefined,
+        note: form.get(`note-${i}`),
+      }))
       .filter((row) => row.hours !== '');
 
     if (rows.length === 0) return fail(400, { weekError: 'Enter hours for at least one day' });
 
     const parsed = rows.map((row) =>
-      entryInput.safeParse({ date: row.date, hours: row.hours, note: row.note ?? undefined }),
+      entryInput.safeParse({
+        date: row.date,
+        hours: row.hours,
+        breakHours: row.breakHours,
+        note: row.note ?? undefined,
+      }),
     );
     const bad = parsed.find((p) => !p.success);
     if (bad && !bad.success) return fail(400, { weekError: flattenError(bad.error) });

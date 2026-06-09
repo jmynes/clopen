@@ -19,7 +19,7 @@ export type WorkSettings = {
   workdays: number[];
 };
 
-export type EntryLike = { date: string; hours: number };
+export type EntryLike = { date: string; hours: number; breakHours?: number };
 
 export type MakeWholeStatus = {
   expected: number;
@@ -82,8 +82,9 @@ export function expectedHours(asOf: string, yearStart: string, dailyHours: numbe
   return round2(countWorkdays(yearStart, asOf, workdays) * dailyHours);
 }
 
+/** Hours that count toward the baseline: worked hours minus break/lunch. */
 export function loggedHours(entries: EntryLike[]): number {
-  return round2(entries.reduce((sum, e) => sum + e.hours, 0));
+  return round2(entries.reduce((sum, e) => sum + e.hours - (e.breakHours ?? 0), 0));
 }
 
 export function makeWholeStatus(params: {

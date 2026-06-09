@@ -22,7 +22,7 @@ export function listEntriesInRange(start: string, end: string, database: Databas
 export async function addEntry(input: EntryInput, database: Database = defaultDb): Promise<TimeEntry> {
   const [created] = await database
     .insert(timeEntries)
-    .values({ id: nanoid(), date: input.date, hours: input.hours, note: input.note })
+    .values({ id: nanoid(), date: input.date, hours: input.hours, breakHours: input.breakHours, note: input.note })
     .returning();
   return created;
 }
@@ -30,7 +30,7 @@ export async function addEntry(input: EntryInput, database: Database = defaultDb
 export async function updateEntry(id: string, input: EntryInput, database: Database = defaultDb): Promise<void> {
   await database
     .update(timeEntries)
-    .set({ date: input.date, hours: input.hours, note: input.note })
+    .set({ date: input.date, hours: input.hours, breakHours: input.breakHours, note: input.note })
     .where(eq(timeEntries.id, id));
 }
 

@@ -8,6 +8,13 @@
       "when": 1780981252749,
       "tag": "0000_parallel_mephistopheles",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1780983002979,
+      "tag": "0001_chemical_husk",
+      "breakpoints": true
     }
   ]
 }

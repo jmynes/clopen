@@ -21,10 +21,10 @@
 
   const hrs = (n: number) => `${n.toLocaleString('en-US', { maximumFractionDigits: 2 })}h`;
 
-  // Per-day totals drive the overtime badge.
+  // Per-day totals of *net* worked hours (after breaks) drive the overtime badge.
   const dayTotals = $derived(
     data.entries.reduce<Record<string, number>>((acc, e) => {
-      acc[e.date] = (acc[e.date] ?? 0) + e.hours;
+      acc[e.date] = (acc[e.date] ?? 0) + e.hours - e.breakHours;
       return acc;
     }, {}),
   );
@@ -76,7 +76,11 @@
         </div>
         <div class="flex flex-col gap-1.5">
           <Label for="hours">Hours</Label>
-          <Input id="hours" type="number" name="hours" step="0.25" min="0.25" max="24" placeholder="8" required class="w-28" />
+          <Input id="hours" type="number" name="hours" step="0.25" min="0.25" max="24" placeholder="8" required class="w-24" />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <Label for="breakHours">Break <span class="text-muted-foreground">(h)</span></Label>
+          <Input id="breakHours" type="number" name="breakHours" step="0.25" min="0" max="24" placeholder="0" class="w-24" />
         </div>
         <div class="flex flex-1 flex-col gap-1.5">
           <Label for="note">Note <span class="text-muted-foreground">(optional)</span></Label>
@@ -134,7 +138,17 @@
               max="24"
               placeholder={isWeekend(i) ? '—' : '0'}
               aria-label="Hours for {weekdayShort(date)}"
-              class="w-24"
+              class="w-20"
+            />
+            <Input
+              type="number"
+              name="break-{i}"
+              step="0.25"
+              min="0"
+              max="24"
+              placeholder="break"
+              aria-label="Break for {weekdayShort(date)}"
+              class="w-20"
             />
             <Input type="text" name="note-{i}" placeholder="Note (optional)" aria-label="Note for {weekdayShort(date)}" />
           </div>
@@ -165,7 +179,7 @@
           <Table.Header>
             <Table.Row>
               <Table.Head class="w-40">Date</Table.Head>
-              <Table.Head class="w-24 text-right">Hours</Table.Head>
+              <Table.Head class="w-28 text-right">Worked</Table.Head>
               <Table.Head>Note</Table.Head>
               <Table.Head class="w-24 text-right">Actions</Table.Head>
             </Table.Row>
@@ -178,9 +192,14 @@
                   <span class="ml-1">{formatDay(entry.date).replace(/^\w+,\s/, '')}</span>
                 </Table.Cell>
                 <Table.Cell class="text-right font-mono tabular-nums">
-                  {hrs(entry.hours)}
+                  {hrs(entry.hours - entry.breakHours)}
                   {#if dayTotals[entry.date] > data.dailyHours}
                     <Badge variant="secondary" class="ml-1 bg-amber-500/15 text-amber-600 dark:text-amber-400">OT</Badge>
+                  {/if}
+                  {#if entry.breakHours > 0}
+                    <div class="text-xs font-normal text-muted-foreground">
+                      {hrs(entry.hours)} − {hrs(entry.breakHours)} break
+                    </div>
                   {/if}
                 </Table.Cell>
                 <Table.Cell class="text-muted-foreground">{entry.note ?? ''}</Table.Cell>
@@ -211,7 +230,7 @@
   <Dialog.Content class="sm:max-w-md">
     <Dialog.Header>
       <Dialog.Title>Edit entry</Dialog.Title>
-      <Dialog.Description>Change the date, hours, or note for this entry.</Dialog.Description>
+      <Dialog.Description>Change the date, hours, break, or note for this entry.</Dialog.Description>
     </Dialog.Header>
     {#if editing}
       <form
@@ -230,9 +249,15 @@
           <Label for="edit-date">Date</Label>
           <Input id="edit-date" type="date" name="date" value={editing.date} max={todayISO()} required />
         </div>
-        <div class="flex flex-col gap-1.5">
-          <Label for="edit-hours">Hours</Label>
-          <Input id="edit-hours" type="number" name="hours" step="0.25" min="0.25" max="24" value={editing.hours} required />
+        <div class="grid grid-cols-2 gap-4">
+          <div class="flex flex-col gap-1.5">
+            <Label for="edit-hours">Hours</Label>
+            <Input id="edit-hours" type="number" name="hours" step="0.25" min="0.25" max="24" value={editing.hours} required />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <Label for="edit-break">Break (h)</Label>
+            <Input id="edit-break" type="number" name="breakHours" step="0.25" min="0" max="24" value={editing.breakHours} />
+          </div>
         </div>
         <div class="flex flex-col gap-1.5">
           <Label for="edit-note">Note</Label>
