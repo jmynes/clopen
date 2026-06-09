@@ -102,6 +102,20 @@
           </div>
         </fieldset>
 
+        <div class="flex flex-col gap-1.5">
+          <Label for="weekStartsOn">Week starts on</Label>
+          <p class="text-xs text-muted-foreground">Controls the weekly grid order and how weeks group on the dashboard.</p>
+          <select
+            id="weekStartsOn"
+            name="weekStartsOn"
+            bind:value={weekStartsOnValue}
+            class="h-9 w-full rounded-md border md:w-48 border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+          >
+            <option value="1">Monday</option>
+            <option value="7">Sunday</option>
+          </select>
+        </div>
+
         <fieldset class="flex flex-col gap-2">
           <legend class="mb-1 text-sm font-medium">Overtime</legend>
           <label
@@ -227,19 +241,6 @@
           </select>
         </div>
 
-        <div class="flex flex-col gap-1.5">
-          <Label for="weekStartsOn">Week starts on</Label>
-          <p class="text-xs text-muted-foreground">Controls the weekly grid order and how weeks group on the dashboard.</p>
-          <select
-            id="weekStartsOn"
-            name="weekStartsOn"
-            bind:value={weekStartsOnValue}
-            class="h-9 w-full rounded-md border md:w-48 border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
-          >
-            <option value="1">Monday</option>
-            <option value="7">Sunday</option>
-          </select>
-        </div>
         </Card.Content>
       </Card.Root>
     </div>
