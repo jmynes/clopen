@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addDays,
   countWorkdays,
   expectedHours,
   loggedHours,
   makeWholeStatus,
   type WorkSettings,
+  weekDates,
   weeklyBreakdown,
   yearStartOf,
 } from './timesheet';
@@ -48,6 +50,40 @@ describe('countWorkdays', () => {
   it('iterates across a leap day (2028-02-29 exists)', () => {
     // Feb 28, Feb 29, Mar 1 — counting all days proves Feb 29 is traversed.
     expect(countWorkdays('2028-02-28', '2028-03-01', ALL_DAYS)).toBe(3);
+  });
+});
+
+describe('addDays', () => {
+  it('moves forward and backward across month/year boundaries', () => {
+    expect(addDays('2026-01-01', 1)).toBe('2026-01-02');
+    expect(addDays('2026-01-01', -1)).toBe('2025-12-31');
+    expect(addDays('2026-01-05', 7)).toBe('2026-01-12');
+  });
+
+  it('lands on a leap day', () => {
+    expect(addDays('2028-02-28', 1)).toBe('2028-02-29');
+  });
+});
+
+describe('weekDates', () => {
+  it('returns the 7 Mon–Sun dates for the week containing a mid-week day', () => {
+    // 2026-01-01 is a Thursday; its week starts Mon 2025-12-29.
+    expect(weekDates('2026-01-01')).toEqual([
+      '2025-12-29',
+      '2025-12-30',
+      '2025-12-31',
+      '2026-01-01',
+      '2026-01-02',
+      '2026-01-03',
+      '2026-01-04',
+    ]);
+  });
+
+  it('starts on Monday when given a Monday', () => {
+    const dates = weekDates('2026-01-05');
+    expect(dates).toHaveLength(7);
+    expect(dates[0]).toBe('2026-01-05');
+    expect(dates[6]).toBe('2026-01-11');
   });
 });
 

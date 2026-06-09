@@ -1,4 +1,6 @@
 <script lang="ts">
+  import ChevronLeft from '@lucide/svelte/icons/chevron-left';
+  import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import Pencil from '@lucide/svelte/icons/pencil';
   import Plus from '@lucide/svelte/icons/plus';
   import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -10,8 +12,9 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import * as Table from '$lib/components/ui/table';
-  import { formatDay, todayISO, weekdayShort } from '$lib/date';
+  import { formatDay, formatWeekRange, todayISO, weekdayShort } from '$lib/date';
   import type { TimeEntry } from '$lib/db/schema';
+  import { addDays, weekDates } from '$lib/timesheet';
   import type { ActionData, PageData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -33,6 +36,14 @@
     editing = entry;
     editOpen = true;
   }
+
+  // Weekly grid. Rows are keyed by date, so navigating weeks recreates the
+  // inputs (clearing anything typed). Field names hours-0…6 map to weekDates()
+  // order, which the server recomputes from weekStart.
+  let weekAnchor = $state(todayISO());
+  const weekRowDates = $derived(weekDates(weekAnchor));
+  const weekStart = $derived(weekRowDates[0]);
+  const isWeekend = (i: number) => i >= 5;
 </script>
 
 <div class="flex flex-col gap-8">
@@ -76,6 +87,67 @@
       {#if form && 'error' in form && form.error}
         <p class="mt-3 text-sm text-destructive">{form.error}</p>
       {/if}
+    </Card.Content>
+  </Card.Root>
+
+  <!-- weekly grid -->
+  <Card.Root>
+    <Card.Header class="flex flex-row flex-wrap items-center justify-between gap-2">
+      <div>
+        <Card.Title>Log a week</Card.Title>
+        <Card.Description>Fill hours for each day, then add them all at once.</Card.Description>
+      </div>
+      <div class="flex items-center gap-2">
+        <Button variant="outline" size="icon" aria-label="Previous week" onclick={() => (weekAnchor = addDays(weekStart, -7))}>
+          <ChevronLeft class="size-4" />
+        </Button>
+        <span class="min-w-32 text-center text-sm font-medium tabular-nums">{formatWeekRange(weekStart)}</span>
+        <Button variant="outline" size="icon" aria-label="Next week" onclick={() => (weekAnchor = addDays(weekStart, 7))}>
+          <ChevronRight class="size-4" />
+        </Button>
+        <Button variant="ghost" size="sm" onclick={() => (weekAnchor = todayISO())}>This week</Button>
+      </div>
+    </Card.Header>
+    <Card.Content>
+      <form
+        method="POST"
+        action="?/addWeek"
+        use:enhance={() => {
+          return async ({ update }) => {
+            await update({ reset: true });
+          };
+        }}
+        class="flex flex-col gap-3"
+      >
+        <input type="hidden" name="weekStart" value={weekStart} />
+        {#each weekRowDates as date, i (date)}
+          <div class="flex items-center gap-3 {isWeekend(i) ? 'opacity-70' : ''}">
+            <div class="w-28 shrink-0 text-sm">
+              <span class="font-medium">{weekdayShort(date)}</span>
+              <span class="ml-1 text-muted-foreground">{formatDay(date).replace(/^\w+,\s/, '')}</span>
+            </div>
+            <Input
+              type="number"
+              name="hours-{i}"
+              step="0.25"
+              min="0.25"
+              max="24"
+              placeholder={isWeekend(i) ? '—' : '0'}
+              aria-label="Hours for {weekdayShort(date)}"
+              class="w-24"
+            />
+            <Input type="text" name="note-{i}" placeholder="Note (optional)" aria-label="Note for {weekdayShort(date)}" />
+          </div>
+        {/each}
+        <div class="mt-1 flex items-center gap-3">
+          <Button type="submit"><Plus class="size-4" /> Add week</Button>
+          {#if form?.weekAdded}
+            <span class="text-sm text-success">Added {form.weekAdded} {form.weekAdded === 1 ? 'day' : 'days'}.</span>
+          {:else if form && 'weekError' in form && form.weekError}
+            <span class="text-sm text-destructive">{form.weekError}</span>
+          {/if}
+        </div>
+      </form>
     </Card.Content>
   </Card.Root>
 

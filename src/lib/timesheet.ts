@@ -112,10 +112,21 @@ export function makeWholeStatus(params: {
   };
 }
 
+/** Shift an ISO date by `days` (may be negative), returning an ISO date. */
+export function addDays(iso: string, days: number): string {
+  return toISO(parseISO(iso) + days * DAY_MS);
+}
+
 /** Monday (ISO) of the week containing `iso`. */
 function mondayOf(iso: string): number {
   const ms = parseISO(iso);
   return ms - (isoWeekday(ms) - 1) * DAY_MS;
+}
+
+/** The seven ISO dates (Mon→Sun) of the week containing `iso`. */
+export function weekDates(iso: string): string[] {
+  const monday = mondayOf(iso);
+  return Array.from({ length: 7 }, (_, i) => toISO(monday + i * DAY_MS));
 }
 
 export function weeklyBreakdown(params: {
