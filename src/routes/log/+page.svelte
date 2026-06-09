@@ -198,7 +198,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `timesheet-${todayISO()}.csv`;
+    a.download = `clopen-${todayISO()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }

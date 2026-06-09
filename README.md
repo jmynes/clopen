@@ -1,6 +1,8 @@
-# Hours Tracker
+# Clopen
 
-A personal, single-user timesheet tracker that answers two questions: **did I
+Clopen — like the shift where you close at night and open the next
+morning (and, fine, the topology pun) — is a personal, single-user
+timesheet tracker that answers two questions: **did I
 make the hours I owe over the period that matters to me, and am I getting
 paid the right amount?**
 

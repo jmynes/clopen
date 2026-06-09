@@ -42,7 +42,7 @@
 
 <svelte:head>
   <link rel="icon" href={favicon} />
-  <title>Timesheet</title>
+  <title>Clopen</title>
 </svelte:head>
 
 <div class="min-h-screen bg-background text-foreground">
@@ -63,7 +63,7 @@
         </button>
         <a href="/" class="flex items-center gap-2 font-semibold tracking-tight" onclick={() => (menuOpen = false)}>
           <CalendarClock class="size-5 text-primary" />
-          <span>Timesheet</span>
+          <span>Clopen</span>
         </a>
       </div>
       <nav class="flex items-center gap-1 text-sm">

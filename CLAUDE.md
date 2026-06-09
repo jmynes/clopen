@@ -4,7 +4,8 @@ Guidance for Claude Code working in this repository.
 
 ## Project
 
-A **personal, single-user** timesheet tracker. Two questions drive it: *over a
+**Clopen** — a **personal, single-user** timesheet tracker (named for the
+close-then-open shift, with the topology pun as a bonus). Two questions drive it: *over a
 chosen period (week / bi-week / month / quarter / year), did I work the hours I
 owe, and is my pay right?*
 
