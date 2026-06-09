@@ -830,7 +830,7 @@
               onValueChange={(v) => setLeaveRow(i, v === 'work' ? '' : (v as LeaveKind))}
             >
               <Select.Trigger
-                aria-label="Type for {weekdayShort(date)}"
+                aria-label="Leave kind for {weekdayShort(date)}"
                 class="h-8 w-32 shrink-0 self-center {isLeave ? KIND_CLASSES[leaveKind].button : ''}"
               >
                 {#if isLeave}
@@ -968,11 +968,11 @@
             <Table.Row>
               <Table.Head class="w-32">Date</Table.Head>
               <Table.Head class="w-24 font-mono">In</Table.Head>
-              <Table.Head class="w-24 font-mono">Out</Table.Head>
-              <Table.Head class="w-20 text-right font-mono">Break</Table.Head>
+              <Table.Head class="w-20 font-mono">Out</Table.Head>
+              <Table.Head class="w-16 font-mono">Break</Table.Head>
               <Table.Head class="w-24 text-right font-mono">Worked</Table.Head>
               <Table.Head class="w-14 text-center">OT</Table.Head>
-              <Table.Head class="w-28 text-center">Type</Table.Head>
+              <Table.Head class="w-28 text-center">Leave</Table.Head>
               <Table.Head>Note</Table.Head>
               <Table.Head class="w-24 text-right">Actions</Table.Head>
             </Table.Row>
@@ -989,7 +989,7 @@
                   </Table.Cell>
                   <Table.Cell class="font-mono text-sm tabular-nums">—</Table.Cell>
                   <Table.Cell class="font-mono text-sm tabular-nums">—</Table.Cell>
-                  <Table.Cell class="text-right font-mono text-sm tabular-nums">—</Table.Cell>
+                  <Table.Cell class="font-mono text-sm tabular-nums">—</Table.Cell>
                   <Table.Cell class="text-right font-mono tabular-nums">—</Table.Cell>
                   <Table.Cell class="text-center"></Table.Cell>
                   <Table.Cell class="text-center"></Table.Cell>
@@ -1038,7 +1038,7 @@
                     —
                   {/if}
                 </Table.Cell>
-                <Table.Cell class="text-right font-mono text-sm tabular-nums text-muted-foreground">
+                <Table.Cell class="font-mono text-sm tabular-nums text-muted-foreground">
                   {entry.breakHours > 0 ? hrs(entry.breakHours) : '—'}
                 </Table.Cell>
                 <Table.Cell class="text-right font-mono tabular-nums">
@@ -1130,7 +1130,7 @@
 
         <!-- entry kind chooser -->
         <div class="flex flex-col gap-1.5">
-          <span class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Type</span>
+          <span class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Leave</span>
           <div class="flex flex-wrap gap-1.5">
             <Button
               type="button"
