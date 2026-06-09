@@ -391,7 +391,9 @@
       >
         <input type="hidden" name="weekStart" value={weekStart} />
         <input type="hidden" name="mode" value={weekMode} />
-        <div class="flex items-center gap-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        <div
+          class="flex items-center gap-3 px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+        >
           <span class="w-28 shrink-0">Day</span>
           {#if weekMode === 'clock'}
             <span class="w-40 shrink-0">In</span>
