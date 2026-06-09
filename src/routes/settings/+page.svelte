@@ -168,7 +168,7 @@
                   <div class="flex justify-center gap-1.5">
                     {#each chipRow as day (day.n)}
                       <label
-                        class="flex w-16 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-input px-1 py-2 text-sm has-checked:border-primary has-checked:bg-accent"
+                        class="flex w-16 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-input px-1 py-2 text-sm has-checked:border-primary has-checked:bg-accent md:w-auto md:max-w-[calc(25%-4.5px)] md:flex-1 md:basis-0"
                       >
                         <input
                           type="checkbox"
