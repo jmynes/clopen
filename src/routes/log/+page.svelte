@@ -1,5 +1,6 @@
 <script lang="ts">
   import ArrowDownToLine from '@lucide/svelte/icons/arrow-down-to-line';
+  import Briefcase from '@lucide/svelte/icons/briefcase';
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import Download from '@lucide/svelte/icons/download';
@@ -1141,7 +1142,7 @@
               class="h-auto"
               onclick={() => (editKind = 'work')}
             >
-              Work
+              <Briefcase class="size-3.5" /> Work
             </Button>
             <div class="grid grid-flow-col grid-rows-2 gap-2">
               {#each LEAVE_KINDS as k (k)}
