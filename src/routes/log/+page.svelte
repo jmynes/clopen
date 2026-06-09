@@ -393,7 +393,7 @@
         </div>
         {#each weekRowDates as date, i (date)}
           {@const rowErr = (col: string) => weekErrors[`${col}-${i}`]}
-          <div class="flex items-start gap-3 {isWeekend(date) ? 'opacity-70' : ''}">
+          <div class="flex items-start gap-3 rounded-md px-2 py-1 {i % 2 === 1 ? 'bg-muted/40' : ''} {isWeekend(date) ? 'opacity-70' : ''}">
             <div class="w-28 shrink-0 pt-2 text-sm">
               <span class="font-medium">{weekdayShort(date)}</span>
               <span class="ml-1 text-muted-foreground">{formatDay(date).replace(/^\w+,\s/, '')}</span>
@@ -540,7 +540,7 @@
           </Table.Header>
           <Table.Body>
             {#each data.entries as entry (entry.id)}
-              <Table.Row>
+              <Table.Row class="even:bg-muted/40">
                 <Table.Cell>
                   <span class="text-muted-foreground">{weekdayShort(entry.date)}</span>
                   <span class="ml-1">{formatDay(entry.date).replace(/^\w+,\s/, '')}</span>
