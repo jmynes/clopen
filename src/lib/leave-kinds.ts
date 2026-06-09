@@ -46,7 +46,7 @@ export type LeaveMeta = {
 };
 
 export const LEAVE_META: Record<LeaveKind, LeaveMeta> = {
-  pto: { label: 'PTO', short: 'PTO', paid: true, color: 'emerald' },
+  pto: { label: 'PTO (paid)', short: 'PTO', paid: true, color: 'emerald' },
   pto_unpaid: { label: 'UPTO (unpaid)', short: 'UPTO', paid: false, color: 'emerald' },
   sick_paid: { label: 'Sick (paid)', short: 'Sick', paid: true, color: 'rose' },
   sick_unpaid: { label: 'Sick (unpaid)', short: 'Sick', paid: false, color: 'rose' },
