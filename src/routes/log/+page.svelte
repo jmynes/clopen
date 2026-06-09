@@ -494,16 +494,16 @@
 
   <!-- quick add -->
   <Card.Root>
-    <Card.Header>
+    <Card.Header class="max-sm:text-center">
       <Card.Title>Add an entry</Card.Title>
     </Card.Header>
     <Card.Content class="flex flex-col gap-4">
-      <div class="inline-flex w-fit rounded-md border border-input p-0.5 text-sm">
+      <div class="flex w-full rounded-md border border-input p-0.5 text-sm sm:inline-flex sm:w-fit">
         {#each MODE_OPTIONS as opt (opt.m)}
           <button
             type="button"
             onclick={() => (addMode = opt.m)}
-            class="rounded-[0.3rem] px-3 py-1 transition-colors {addMode === opt.m
+            class="flex-1 rounded-[0.3rem] px-3 py-1.5 transition-colors sm:flex-none sm:py-1 {addMode === opt.m
               ? 'bg-primary text-primary-foreground'
               : 'text-muted-foreground hover:text-foreground'}"
           >
@@ -652,8 +652,8 @@
 
   <!-- weekly grid -->
   <Card.Root>
-    <Card.Header class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
-      <div>
+    <Card.Header class="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
+      <div class="max-sm:text-center">
         <Card.Title>Log a week</Card.Title>
         <Card.Description>Fill each day, then add them all at once.</Card.Description>
       </div>
