@@ -795,7 +795,7 @@
             {#each displayRows as row, idx (row.kind === 'entry' ? row.entry.id : `blank-${row.date}`)}
               {#if row.kind === 'blank'}
                 <Table.Row
-                  class={`h-12 text-muted-foreground/60 [&_td]:py-3 ${idx % 2 === 1 ? 'bg-muted/70' : ''} ${isWeekend(row.date) ? 'bg-amber-500/5' : ''}`}
+                  class={`text-muted-foreground/60 ${idx % 2 === 1 ? 'bg-muted/70' : ''} ${isWeekend(row.date) ? 'bg-amber-500/5' : ''}`}
                 >
                   <Table.Cell class="font-mono text-sm uppercase tabular-nums">
                     <span>{weekdayShort(row.date)}</span>
@@ -807,7 +807,8 @@
                   <Table.Cell class="text-right font-mono tabular-nums">—</Table.Cell>
                   <Table.Cell class="text-center"></Table.Cell>
                   <Table.Cell></Table.Cell>
-                  <Table.Cell class="text-right"></Table.Cell>
+                  <!-- Match the action-cell height (icon buttons are size-8) so blank rows line up with entry rows exactly. -->
+                  <Table.Cell class="text-right"><span class="inline-block h-8 align-middle"></span></Table.Cell>
                 </Table.Row>
               {:else}
                 {@const entry = row.entry}
