@@ -1,9 +1,11 @@
 <script lang="ts">
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
+  import Download from '@lucide/svelte/icons/download';
   import Pencil from '@lucide/svelte/icons/pencil';
   import Plus from '@lucide/svelte/icons/plus';
   import Trash2 from '@lucide/svelte/icons/trash-2';
+  import Upload from '@lucide/svelte/icons/upload';
   import { enhance } from '$app/forms';
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
@@ -12,6 +14,7 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import * as Table from '$lib/components/ui/table';
+  import { toCsv } from '$lib/csv';
   import { formatDay, formatTime, formatTimeRange, formatWeekRange, isWeekend, todayISO, weekdayShort } from '$lib/date';
   import type { TimeEntry } from '$lib/db/schema';
   import { addDays, parseTimeInput, weekDates } from '$lib/timesheet';
@@ -65,6 +68,35 @@
   const weekStart = $derived(weekRowDates[0]);
   // The weekly grid shares the same modes, also defaulting to clock in/out.
   let weekMode = $state<'hours' | 'clock'>('clock');
+
+  // Month/year jump for the weekly grid, derived from the current anchor.
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const anchorYear = $derived(Number(weekAnchor.slice(0, 4)));
+  const anchorMonth = $derived(Number(weekAnchor.slice(5, 7))); // 1–12
+  const yearOptions = $derived.by(() => {
+    const ty = Number(todayISO().slice(0, 4));
+    const set = new Set<number>([anchorYear]);
+    for (let y = ty - 5; y <= ty + 1; y++) set.add(y);
+    return [...set].sort((a, b) => a - b);
+  });
+  function jumpTo(year: number, month: number) {
+    weekAnchor = `${year}-${String(month).padStart(2, '0')}-01`;
+  }
+
+  // Export every entry as CSV (gross hours + break + clock times round-trip).
+  function exportCsv() {
+    const header = ['Date', 'Hours', 'Break', 'Clock In', 'Clock Out', 'Note'];
+    const rows = data.entries.map((e) => [e.date, e.hours, e.breakHours, e.startTime ?? '', e.endTime ?? '', e.note ?? '']);
+    const blob = new Blob([toCsv([header, ...rows])], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `timesheet-${todayISO()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  let csvInput = $state<HTMLInputElement | null>(null);
 </script>
 
 <div class="flex flex-col gap-8">
@@ -168,11 +200,31 @@
         <Card.Title>Log a week</Card.Title>
         <Card.Description>Fill each day, then add them all at once.</Card.Description>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex flex-wrap items-center gap-2">
+        <select
+          aria-label="Month"
+          value={String(anchorMonth)}
+          onchange={(e) => jumpTo(anchorYear, Number(e.currentTarget.value))}
+          class="h-9 rounded-md border border-input bg-transparent px-2 text-sm focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+        >
+          {#each MONTHS as label, idx (label)}
+            <option value={String(idx + 1)}>{label}</option>
+          {/each}
+        </select>
+        <select
+          aria-label="Year"
+          value={String(anchorYear)}
+          onchange={(e) => jumpTo(Number(e.currentTarget.value), anchorMonth)}
+          class="h-9 rounded-md border border-input bg-transparent px-2 text-sm tabular-nums focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+        >
+          {#each yearOptions as y (y)}
+            <option value={String(y)}>{y}</option>
+          {/each}
+        </select>
         <Button variant="outline" size="icon" aria-label="Previous week" onclick={() => (weekAnchor = addDays(weekStart, -7))}>
           <ChevronLeft class="size-4" />
         </Button>
-        <span class="min-w-32 text-center text-sm font-medium tabular-nums">{formatWeekRange(weekStart)}</span>
+        <span class="min-w-44 text-center text-sm font-medium tabular-nums">{formatWeekRange(weekStart, true)}</span>
         <Button variant="outline" size="icon" aria-label="Next week" onclick={() => (weekAnchor = addDays(weekStart, 7))}>
           <ChevronRight class="size-4" />
         </Button>
@@ -283,11 +335,45 @@
 
   <!-- entries -->
   <Card.Root>
-    <Card.Header>
-      <Card.Title>Entries</Card.Title>
-      <Card.Description>{data.entries.length} total · newest first</Card.Description>
+    <Card.Header class="flex flex-row flex-wrap items-center justify-between gap-2">
+      <div>
+        <Card.Title>Entries</Card.Title>
+        <Card.Description>{data.entries.length} total · newest first</Card.Description>
+      </div>
+      <div class="flex items-center gap-2">
+        <Button variant="outline" size="sm" onclick={exportCsv} disabled={data.entries.length === 0}>
+          <Download class="size-4" /> Export CSV
+        </Button>
+        <form
+          method="POST"
+          action="?/importCsv"
+          enctype="multipart/form-data"
+          use:enhance={() => async ({ update }) => update()}
+        >
+          <input
+            bind:this={csvInput}
+            type="file"
+            name="file"
+            accept=".csv,text/csv"
+            class="hidden"
+            onchange={(e) => e.currentTarget.form?.requestSubmit()}
+          />
+          <Button variant="outline" size="sm" type="button" onclick={() => csvInput?.click()}>
+            <Upload class="size-4" /> Import CSV
+          </Button>
+        </form>
+      </div>
     </Card.Header>
     <Card.Content>
+      {#if form?.imported}
+        <p class="mb-3 text-sm text-success">
+          Imported {form.imported} {form.imported === 1 ? 'entry' : 'entries'}{form.skipped
+            ? ` · skipped ${form.skipped}`
+            : ''}.
+        </p>
+      {:else if form && 'importError' in form && form.importError}
+        <p class="mb-3 text-sm text-destructive">{form.importError}</p>
+      {/if}
       {#if data.entries.length === 0}
         <p class="py-8 text-center text-sm text-muted-foreground">No entries yet. Add your first above.</p>
       {:else}

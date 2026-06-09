@@ -47,13 +47,22 @@ export function formatDay(iso: string): string {
   return LONG_FMT.format(utcDate(iso));
 }
 
-/** "Jan 5 – 11" — friendly label for a week given its Monday (ISO). */
-export function formatWeekRange(weekStartISO: string): string {
+/**
+ * "Jan 5 – 11" — friendly label for a week given its start (ISO). With
+ * `withYear`, appends the year(s): "Jan 5 – 11, 2026", or both years when the
+ * week straddles a boundary: "Dec 29, 2025 – Jan 4, 2026".
+ */
+export function formatWeekRange(weekStartISO: string, withYear = false): string {
   const start = utcDate(weekStartISO);
   const end = new Date(start.getTime() + 6 * 86_400_000);
   const month = new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' });
+  const startYear = start.getUTCFullYear();
+  const endYear = end.getUTCFullYear();
+  const sameMonth = start.getUTCMonth() === end.getUTCMonth() && startYear === endYear;
+
   const startLabel = `${month.format(start)} ${start.getUTCDate()}`;
-  const sameMonth = start.getUTCMonth() === end.getUTCMonth();
   const endLabel = sameMonth ? `${end.getUTCDate()}` : `${month.format(end)} ${end.getUTCDate()}`;
-  return `${startLabel} – ${endLabel}`;
+  if (!withYear) return `${startLabel} – ${endLabel}`;
+  if (startYear !== endYear) return `${startLabel}, ${startYear} – ${endLabel}, ${endYear}`;
+  return `${startLabel} – ${endLabel}, ${endYear}`;
 }

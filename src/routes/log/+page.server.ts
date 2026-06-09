@@ -1,6 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import type { z } from 'zod';
-import { clockEntryInput, entryInput } from '$lib/schemas/entry';
+import { parseCsv } from '$lib/csv';
+import { clockEntryInput, type EntryInput, entryInput } from '$lib/schemas/entry';
 import { addEntry, deleteEntry, listEntries, updateEntry } from '$lib/server/entries';
 import { getSettings, toWorkSettings } from '$lib/server/settings';
 import { addDays } from '$lib/timesheet';
@@ -102,5 +103,50 @@ export const actions: Actions = {
       if (p.success) await addEntry(p.data);
     }
     return { weekAdded: parsed.length };
+  },
+
+  // Import arbitrarily many rows from a CSV file. Header columns are matched by
+  // name; rows with both clock times use clock mode, otherwise the Hours column.
+  importCsv: async ({ request }) => {
+    const form = await request.formData();
+    const file = form.get('file');
+    const text = file instanceof File ? await file.text() : String(form.get('csv') ?? '');
+    if (!text.trim()) return fail(400, { importError: 'No CSV provided' });
+
+    const rows = parseCsv(text);
+    if (rows.length < 2) return fail(400, { importError: 'CSV has a header but no data rows' });
+
+    const header = rows[0].map((h) => h.trim().toLowerCase());
+    const col = (...names: string[]) => header.findIndex((h) => names.includes(h));
+    const di = col('date');
+    const hi = col('hours', 'hrs');
+    const bi = col('break', 'break hours', 'breakhours');
+    const si = col('clock in', 'in', 'start', 'start time');
+    const ei = col('clock out', 'out', 'end', 'end time');
+    const ni = col('note', 'notes', 'description');
+    if (di === -1) return fail(400, { importError: 'CSV needs a "Date" column' });
+
+    const inputs: EntryInput[] = [];
+    const errors: string[] = [];
+    rows.slice(1).forEach((r, idx) => {
+      const at = (i: number) => (i >= 0 ? (r[i] ?? '').trim() : '');
+      const date = at(di);
+      if (!date) return; // skip blank lines
+      const common = { date, breakHours: at(bi) || undefined, note: at(ni) || undefined };
+      const start = at(si);
+      const end = at(ei);
+      const parsed =
+        start && end
+          ? clockEntryInput.safeParse({ ...common, startTime: start, endTime: end })
+          : entryInput.safeParse({ ...common, hours: at(hi) });
+      if (parsed.success) inputs.push(parsed.data);
+      else errors.push(`Row ${idx + 2}: ${flattenError(parsed.error)}`);
+    });
+
+    if (inputs.length === 0) {
+      return fail(400, { importError: errors[0] ?? 'No valid rows found' });
+    }
+    for (const input of inputs) await addEntry(input);
+    return { imported: inputs.length, skipped: errors.length };
   },
 };
