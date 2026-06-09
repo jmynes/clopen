@@ -734,7 +734,7 @@
               type="button"
               variant="outline"
               size="sm"
-              class="mt-1 shrink-0 self-center border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 {isPto
+              class="shrink-0 self-center border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 {isPto
                 ? 'bg-emerald-500/20 ring-2 ring-inset ring-emerald-500/50'
                 : 'bg-emerald-500/10'}"
               onclick={() => togglePtoRow(i)}
