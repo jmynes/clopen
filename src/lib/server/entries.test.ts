@@ -10,7 +10,7 @@ type Db = ReturnType<typeof drizzle<typeof schema>>;
 
 // Build a full EntryInput; hours mode (no clock times) unless overridden.
 function mk(partial: Partial<EntryInput> & { date: string; hours: number }): EntryInput {
-  return { breakHours: 0, note: null, startTime: null, endTime: null, ...partial };
+  return { breakHours: 0, note: null, startTime: null, endTime: null, isPto: false, ...partial };
 }
 
 let db: Db;

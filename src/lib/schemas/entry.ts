@@ -13,7 +13,7 @@ const clockTime = z.string().transform((v, ctx) => {
   return parsed;
 });
 
-/** Canonical persisted shape. Both input modes (hours / clock) produce this. */
+/** Canonical persisted shape. All input modes (hours / clock / PTO) produce this. */
 export type EntryInput = {
   date: string;
   hours: number;
@@ -21,6 +21,7 @@ export type EntryInput = {
   note: string | null;
   startTime: string | null;
   endTime: string | null;
+  isPto: boolean;
 };
 
 const date = z.string().regex(ISO_DATE, 'Date must be YYYY-MM-DD');
@@ -49,6 +50,26 @@ export const entryInput = z
       note: v.note,
       startTime: null,
       endTime: null,
+      isPto: false,
+    }),
+  );
+
+/** PTO mode: a paid day off. Worked hours come from the daily baseline; no clock times. */
+export const ptoEntryInput = z
+  .object({
+    date,
+    hours: z.coerce.number().min(0).max(24).default(8),
+    note,
+  })
+  .transform(
+    (v): EntryInput => ({
+      date: v.date,
+      hours: v.hours,
+      breakHours: 0,
+      note: v.note,
+      startTime: null,
+      endTime: null,
+      isPto: true,
     }),
   );
 
@@ -77,5 +98,6 @@ export const clockEntryInput = z
       note: v.note,
       startTime: v.startTime,
       endTime: v.endTime,
+      isPto: false,
     }),
   );

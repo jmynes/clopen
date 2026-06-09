@@ -3,6 +3,7 @@
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import Download from '@lucide/svelte/icons/download';
+  import Palmtree from '@lucide/svelte/icons/palmtree';
   import Pencil from '@lucide/svelte/icons/pencil';
   import Plus from '@lucide/svelte/icons/plus';
   import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -67,6 +68,7 @@
 
   // Input mode for the single-entry form: clock in/out (default) or plain hours.
   let addMode = $state<'hours' | 'clock'>('clock');
+  let addModeInput: HTMLInputElement | null = $state(null);
 
   // Two toggle options, clock on the left.
   const MODE_OPTIONS = [
@@ -316,6 +318,16 @@
     inputs.forEach((el) => {
       if (/^(start|end|break|hours|note)-\d$/.test(el.name)) el.value = '';
     });
+    ptoRows = new Set();
+  }
+
+  // Per-row PTO toggle for the weekly grid. Marked rows submit hidden pto-{i}.
+  let ptoRows = $state<Set<number>>(new Set());
+  function togglePtoRow(i: number) {
+    const next = new Set(ptoRows);
+    if (next.has(i)) next.delete(i);
+    else next.add(i);
+    ptoRows = next;
   }
 
   // Copy the first day's in/out/break (or hours/break) down to the rest of the week.
@@ -408,7 +420,7 @@
         use:enhance={conflictAwareEnhance({ resetOnSuccess: true })}
         class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end"
       >
-        <input type="hidden" name="mode" value={addMode} />
+        <input type="hidden" name="mode" value={addMode} bind:this={addModeInput} />
         <div class="flex flex-col gap-1.5">
           <Label for="date">Date</Label>
           <Input
@@ -507,6 +519,22 @@
           {#if addErrors.note}<p id="note-error" class="text-xs text-destructive">{addErrors.note}</p>{/if}
         </div>
         <Button type="submit"><Plus class="size-4" /> Add</Button>
+        <Button
+          type="submit"
+          variant="outline"
+          class="border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400"
+          onclick={(e) => {
+            // Switch mode hidden field to 'pto' for this click only.
+            if (addModeInput) addModeInput.value = 'pto';
+            // Strip browser-required validation on clock/hours fields since PTO doesn't need them.
+            const form = (e.currentTarget as HTMLButtonElement).form;
+            form?.querySelectorAll<HTMLInputElement>('input[required]').forEach((el) => {
+              if (el.name !== 'date') el.removeAttribute('required');
+            });
+          }}
+        >
+          <Palmtree class="size-4" /> PTO
+        </Button>
       </form>
     </Card.Content>
   </Card.Root>
@@ -591,18 +619,37 @@
         </div>
         {#each weekRowDates as date, i (date)}
           {@const rowErr = (col: string) => weekErrors[`${col}-${i}`]}
+          {@const isPto = ptoRows.has(i)}
           <div
-            class="flex items-start gap-3 rounded-md px-2 py-1 {isWeekend(date)
-              ? 'bg-amber-500/5 ring-1 ring-inset ring-amber-500/15'
-              : i % 2 === 1
-                ? 'bg-muted/70'
-                : ''}"
+            class="flex items-start gap-3 rounded-md px-2 py-1 {isPto
+              ? 'bg-emerald-500/10 ring-1 ring-inset ring-emerald-500/30'
+              : isWeekend(date)
+                ? 'bg-amber-500/5 ring-1 ring-inset ring-amber-500/15'
+                : i % 2 === 1
+                  ? 'bg-muted/70'
+                  : ''}"
           >
             <div class="w-28 shrink-0 pt-2 font-mono text-sm uppercase tabular-nums">
               <span class="font-medium">{weekdayShort(date)}</span>
               <span class="ml-1 text-muted-foreground">{formatDay(date).replace(/^\w+,\s/, '')}</span>
             </div>
-            {#if weekMode === 'clock'}
+            {#if isPto}
+              <input type="hidden" name="pto-{i}" value="true" />
+              <div class="flex flex-1 items-center gap-2 pt-1">
+                <span
+                  class="rounded-md bg-emerald-500/15 px-2 py-0.5 font-mono text-xs font-medium uppercase tracking-wider text-emerald-700 dark:text-emerald-400"
+                >
+                  PTO · 8.00h paid
+                </span>
+                <Input
+                  type="text"
+                  name="note-{i}"
+                  placeholder="Reason (optional)"
+                  aria-label="PTO note for {weekdayShort(date)}"
+                  class="max-w-md"
+                />
+              </div>
+            {:else if weekMode === 'clock'}
               <div class="flex w-40 shrink-0 flex-col gap-1">
                 <Input
                   type="text"
@@ -647,30 +694,45 @@
                 {#if rowErr('hours')}<p class="text-xs text-destructive">{rowErr('hours')}</p>{/if}
               </div>
             {/if}
-            <div class="flex w-20 shrink-0 flex-col gap-1">
-              <Input
-                type="number"
-                name="break-{i}"
-                step="0.25"
-                min="0"
-                max="24"
-                placeholder="0"
-                aria-label="Break for {weekdayShort(date)}"
-                aria-invalid={rowErr('break') ? 'true' : undefined}
-                class="font-mono tabular-nums"
-              />
-              {#if rowErr('break')}<p class="text-xs text-destructive">{rowErr('break')}</p>{/if}
-            </div>
-            <div class="flex flex-1 flex-col gap-1">
-              <Input
-                type="text"
-                name="note-{i}"
-                placeholder="Note (optional)"
-                aria-label="Note for {weekdayShort(date)}"
-                aria-invalid={rowErr('note') ? 'true' : undefined}
-              />
-              {#if rowErr('note')}<p class="text-xs text-destructive">{rowErr('note')}</p>{/if}
-            </div>
+            {#if !isPto}
+              <div class="flex w-20 shrink-0 flex-col gap-1">
+                <Input
+                  type="number"
+                  name="break-{i}"
+                  step="0.25"
+                  min="0"
+                  max="24"
+                  placeholder="0"
+                  aria-label="Break for {weekdayShort(date)}"
+                  aria-invalid={rowErr('break') ? 'true' : undefined}
+                  class="font-mono tabular-nums"
+                />
+                {#if rowErr('break')}<p class="text-xs text-destructive">{rowErr('break')}</p>{/if}
+              </div>
+              <div class="flex flex-1 flex-col gap-1">
+                <Input
+                  type="text"
+                  name="note-{i}"
+                  placeholder="Note (optional)"
+                  aria-label="Note for {weekdayShort(date)}"
+                  aria-invalid={rowErr('note') ? 'true' : undefined}
+                />
+                {#if rowErr('note')}<p class="text-xs text-destructive">{rowErr('note')}</p>{/if}
+              </div>
+            {/if}
+            <Button
+              type="button"
+              variant={isPto ? 'outline' : 'ghost'}
+              size="sm"
+              class="shrink-0 {isPto
+                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400'
+                : ''}"
+              onclick={() => togglePtoRow(i)}
+              aria-pressed={isPto}
+              aria-label="Toggle PTO for {weekdayShort(date)}"
+            >
+              <Palmtree class="size-4" /> PTO
+            </Button>
           </div>
         {/each}
         <div class="mt-1 flex flex-wrap items-center gap-3">
@@ -787,6 +849,7 @@
               <Table.Head class="w-20 text-right font-mono">Break</Table.Head>
               <Table.Head class="w-24 text-right font-mono">Worked</Table.Head>
               <Table.Head class="w-14 text-center">OT</Table.Head>
+              <Table.Head class="w-16 text-center">PTO</Table.Head>
               <Table.Head>Note</Table.Head>
               <Table.Head class="w-24 text-right">Actions</Table.Head>
             </Table.Row>
@@ -805,6 +868,7 @@
                   <Table.Cell class="font-mono text-sm tabular-nums">—</Table.Cell>
                   <Table.Cell class="text-right font-mono text-sm tabular-nums">—</Table.Cell>
                   <Table.Cell class="text-right font-mono tabular-nums">—</Table.Cell>
+                  <Table.Cell class="text-center"></Table.Cell>
                   <Table.Cell class="text-center"></Table.Cell>
                   <Table.Cell></Table.Cell>
                   <!-- Match the action-cell height (icon buttons are size-8) so blank rows line up with entry rows exactly. -->
@@ -851,8 +915,13 @@
                   {hrs(entry.hours - entry.breakHours)}
                 </Table.Cell>
                 <Table.Cell class="text-center">
-                  {#if dayTotals[entry.date] > data.dailyHours}
+                  {#if !entry.isPto && dayTotals[entry.date] > data.dailyHours}
                     <Badge variant="secondary" class="bg-amber-500/15 text-amber-600 dark:text-amber-400">OT</Badge>
+                  {/if}
+                </Table.Cell>
+                <Table.Cell class="text-center">
+                  {#if entry.isPto}
+                    <Badge variant="secondary" class="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">PTO</Badge>
                   {/if}
                 </Table.Cell>
                 <Table.Cell class="text-muted-foreground">

@@ -17,6 +17,8 @@ export const timeEntries = sqliteTable('time_entries', {
   startTime: text('start_time'),
   endTime: text('end_time'),
   note: text('note'),
+  /** PTO/vacation day: `hours` is the paid baseline (default 8h), no clock times. */
+  isPto: integer('is_pto', { mode: 'boolean' }).notNull().default(false),
   createdAt: integer('created_at').notNull().default(sql`(unixepoch())`),
 });
 

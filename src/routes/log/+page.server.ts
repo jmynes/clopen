@@ -1,7 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import type { z } from 'zod';
 import { parseCsv } from '$lib/csv';
-import { clockEntryInput, type EntryInput, entryInput } from '$lib/schemas/entry';
+import { clockEntryInput, type EntryInput, entryInput, ptoEntryInput } from '$lib/schemas/entry';
 import {
   addEntry,
   deleteEntriesByDates,
@@ -29,14 +29,16 @@ export const load: PageServerLoad = async () => {
   };
 };
 
-// One entry, from either the "hours" or "clock" input mode.
-function parseEntry(form: FormData) {
-  const common = {
-    date: form.get('date'),
-    breakHours: form.get('breakHours') || undefined,
-    note: form.get('note') ?? undefined,
-  };
-  if (form.get('mode') === 'clock') {
+// One entry, from "hours", "clock", or "pto" mode.
+function parseEntry(form: FormData, defaultPtoHours = 8) {
+  const date = form.get('date');
+  const note = form.get('note') ?? undefined;
+  const mode = form.get('mode');
+  if (mode === 'pto') {
+    return ptoEntryInput.safeParse({ date, note, hours: form.get('hours') ?? defaultPtoHours });
+  }
+  const common = { date, breakHours: form.get('breakHours') || undefined, note };
+  if (mode === 'clock') {
     return clockEntryInput.safeParse({ ...common, startTime: form.get('startTime'), endTime: form.get('endTime') });
   }
   return entryInput.safeParse({ ...common, hours: form.get('hours') });
@@ -199,10 +201,18 @@ export const actions: Actions = {
     // so this is independent of which weekday the week starts on.
     type RowResult = {
       i: number;
-      parsed: ReturnType<typeof clockEntryInput.safeParse> | ReturnType<typeof entryInput.safeParse>;
+      parsed:
+        | ReturnType<typeof clockEntryInput.safeParse>
+        | ReturnType<typeof entryInput.safeParse>
+        | ReturnType<typeof ptoEntryInput.safeParse>;
     } | null;
     const rows: RowResult[] = Array.from({ length: 7 }, (_, i): RowResult => {
       const date = addDays(weekStart, i);
+      // PTO rows take precedence over the chosen clock/hours mode for that row.
+      if (form.get(`pto-${i}`) === 'true') {
+        const note = form.get(`note-${i}`) ?? undefined;
+        return { i, parsed: ptoEntryInput.safeParse({ date, note, hours: 8 }) };
+      }
       const breakHours = form.get(`break-${i}`) || undefined;
       const note = form.get(`note-${i}`) ?? undefined;
       if (clock) {

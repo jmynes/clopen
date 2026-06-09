@@ -1,0 +1,1 @@
+ALTER TABLE `time_entries` ADD `is_pto` integer DEFAULT false NOT NULL;
