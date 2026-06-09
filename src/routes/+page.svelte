@@ -224,8 +224,8 @@
   <!-- hero -->
   <Card.Root class="overflow-hidden border-2 {accent}">
     <Card.Content class="flex flex-col gap-6 p-6 md:flex-row md:items-center md:justify-between md:p-8">
-      <div>
-        <div class="flex items-center gap-2 text-sm font-medium">
+      <div class="max-md:text-center">
+        <div class="flex items-center gap-2 text-sm font-medium max-md:justify-center">
           {#if beat}
             <span class="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
               <Sparkles class="size-4" /> Beat it · overtime banked
@@ -255,9 +255,9 @@
         >
           {net >= 0 ? '+' : '−'}{hrs(Math.abs(net))}
         </div>
-        <p class="mt-2 max-w-md text-sm text-muted-foreground">{subtitle}</p>
+        <p class="mt-2 max-w-md text-sm text-muted-foreground max-md:mx-auto">{subtitle}</p>
       </div>
-      <div class="border-t border-border/60 pt-4 md:border-t-0 md:pt-0 md:text-right">
+      <div class="border-t border-border/60 pt-4 max-md:text-center md:border-t-0 md:pt-0 md:text-right">
         <p class="text-xs uppercase tracking-wider text-muted-foreground">
           {periodState === 'done' ? 'Total earned' : 'Earned so far'}
         </p>
