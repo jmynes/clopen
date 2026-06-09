@@ -35,6 +35,8 @@ export const settings = sqliteTable('settings', {
   weekStartsOn: integer('week_starts_on').notNull().default(7),
   /** Earliest date that counts toward accrual; clamps year-to-date math. */
   epoch: text('epoch').notNull().default('2025-03-16'),
+  /** Clock display: '12h' (default, e.g. 09:00 AM) or '24h' (e.g. 09:00). */
+  timeFormat: text('time_format').notNull().default('12h'),
 });
 
 export type TimeEntry = typeof timeEntries.$inferSelect;

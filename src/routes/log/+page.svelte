@@ -40,10 +40,13 @@
   // Reformat a free-typed time ("2pm", "230", "14:00") to a friendly label on blur.
   function normalizeTime(e: FocusEvent & { currentTarget: HTMLInputElement }) {
     const parsed = parseTimeInput(e.currentTarget.value);
-    if (parsed) e.currentTarget.value = formatTime(parsed);
+    if (parsed) e.currentTarget.value = formatTime(parsed, data.timeFormat);
   }
   // Friendly label for an initial HH:MM value (edit dialog); '' stays ''.
-  const timeLabel = (hhmm: string | null) => (hhmm ? formatTime(hhmm) : '');
+  const timeLabel = (hhmm: string | null) => (hhmm ? formatTime(hhmm, data.timeFormat) : '');
+  // Mode-aware placeholders for clock inputs.
+  const startPlaceholder = $derived(data.timeFormat === '24h' ? '09:00' : '09:00 am');
+  const endPlaceholder = $derived(data.timeFormat === '24h' ? '17:30' : '05:30 pm');
 
   // Per-day totals of *net* worked hours (after breaks) drive the overtime badge.
   const dayTotals = $derived(
@@ -127,7 +130,7 @@
     if (!cell) return;
     if (col === 'start' || col === 'end') {
       const parsed = parseTimeInput(raw);
-      cell.value = parsed ? formatTime(parsed) : raw.trim();
+      cell.value = parsed ? formatTime(parsed, data.timeFormat) : raw.trim();
     } else {
       cell.value = raw.trim();
     }
@@ -235,7 +238,7 @@
               name="startTime"
               inputmode="numeric"
               autocomplete="off"
-              placeholder="9:00 am"
+              placeholder={startPlaceholder}
               onblur={normalizeTime}
               required
               aria-invalid={addErrors.startTime ? 'true' : undefined}
@@ -252,7 +255,7 @@
               name="endTime"
               inputmode="numeric"
               autocomplete="off"
-              placeholder="5:30 pm"
+              placeholder={endPlaceholder}
               onblur={normalizeTime}
               required
               aria-invalid={addErrors.endTime ? 'true' : undefined}
@@ -411,7 +414,7 @@
                   name="start-{i}"
                   inputmode="numeric"
                   autocomplete="off"
-                  placeholder="9:00 am"
+                  placeholder={startPlaceholder}
                   onblur={normalizeTime}
                   aria-label="Clock in for {weekdayShort(date)}"
                   aria-invalid={rowErr('start') ? 'true' : undefined}
@@ -425,7 +428,7 @@
                   name="end-{i}"
                   inputmode="numeric"
                   autocomplete="off"
-                  placeholder="5:30 pm"
+                  placeholder={endPlaceholder}
                   onblur={normalizeTime}
                   aria-label="Clock out for {weekdayShort(date)}"
                   aria-invalid={rowErr('end') ? 'true' : undefined}
@@ -556,11 +559,11 @@
                   <span class="ml-1 uppercase">{formatDay(entry.date).replace(/^\w+,\s/, '').toUpperCase()}</span>
                 </Table.Cell>
                 <Table.Cell class="font-mono text-sm tabular-nums">
-                  {entry.startTime ? formatTime(entry.startTime) : '—'}
+                  {entry.startTime ? formatTime(entry.startTime, data.timeFormat) : '—'}
                 </Table.Cell>
                 <Table.Cell class="font-mono text-sm tabular-nums">
                   {#if entry.endTime}
-                    {formatTime(entry.endTime)}
+                    {formatTime(entry.endTime, data.timeFormat)}
                     {#if entry.startTime && entry.endTime < entry.startTime}
                       <span class="ml-1 text-xs text-muted-foreground">+1d</span>
                     {/if}
@@ -661,7 +664,7 @@
                 name="startTime"
                 inputmode="numeric"
                 autocomplete="off"
-                placeholder="9:00 am"
+                placeholder={startPlaceholder}
                 value={timeLabel(editing.startTime)}
                 onblur={normalizeTime}
                 required
@@ -677,7 +680,7 @@
                 name="endTime"
                 inputmode="numeric"
                 autocomplete="off"
-                placeholder="5:30 pm"
+                placeholder={endPlaceholder}
                 value={timeLabel(editing.endTime)}
                 onblur={normalizeTime}
                 required

@@ -29,18 +29,22 @@ export function isWeekend(iso: string): boolean {
   return dow === 0 || dow === 6;
 }
 
-/** "09:00 AM" — 12-hour label for an `HH:MM` time; hour is zero-padded for column alignment. */
-export function formatTime(hhmm: string): string {
+export type TimeFormat = '12h' | '24h';
+
+/** "09:00 AM" or "09:00" depending on `mode`; hour is zero-padded for column alignment. */
+export function formatTime(hhmm: string, mode: TimeFormat = '12h'): string {
   const [h, m] = hhmm.split(':').map(Number);
+  const mm = String(m).padStart(2, '0');
+  if (mode === '24h') return `${String(h).padStart(2, '0')}:${mm}`;
   const period = h < 12 ? 'AM' : 'PM';
   const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${String(h12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${period}`;
+  return `${String(h12).padStart(2, '0')}:${mm} ${period}`;
 }
 
-/** "9:00 AM – 5:00 PM" — labeled clock range; appends "(+1d)" for overnight shifts. */
-export function formatTimeRange(start: string, end: string): string {
+/** "09:00 AM – 05:00 PM" — labeled clock range; appends "(+1d)" for overnight shifts. */
+export function formatTimeRange(start: string, end: string, mode: TimeFormat = '12h'): string {
   const overnight = end < start;
-  return `${formatTime(start)} – ${formatTime(end)}${overnight ? ' (+1d)' : ''}`;
+  return `${formatTime(start, mode)} – ${formatTime(end, mode)}${overnight ? ' (+1d)' : ''}`;
 }
 
 /** "Mon, Jan 5" — friendly label for an ISO date. */

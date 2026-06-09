@@ -13,7 +13,12 @@ export const load: PageServerLoad = async () => {
   const entries = await listEntries();
   const row = await getSettings();
   const settings = toWorkSettings(row);
-  return { entries, dailyHours: settings.dailyHours, weekStartsOn: row.weekStartsOn };
+  return {
+    entries,
+    dailyHours: settings.dailyHours,
+    weekStartsOn: row.weekStartsOn,
+    timeFormat: row.timeFormat as '12h' | '24h',
+  };
 };
 
 // One entry, from either the "hours" or "clock" input mode.

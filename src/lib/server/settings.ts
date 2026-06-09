@@ -15,6 +15,7 @@ const DEFAULTS = {
   workdays: '[1,2,3,4,5]',
   weekStartsOn: 7,
   epoch: '2025-03-16',
+  timeFormat: '12h',
 } satisfies Settings;
 
 /** Read the single settings row, seeding defaults on first access. */
@@ -33,6 +34,7 @@ export async function updateSettings(input: SettingsInput, database: Database = 
     workdays: JSON.stringify(input.workdays),
     weekStartsOn: input.weekStartsOn,
     epoch: input.epoch,
+    timeFormat: input.timeFormat,
   };
   await database
     .insert(settings)
@@ -45,6 +47,7 @@ export async function updateSettings(input: SettingsInput, database: Database = 
         workdays: row.workdays,
         weekStartsOn: row.weekStartsOn,
         epoch: row.epoch,
+        timeFormat: row.timeFormat,
       },
     });
 }

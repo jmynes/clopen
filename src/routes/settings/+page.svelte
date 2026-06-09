@@ -88,6 +88,19 @@
         </div>
 
         <div class="flex flex-col gap-1.5">
+          <Label for="timeFormat">Time format</Label>
+          <p class="text-xs text-muted-foreground">Display clock times in 12-hour (09:00 AM) or 24-hour (09:00) format.</p>
+          <select
+            id="timeFormat"
+            name="timeFormat"
+            class="h-9 w-48 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+          >
+            <option value="12h" selected={data.timeFormat === '12h'}>12-hour (09:00 AM)</option>
+            <option value="24h" selected={data.timeFormat === '24h'}>24-hour (09:00)</option>
+          </select>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
           <Label for="weekStartsOn">Week starts on</Label>
           <p class="text-xs text-muted-foreground">Controls the weekly grid order and how weeks group on the dashboard.</p>
           <select

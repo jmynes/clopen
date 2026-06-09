@@ -1,0 +1,1 @@
+ALTER TABLE `settings` ADD `time_format` text DEFAULT '12h' NOT NULL;
