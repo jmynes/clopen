@@ -1085,6 +1085,13 @@
                     class="lg:flex-1"
                   />
                 {:else}
+                  {#if subShifts[i].length > 0}
+                    <span
+                      class="w-fit rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden"
+                    >
+                      Shift 1
+                    </span>
+                  {/if}
                   <div class="grid grid-cols-6 gap-2 lg:contents">
                     {#if weekMode === 'clock'}
                       <div class="col-span-3 flex flex-col gap-1 lg:w-28 lg:shrink-0">
