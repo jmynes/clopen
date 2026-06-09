@@ -694,7 +694,7 @@
 <svelte:window onkeydown={onWindowKeydown} />
 
 <div class="flex flex-col gap-8">
-  <div>
+  <div class="max-md:text-center">
     <h1 class="text-2xl font-semibold tracking-tight">Log time</h1>
     <p class="mt-1 text-sm text-muted-foreground">
       Record hours per day. Multiple entries per day are fine — they add up.

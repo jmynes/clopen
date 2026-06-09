@@ -88,7 +88,7 @@
 </script>
 
 <div class="flex flex-col gap-8">
-  <div>
+  <div class="max-md:text-center">
     <h1 class="text-2xl font-semibold tracking-tight">Settings</h1>
     <p class="mt-1 text-sm text-muted-foreground">
       Your pay rate and the baseline that defines a "whole" week.
