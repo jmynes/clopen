@@ -198,7 +198,7 @@
       onchange={(e) => {
         period = e.currentTarget.value as Period;
       }}
-      class="h-9 shrink-0 rounded-md border border-input bg-transparent px-2 text-sm focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+      class="h-9 shrink-0 basis-full rounded-md border border-input bg-transparent px-2 text-sm focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none sm:basis-auto"
     >
       {#each Object.entries(PERIOD_LABELS) as [v, label] (v)}
         <option value={v}>{label}</option>
@@ -218,7 +218,7 @@
 
   <!-- hero -->
   <Card.Root class="overflow-hidden border-2 {accent}">
-    <Card.Content class="flex flex-col gap-6 p-8 sm:flex-row sm:items-center sm:justify-between">
+    <Card.Content class="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
       <div>
         <div class="flex items-center gap-2 text-sm font-medium">
           {#if beat}
@@ -240,7 +240,7 @@
           {/if}
         </div>
         <div
-          class="mt-2 font-mono text-6xl font-bold tabular-nums tracking-tight {beat || made || ahead
+          class="mt-2 font-mono text-5xl font-bold tabular-nums tracking-tight sm:text-6xl {beat || made || ahead
             ? 'text-success'
             : short
               ? 'text-destructive'
@@ -252,7 +252,7 @@
         </div>
         <p class="mt-2 max-w-md text-sm text-muted-foreground">{subtitle}</p>
       </div>
-      <div class="text-right">
+      <div class="border-t border-border/60 pt-4 sm:border-t-0 sm:pt-0 sm:text-right">
         <p class="text-xs uppercase tracking-wider text-muted-foreground">
           {periodState === 'done' ? 'Total earned' : 'Earned so far'}
         </p>
