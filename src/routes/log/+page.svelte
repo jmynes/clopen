@@ -1160,15 +1160,17 @@
                           aria-label="Worked hours for {weekdayShort(date)}"
                           class="pointer-events-none min-w-0 bg-muted/40 font-mono tabular-nums text-muted-foreground"
                         />
-                        <button
-                          type="button"
-                          class={ROW_BTN}
-                          title="Add a shift"
-                          aria-label="Add a shift for {weekdayShort(date)}"
-                          onclick={() => addSubShift(i)}
-                        >
-                          <Plus class="size-4" />
-                        </button>
+                        <Tooltip.Root>
+                          <Tooltip.Trigger
+                            type="button"
+                            class={ROW_BTN}
+                            aria-label="Add a shift for {weekdayShort(date)}"
+                            onclick={() => addSubShift(i)}
+                          >
+                            <Plus class="size-4" />
+                          </Tooltip.Trigger>
+                          <Tooltip.Content>Add a shift</Tooltip.Content>
+                        </Tooltip.Root>
                       </div>
                     </div>
                     <div class="col-span-6 flex flex-col gap-1 lg:flex-1">
@@ -1289,15 +1291,17 @@
                             aria-label="Worked hours for {weekdayShort(date)} shift {j + 2}"
                             class="pointer-events-none min-w-0 bg-muted/40 font-mono tabular-nums text-muted-foreground"
                           />
-                          <button
-                            type="button"
-                            class="{ROW_BTN} hidden lg:inline-flex"
-                            title="Remove this shift"
-                            aria-label="Remove shift {j + 2} for {weekdayShort(date)}"
-                            onclick={() => removeSubShift(i, j)}
-                          >
-                            <Minus class="size-4" />
-                          </button>
+                          <Tooltip.Root>
+                            <Tooltip.Trigger
+                              type="button"
+                              class="{ROW_BTN} hidden lg:inline-flex"
+                              aria-label="Remove shift {j + 2} for {weekdayShort(date)}"
+                              onclick={() => removeSubShift(i, j)}
+                            >
+                              <Minus class="size-4" />
+                            </Tooltip.Trigger>
+                            <Tooltip.Content>Remove this shift</Tooltip.Content>
+                          </Tooltip.Root>
                         </div>
                       </div>
                       <div class="col-span-6 flex flex-col gap-1 lg:flex-1">
