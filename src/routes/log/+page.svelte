@@ -613,30 +613,32 @@
           />
           {#if addErrors.note}<p id="note-error" class="text-xs text-destructive">{addErrors.note}</p>{/if}
         </div>
-        <Button type="submit"><Plus class="size-4" /> Add</Button>
         <input type="hidden" name="kind" value="" bind:this={addKindInput} />
-        <div class="flex w-full basis-full flex-col gap-2">
-          <span class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Or log leave</span>
-          <div class="grid w-fit grid-flow-col grid-rows-2 gap-2">
-            {#each LEAVE_KINDS as kind (kind)}
-              {@const Icon = LEAVE_ICON[kind]}
-              <Button
-                type="submit"
-                variant="outline"
-                size="sm"
-                class={KIND_CLASSES[kind].button + ' justify-start'}
-                onclick={(e) => {
-                  if (addModeInput) addModeInput.value = 'leave';
-                  if (addKindInput) addKindInput.value = kind;
-                  const form = (e.currentTarget as HTMLButtonElement).form;
-                  form?.querySelectorAll<HTMLInputElement>('input[required]').forEach((el) => {
-                    if (el.name !== 'date') el.removeAttribute('required');
-                  });
-                }}
-              >
-                <Icon class="size-4" /> {LEAVE_META[kind].label}
-              </Button>
-            {/each}
+        <div class="flex w-full basis-full flex-wrap items-center gap-3">
+          <Button type="submit"><Plus class="size-4" /> Add</Button>
+          <div class="ml-auto flex items-center gap-3">
+            <span class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Or log leave</span>
+            <div class="grid w-fit grid-flow-col grid-rows-2 gap-2">
+              {#each LEAVE_KINDS as kind (kind)}
+                {@const Icon = LEAVE_ICON[kind]}
+                <Button
+                  type="submit"
+                  variant="outline"
+                  size="sm"
+                  class={KIND_CLASSES[kind].button + ' justify-start'}
+                  onclick={(e) => {
+                    if (addModeInput) addModeInput.value = 'leave';
+                    if (addKindInput) addKindInput.value = kind;
+                    const form = (e.currentTarget as HTMLButtonElement).form;
+                    form?.querySelectorAll<HTMLInputElement>('input[required]').forEach((el) => {
+                      if (el.name !== 'date') el.removeAttribute('required');
+                    });
+                  }}
+                >
+                  <Icon class="size-4" /> {LEAVE_META[kind].label}
+                </Button>
+              {/each}
+            </div>
           </div>
         </div>
       </form>
@@ -1092,7 +1094,7 @@
 
 <!-- edit dialog -->
 <Dialog.Root bind:open={editOpen}>
-  <Dialog.Content class="sm:max-w-md">
+  <Dialog.Content class="sm:max-w-3xl">
     <Dialog.Header>
       <Dialog.Title>Edit entry</Dialog.Title>
       <Dialog.Description>Change the date, hours, break, or note for this entry.</Dialog.Description>
@@ -1131,27 +1133,32 @@
         <!-- entry kind chooser -->
         <div class="flex flex-col gap-1.5">
           <span class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Leave</span>
-          <div class="flex flex-wrap gap-1.5">
+          <div class="flex items-stretch gap-2">
             <Button
               type="button"
               variant={editKind === 'work' ? 'default' : 'outline'}
               size="sm"
+              class="h-auto"
               onclick={() => (editKind = 'work')}
             >
               Work
             </Button>
-            {#each LEAVE_KINDS as k (k)}
-              {@const KindIcon = LEAVE_ICON[k]}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                class={KIND_CLASSES[k].button + (editKind === k ? ' ' + KIND_CLASSES[k].activeButton : '')}
-                onclick={() => (editKind = k)}
-              >
-                <KindIcon class="size-3.5" /> {LEAVE_META[k].label}
-              </Button>
-            {/each}
+            <div class="grid grid-flow-col grid-rows-2 gap-2">
+              {#each LEAVE_KINDS as k (k)}
+                {@const KindIcon = LEAVE_ICON[k]}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  class={KIND_CLASSES[k].button +
+                    ' justify-start' +
+                    (editKind === k ? ' ' + KIND_CLASSES[k].activeButton : '')}
+                  onclick={() => (editKind = k)}
+                >
+                  <KindIcon class="size-3.5" /> {LEAVE_META[k].label}
+                </Button>
+              {/each}
+            </div>
           </div>
         </div>
 
