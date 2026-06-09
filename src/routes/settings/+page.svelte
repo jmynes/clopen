@@ -84,7 +84,7 @@
             Earliest date that counts toward the make-whole baseline. The dashboard's year view still drives expected
             earnings — this just keeps year-one from accruing hours before you started.
           </p>
-          <Input id="epoch" type="date" name="epoch" value={data.epoch} required class="w-48" />
+          <Input id="epoch" type="date" name="epoch" value={data.epoch} required class="w-full sm:w-48" />
         </div>
 
         <div class="flex flex-col gap-1.5">
@@ -93,7 +93,7 @@
           <select
             id="timeFormat"
             name="timeFormat"
-            class="h-9 w-48 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+            class="h-9 w-full rounded-md border sm:w-48 border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
           >
             <option value="12h" selected={data.timeFormat === '12h'}>12-hour (09:00 AM)</option>
             <option value="24h" selected={data.timeFormat === '24h'}>24-hour (09:00)</option>
@@ -106,7 +106,7 @@
           <select
             id="weekStartsOn"
             name="weekStartsOn"
-            class="h-9 w-48 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+            class="h-9 w-full rounded-md border sm:w-48 border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
           >
             <option value="1" selected={data.weekStartsOn === 1}>Monday</option>
             <option value="7" selected={data.weekStartsOn === 7}>Sunday</option>
