@@ -154,27 +154,36 @@ export const actions: Actions = {
 
     const header = rows[0].map((h) => h.trim().toLowerCase());
     const col = (...names: string[]) => header.findIndex((h) => names.includes(h));
-    const di = col('date');
-    const hi = col('hours', 'hrs');
+    // "day of the week" matches export-style sheets that prefix the weekday onto the date cell.
+    const di = col('date', 'day', 'day of the week');
+    const hi = col('hours', 'hrs', 'total hours', 'total');
     const bi = col('break', 'break hours', 'breakhours');
-    const si = col('clock in', 'in', 'start', 'start time');
-    const ei = col('clock out', 'out', 'end', 'end time');
+    const si = col('clock in', 'in', 'start', 'start time', 'check-in time', 'check in time', 'checkin');
+    const ei = col('clock out', 'out', 'end', 'end time', 'check-out time', 'check out time', 'checkout');
     const ni = col('note', 'notes', 'description');
-    if (di === -1) return fail(400, { importError: 'CSV needs a "Date" column' });
+    if (di === -1) return fail(400, { importError: 'CSV needs a date column' });
 
     const inputs: EntryInput[] = [];
     const errors: string[] = [];
     rows.slice(1).forEach((r, idx) => {
       const at = (i: number) => (i >= 0 ? (r[i] ?? '').trim() : '');
-      const date = at(di);
-      if (!date) return; // skip blank lines
-      const common = { date, breakHours: at(bi) || undefined, note: at(ni) || undefined };
+      const rawDate = at(di);
+      if (!rawDate) return; // skip blank lines
       const start = at(si);
       const end = at(ei);
+      const hours = at(hi);
+      // Days with no in/out and zero/blank hours are off-days in cumulative exports — skip silently.
+      if (!start && !end && (!hours || Number(hours) === 0)) return;
+      const date = normalizeImportDate(rawDate);
+      if (!date) {
+        errors.push(`Row ${idx + 2}: unrecognized date "${rawDate}"`);
+        return;
+      }
+      const common = { date, breakHours: at(bi) || undefined, note: at(ni) || undefined };
       const parsed =
         start && end
           ? clockEntryInput.safeParse({ ...common, startTime: start, endTime: end })
-          : entryInput.safeParse({ ...common, hours: at(hi) });
+          : entryInput.safeParse({ ...common, hours });
       if (parsed.success) inputs.push(parsed.data);
       else errors.push(`Row ${idx + 2}: ${flattenError(parsed.error)}`);
     });
@@ -186,3 +195,20 @@ export const actions: Actions = {
     return { imported: inputs.length, skipped: errors.length };
   },
 };
+
+// Accept ISO ("2026-01-01"), M/D/YY, M/D/YYYY, and the same with a leading
+// weekday like "Thu 1/1/26" or "Thursday, 1/1/2026" (cumulative-sheet style).
+function normalizeImportDate(raw: string): string | null {
+  const v = raw.trim();
+  if (!v) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const stripped = v.replace(/^[A-Za-z]+\.?,?\s+/, '');
+  const m = stripped.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})$/);
+  if (!m) return null;
+  const month = Number(m[1]);
+  const day = Number(m[2]);
+  let year = Number(m[3]);
+  if (year < 100) year += 2000;
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
