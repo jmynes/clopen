@@ -639,7 +639,7 @@
                   ? 'bg-muted/70'
                   : ''}"
           >
-            <div class="w-28 shrink-0 pt-2 font-mono text-sm uppercase tabular-nums">
+            <div class="flex h-8 w-28 shrink-0 items-center font-mono text-sm uppercase tabular-nums">
               <span class="font-medium">{weekdayShort(date)}</span>
               <span class="ml-1 text-muted-foreground">{formatDay(date).replace(/^\w+,\s/, '')}</span>
             </div>
