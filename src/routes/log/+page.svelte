@@ -28,7 +28,7 @@
   import { formatDay, formatRangeISO, formatTime, formatWeekRange, isWeekend, todayISO, weekdayShort } from '$lib/date';
   import type { TimeEntry } from '$lib/db/schema';
   import { LEAVE_KINDS, LEAVE_META, type LeaveKind } from '$lib/leave-kinds';
-  import { addDays, parseTimeInput, weekDates } from '$lib/timesheet';
+  import { addDays, hoursBetween, parseTimeInput, weekDates } from '$lib/timesheet';
   import type { ActionData, PageData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -76,6 +76,30 @@
 
   // Input mode for the single-entry form: clock in/out (default) or plain hours.
   let addMode = $state<'hours' | 'clock'>('clock');
+  // Bound copies of the add-form inputs so the read-only Worked field can show
+  // the live computed total (same math as the entries table: hours - break).
+  let addStart = $state('');
+  let addEnd = $state('');
+  let addHours = $state('');
+  let addBreak = $state('');
+  const addWorked = $derived.by(() => {
+    const brk = Number(addBreak) || 0;
+    if (addMode === 'clock') {
+      const start = parseTimeInput(addStart);
+      const end = parseTimeInput(addEnd);
+      if (!start || !end) return null;
+      return Math.max(0, hoursBetween(start, end) - brk);
+    }
+    const h = Number(addHours);
+    if (!h) return null;
+    return Math.max(0, h - brk);
+  });
+  function resetAddFields() {
+    addStart = '';
+    addEnd = '';
+    addHours = '';
+    addBreak = '';
+  }
   let addModeInput: HTMLInputElement | null = $state(null);
   let addKindInput: HTMLInputElement | null = $state(null);
 
@@ -144,7 +168,7 @@
   }
   // Re-runnable enhance factory: closes over a `resetOnSuccess` flag so the
   // weekly grid (which resets) and import form (which doesn't) share one path.
-  function conflictAwareEnhance(opts: { resetOnSuccess?: boolean } = {}) {
+  function conflictAwareEnhance(opts: { resetOnSuccess?: boolean; onSuccess?: () => void } = {}) {
     return ({ formElement, formData }: { formElement: HTMLFormElement; formData: FormData }) => {
       // If this is the user's first submit (not a retry), strip any stale
       // conflictStrategy from a previous round so the server re-detects.
@@ -159,6 +183,7 @@
         }
         clearConflictStrategy(formElement);
         await update({ reset: opts.resetOnSuccess && result.type === 'success' });
+        if (result.type === 'success') opts.onSuccess?.();
       };
     };
   }
@@ -372,6 +397,34 @@
   // Column order per mode; paste/fill distribute across these (notes included).
   const gridCols = $derived(weekMode === 'clock' ? ['start', 'end', 'break', 'note'] : ['hours', 'break', 'note']);
 
+  // Per-row computed Worked totals, read from the DOM (the grid is deliberately
+  // uncontrolled: paste and fill write input values directly). Recomputed on
+  // every input event and after any programmatic write.
+  let weekTotals = $state<(number | null)[]>(Array(7).fill(null));
+  function recomputeWeekTotals() {
+    weekTotals = weekRowDates.map((_, i) => {
+      if (leaveRows.has(i)) return null;
+      const brk = Number(inputByName(`break-${i}`)?.value) || 0;
+      if (weekMode === 'clock') {
+        const start = parseTimeInput(inputByName(`start-${i}`)?.value ?? '');
+        const end = parseTimeInput(inputByName(`end-${i}`)?.value ?? '');
+        if (!start || !end) return null;
+        return Math.max(0, hoursBetween(start, end) - brk);
+      }
+      const h = Number(inputByName(`hours-${i}`)?.value);
+      if (!h) return null;
+      return Math.max(0, h - brk);
+    });
+  }
+  // Week navigation and mode switches recreate the inputs; re-read once the
+  // new DOM is in place.
+  $effect(() => {
+    void weekRowDates;
+    void weekMode;
+    void leaveRows;
+    recomputeWeekTotals();
+  });
+
   function inputByName(name: string): HTMLInputElement | null {
     const el = weekForm?.querySelector(`[name="${name}"]`);
     return el instanceof HTMLInputElement ? el : null;
@@ -398,6 +451,7 @@
       if (/^(start|end|break|hours|note)-\d$/.test(el.name)) el.value = '';
     });
     leaveRows = new Map();
+    recomputeWeekTotals();
   }
 
   // Per-row leave selection. Rows present in this map render in leave mode
@@ -509,6 +563,7 @@
         for (const r of rows) {
           if (r !== row) setCell(col, r, src.value);
         }
+        recomputeWeekTotals();
         return;
       }
     }
@@ -519,6 +574,7 @@
       if (!first?.value) continue;
       for (const row of rows.slice(1)) setCell(col, row, first.value);
     }
+    recomputeWeekTotals();
   }
 
   // Enter behaves like Tab inside the weekly grid: blurs the current cell
@@ -564,6 +620,7 @@
         if (col) setCell(col, row, value);
       });
     });
+    recomputeWeekTotals();
   }
 </script>
 
@@ -600,7 +657,7 @@
       <form
         method="POST"
         action="?/add"
-        use:enhance={conflictAwareEnhance({ resetOnSuccess: true })}
+        use:enhance={conflictAwareEnhance({ resetOnSuccess: true, onSuccess: resetAddFields })}
         class="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-end"
       >
         <input type="hidden" name="mode" value={addMode} bind:this={addModeInput} />
@@ -627,6 +684,7 @@
                 id="startTime"
                 type="text"
                 name="startTime"
+                bind:value={addStart}
                 inputmode="numeric"
                 autocomplete="off"
                 placeholder={startPlaceholder}
@@ -644,6 +702,7 @@
                 id="endTime"
                 type="text"
                 name="endTime"
+                bind:value={addEnd}
                 inputmode="numeric"
                 autocomplete="off"
                 placeholder={endPlaceholder}
@@ -663,6 +722,7 @@
               id="hours"
               type="number"
               name="hours"
+              bind:value={addHours}
               step="0.25"
               min="0.25"
               max="24"
@@ -681,6 +741,7 @@
             id="breakHours"
             type="number"
             name="breakHours"
+            bind:value={addBreak}
             step="0.25"
             min="0"
             max="24"
@@ -690,6 +751,17 @@
             class="md:w-24"
           />
           {#if addErrors.breakHours}<p id="breakHours-error" class="text-xs text-destructive">{addErrors.breakHours}</p>{/if}
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <Label for="add-worked">Worked</Label>
+          <Input
+            id="add-worked"
+            type="text"
+            readonly
+            tabindex={-1}
+            value={addWorked === null ? '—' : hrs(addWorked)}
+            class="pointer-events-none bg-muted/40 font-mono tabular-nums text-muted-foreground md:w-24"
+          />
         </div>
         <div class="flex w-full basis-full flex-col gap-1.5">
           <Label for="note">Note <span class="text-muted-foreground">(optional)</span></Label>
@@ -834,8 +906,9 @@
         action="?/addWeek"
         onpaste={onGridPaste}
         onfocusin={onGridFocusIn}
+        oninput={recomputeWeekTotals}
         onkeydown={onGridKeydown}
-        use:enhance={conflictAwareEnhance({ resetOnSuccess: true })}
+        use:enhance={conflictAwareEnhance({ resetOnSuccess: true, onSuccess: recomputeWeekTotals })}
         class="flex flex-col gap-3"
       >
         <input type="hidden" name="weekStart" value={weekStart} />
@@ -851,12 +924,14 @@
             <span class="w-20 shrink-0">Hours</span>
           {/if}
           <span class="w-20 shrink-0">Break</span>
+          <span class="w-20 shrink-0">Worked</span>
           <span class="flex-1">Note</span>
           <span class="w-40 shrink-0">Leave</span>
         </div>
         <div class="grid gap-3 md:grid-cols-2 lg:contents">
           {#each weekRows as { date, i }, idx (date)}
             {@const rowErr = (col: string) => weekErrors[`${col}-${i}`]}
+            {@const rowWorked = weekTotals[i]}
             {@const leaveKind = leaveRows.get(i) ?? null}
             {@const isLeave = leaveKind !== null}
             {@const rowUnpaid = isLeave ? !LEAVE_META[leaveKind].paid : false}
@@ -970,7 +1045,7 @@
                         {#if rowErr('end')}<p class="text-xs text-destructive">{rowErr('end')}</p>{/if}
                       </div>
                     {:else}
-                      <div class="col-span-3 flex flex-col gap-1 lg:w-20 lg:shrink-0">
+                      <div class="col-span-2 flex flex-col gap-1 lg:w-20 lg:shrink-0">
                         <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Hours</span>
                         <Input
                           type="number"
@@ -986,7 +1061,7 @@
                         {#if rowErr('hours')}<p class="text-xs text-destructive">{rowErr('hours')}</p>{/if}
                       </div>
                     {/if}
-                    <div class="{weekMode === 'clock' ? 'col-span-2' : 'col-span-3'} flex flex-col gap-1 lg:w-20 lg:shrink-0">
+                    <div class="{weekMode === 'clock' ? 'col-span-3' : 'col-span-2'} flex flex-col gap-1 lg:w-20 lg:shrink-0">
                       <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Break</span>
                       <Input
                         type="number"
@@ -1001,7 +1076,18 @@
                       />
                       {#if rowErr('break')}<p class="text-xs text-destructive">{rowErr('break')}</p>{/if}
                     </div>
-                    <div class="{weekMode === 'clock' ? 'col-span-4' : 'col-span-6'} flex flex-col gap-1 lg:flex-1">
+                    <div class="{weekMode === 'clock' ? 'col-span-3' : 'col-span-2'} flex flex-col gap-1 lg:w-20 lg:shrink-0">
+                      <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Worked</span>
+                      <Input
+                        type="text"
+                        readonly
+                        tabindex={-1}
+                        value={rowWorked === null ? '—' : hrs(rowWorked)}
+                        aria-label="Worked hours for {weekdayShort(date)}"
+                        class="pointer-events-none bg-muted/40 font-mono tabular-nums text-muted-foreground"
+                      />
+                    </div>
+                    <div class="col-span-6 flex flex-col gap-1 lg:flex-1">
                       <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Note</span>
                       <Input
                         type="text"
