@@ -734,7 +734,7 @@
               type="button"
               variant="outline"
               size="sm"
-              class="shrink-0 border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 {isPto
+              class="mt-1 shrink-0 self-center border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 {isPto
                 ? 'bg-emerald-500/20 ring-2 ring-inset ring-emerald-500/50'
                 : 'bg-emerald-500/10'}"
               onclick={() => togglePtoRow(i)}
@@ -886,7 +886,11 @@
                 </Table.Row>
               {:else}
                 {@const entry = row.entry}
-                <Table.Row class="even:bg-muted/70">
+                <Table.Row
+                  class={entry.isPto
+                    ? 'bg-emerald-500/10 ring-1 ring-inset ring-emerald-500/20 hover:bg-emerald-500/15'
+                    : 'even:bg-muted/70'}
+                >
                 <Table.Cell class="font-mono text-sm uppercase tabular-nums">
                   <span class="text-muted-foreground">{weekdayShort(entry.date)}</span>
                   <span class="ml-1">{formatDay(entry.date).replace(/^\w+,\s/, '')}</span>
