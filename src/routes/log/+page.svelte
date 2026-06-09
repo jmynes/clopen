@@ -154,6 +154,23 @@
     }
   }
 
+  // Enter behaves like Tab inside the weekly grid: blurs the current cell
+  // (which normalizes clock values) and moves to the next input instead of
+  // submitting the form. Mirrors the Add-an-entry implicit behavior.
+  function onGridKeydown(e: KeyboardEvent) {
+    if (e.key !== 'Enter') return;
+    const t = e.target;
+    if (!(t instanceof HTMLInputElement)) return;
+    if (!/^(start|end|break|hours|note)-\d$/.test(t.name)) return;
+    e.preventDefault();
+    const inputs = Array.from(weekForm?.querySelectorAll<HTMLInputElement>('input[name]') ?? []).filter((el) =>
+      /^(start|end|break|hours|note)-\d$/.test(el.name),
+    );
+    const i = inputs.indexOf(t);
+    if (i >= 0 && i + 1 < inputs.length) inputs[i + 1].focus();
+    else t.blur();
+  }
+
   // Paste a block copied from Excel/Sheets (TSV) anchored at the focused cell.
   function onGridPaste(e: ClipboardEvent) {
     const text = e.clipboardData?.getData('text/plain') ?? '';
@@ -382,6 +399,7 @@
         method="POST"
         action="?/addWeek"
         onpaste={onGridPaste}
+        onkeydown={onGridKeydown}
         use:enhance={() => {
           return async ({ update }) => {
             await update({ reset: true });
