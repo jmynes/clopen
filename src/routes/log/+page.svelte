@@ -791,7 +791,7 @@
           {/if}
           <span class="w-20 shrink-0">Break</span>
           <span class="flex-1">Note</span>
-          <span class="w-40 shrink-0 text-center">Leave</span>
+          <span class="w-40 shrink-0">Leave</span>
         </div>
         <div class="grid gap-3 md:grid-cols-2 lg:contents">
           {#each weekRows as { date, i }, idx (date)}
