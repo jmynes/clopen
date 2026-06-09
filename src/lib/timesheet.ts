@@ -2,9 +2,10 @@
  * Make-whole timesheet math. Pure, dependency-free, timezone-safe.
  *
  * Model: hourly pay, a baseline of `dailyHours` on each configured workday
- * (default Mon–Fri = 8h × 5 = 40h/week). Overtime is tracked but not paid at
- * a premium — it simply banks against shortfalls because we compare *total*
- * logged hours to the *total* expected hours up to the as-of date. The year
+ * (default Mon–Fri = 8h × 5 = 40h/week). Overtime banks against shortfalls
+ * because we compare *total* logged hours to the *total* expected hours up to
+ * the as-of date; `overtimeHours` measures the premium-eligible portion for
+ * the optional pay multiplier. The year
  * boundary is the calendar year (Jan 1).
  *
  * Dates are ISO `YYYY-MM-DD` strings interpreted as local-naive calendar days.
@@ -140,6 +141,21 @@ export function hoursBetween(start: string, end: string): number {
 
 export function loggedHours(entries: EntryLike[]): number {
   return round2(entries.reduce((sum, e) => sum + e.hours - (e.breakHours ?? 0), 0));
+}
+
+/**
+ * Net hours beyond `dailyHours` summed per calendar day. Short days never
+ * offset over days — this measures premium-eligible hours, not the running
+ * make-whole balance.
+ */
+export function overtimeHours(entries: EntryLike[], dailyHours: number): number {
+  const byDay = new Map<string, number>();
+  for (const e of entries) {
+    byDay.set(e.date, (byDay.get(e.date) ?? 0) + e.hours - (e.breakHours ?? 0));
+  }
+  let ot = 0;
+  for (const net of byDay.values()) ot += Math.max(0, net - dailyHours);
+  return round2(ot);
 }
 
 export function makeWholeStatus(params: {

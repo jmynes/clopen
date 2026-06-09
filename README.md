@@ -12,8 +12,9 @@ amount?**
   see whether you made it, came up short, or are still on pace.
 - **Tracking epoch.** Year-to-date math is clamped to your start date so
   year-one doesn't backfill expected hours before you began.
-- **Overtime banks.** Extra hours offset shortfalls; they aren't paid at a
-  premium — the app compares *total logged* against *total expected*.
+- **Overtime banks.** Extra hours offset shortfalls — the app compares *total
+  logged* against *total expected*. Optionally, day-hours beyond the baseline
+  earn at a configurable multiplier (default 1.5×, toggled off).
 - **Leave taxonomy.** Eight kinds in paid/unpaid pairs: **PTO / UPTO**,
   **Sick (paid / unpaid)**, **Holiday (paid / unpaid)**, **Vacation (paid /
   unpaid)**. Paid kinds credit the daily baseline; unpaid kinds record 0h.
@@ -41,8 +42,9 @@ bun run dev            # http://localhost:5173
 
 1. **Settings** — hourly rate (defaults to $38.4615 = 80k / 2080h), hours per
    workday, workdays, week start (Sunday default), tracking epoch, 12h/24h
-   clock format, weekend visibility (hide empty weekends in Entries and/or the
-   weekly grid), and whether entry notes start expanded.
+   clock format, an optional overtime pay multiplier (default 1.5×, off),
+   weekend visibility (hide empty weekends in Entries and/or the weekly grid),
+   and whether entry notes start expanded.
 2. **Log** — record entries one at a time, a full week at once, or import a CSV.
    Each row supports clock in/out, plain hours, or a single-tap **PTO** button.
 3. **Dashboard** — pick a period and read off the verdict; the YTD weekly chart

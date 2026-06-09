@@ -92,6 +92,41 @@
           </div>
         </fieldset>
 
+        <fieldset class="flex flex-col gap-2">
+          <legend class="mb-1 text-sm font-medium">Overtime</legend>
+          <label
+            class="flex cursor-pointer items-start gap-2 rounded-md border border-input px-3 py-2 text-sm has-checked:border-primary has-checked:bg-accent"
+          >
+            <input
+              type="checkbox"
+              name="otMultiplierEnabled"
+              checked={data.otMultiplierEnabled}
+              class="mt-0.5 accent-primary"
+            />
+            <span>
+              <span class="font-medium">Overtime multiplies pay</span>
+              <span class="block text-xs text-muted-foreground">
+                Day-hours beyond the daily baseline earn at the multiplier below. Off keeps them at straight time —
+                overtime banks against shortfalls either way.
+              </span>
+            </span>
+          </label>
+          <div class="flex flex-col gap-1.5">
+            <Label for="otMultiplier">Multiplier (× hourly rate)</Label>
+            <Input
+              id="otMultiplier"
+              type="number"
+              name="otMultiplier"
+              step="0.05"
+              min="1"
+              max="10"
+              value={data.otMultiplier}
+              required
+              class="w-full sm:w-28"
+            />
+          </div>
+        </fieldset>
+
         <div class="flex flex-col gap-1.5">
           <Label for="epoch">Tracking since</Label>
           <p class="text-xs text-muted-foreground">
@@ -190,13 +225,14 @@
       </Card.Root>
     </div>
 
-    <div class="flex items-center gap-3">
-      <Button type="submit" class="hover:bg-primary/75">Save settings</Button>
+    <!-- Footer action bar spans both cards so Save reads as the form's footer. -->
+    <div class="flex flex-wrap items-center justify-end gap-3 rounded-xl bg-card px-4 py-3 ring-1 ring-foreground/10">
       {#if form?.saved}
         <span class="flex items-center gap-1 text-sm text-success"><Check class="size-4" /> Saved</span>
       {:else if form && 'error' in form && form.error}
         <span class="text-sm text-destructive">{form.error}</span>
       {/if}
+      <Button type="submit" class="hover:bg-primary/75 max-md:w-full">Save settings</Button>
     </div>
   </form>
 </div>

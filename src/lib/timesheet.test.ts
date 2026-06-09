@@ -6,6 +6,7 @@ import {
   hoursBetween,
   loggedHours,
   makeWholeStatus,
+  overtimeHours,
   parseTimeInput,
   type WorkSettings,
   weekDates,
@@ -183,6 +184,45 @@ describe('loggedHours', () => {
 
   it('treats a missing break as zero', () => {
     expect(loggedHours([{ date: '2026-01-05', hours: 8 }])).toBe(8);
+  });
+});
+
+describe('overtimeHours', () => {
+  it('is 0 for no entries or under-baseline days', () => {
+    expect(overtimeHours([], 8)).toBe(0);
+    expect(overtimeHours([{ date: '2026-01-05', hours: 7 }], 8)).toBe(0);
+  });
+
+  it('counts net hours beyond the daily baseline', () => {
+    expect(overtimeHours([{ date: '2026-01-05', hours: 10 }], 8)).toBe(2);
+  });
+
+  it('deducts breaks before comparing to the baseline', () => {
+    expect(overtimeHours([{ date: '2026-01-05', hours: 10, breakHours: 1 }], 8)).toBe(1);
+  });
+
+  it('aggregates multiple entries on the same day', () => {
+    expect(
+      overtimeHours(
+        [
+          { date: '2026-01-05', hours: 5 },
+          { date: '2026-01-05', hours: 5 },
+        ],
+        8,
+      ),
+    ).toBe(2);
+  });
+
+  it('never nets a short day against an over day', () => {
+    expect(
+      overtimeHours(
+        [
+          { date: '2026-01-05', hours: 10 },
+          { date: '2026-01-06', hours: 6 },
+        ],
+        8,
+      ),
+    ).toBe(2);
   });
 });
 

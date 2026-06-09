@@ -16,6 +16,8 @@ export const settingsInput = z.object({
   hideWeekendsEntries: z.boolean().default(false),
   hideWeekendsGrid: z.boolean().default(false),
   expandNotes: z.boolean().default(false),
+  otMultiplierEnabled: z.boolean().default(false),
+  otMultiplier: z.coerce.number().min(1, 'Multiplier must be at least 1').max(10).default(1.5),
 });
 
 export type SettingsInput = z.infer<typeof settingsInput>;

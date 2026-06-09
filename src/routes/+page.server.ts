@@ -37,6 +37,8 @@ export const load: PageServerLoad = async ({ url }) => {
     workdays: settings.workdays,
     weekStartsOn: settingsRow.weekStartsOn,
     epoch: settingsRow.epoch,
+    otMultiplierEnabled: settingsRow.otMultiplierEnabled,
+    otMultiplier: settingsRow.otMultiplier,
     entries,
     status,
     weeks,

@@ -53,6 +53,9 @@ export const settings = sqliteTable('settings', {
   hideWeekendsGrid: integer('hide_weekends_grid', { mode: 'boolean' }).notNull().default(false),
   /** Start with every entry's note accordion expanded in the Entries views. */
   expandNotes: integer('expand_notes', { mode: 'boolean' }).notNull().default(false),
+  /** Pay day-hours beyond the daily baseline at `otMultiplier` × rate. */
+  otMultiplierEnabled: integer('ot_multiplier_enabled', { mode: 'boolean' }).notNull().default(false),
+  otMultiplier: real('ot_multiplier').notNull().default(1.5),
 });
 
 export type TimeEntry = typeof timeEntries.$inferSelect;

@@ -19,6 +19,8 @@ const DEFAULTS = {
   hideWeekendsEntries: false,
   hideWeekendsGrid: false,
   expandNotes: false,
+  otMultiplierEnabled: false,
+  otMultiplier: 1.5,
 } satisfies Settings;
 
 /** Read the single settings row, seeding defaults on first access. */
@@ -41,6 +43,8 @@ export async function updateSettings(input: SettingsInput, database: Database = 
     hideWeekendsEntries: input.hideWeekendsEntries,
     hideWeekendsGrid: input.hideWeekendsGrid,
     expandNotes: input.expandNotes,
+    otMultiplierEnabled: input.otMultiplierEnabled,
+    otMultiplier: input.otMultiplier,
   };
   await database
     .insert(settings)
@@ -57,6 +61,8 @@ export async function updateSettings(input: SettingsInput, database: Database = 
         hideWeekendsEntries: row.hideWeekendsEntries,
         hideWeekendsGrid: row.hideWeekendsGrid,
         expandNotes: row.expandNotes,
+        otMultiplierEnabled: row.otMultiplierEnabled,
+        otMultiplier: row.otMultiplier,
       },
     });
 }

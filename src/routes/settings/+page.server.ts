@@ -13,6 +13,8 @@ export const load: PageServerLoad = async () => {
     hideWeekendsEntries: row.hideWeekendsEntries,
     hideWeekendsGrid: row.hideWeekendsGrid,
     expandNotes: row.expandNotes,
+    otMultiplierEnabled: row.otMultiplierEnabled,
+    otMultiplier: row.otMultiplier,
   };
 };
 
@@ -30,6 +32,8 @@ export const actions: Actions = {
       hideWeekendsEntries: form.has('hideWeekendsEntries'),
       hideWeekendsGrid: form.has('hideWeekendsGrid'),
       expandNotes: form.has('expandNotes'),
+      otMultiplierEnabled: form.has('otMultiplierEnabled'),
+      otMultiplier: form.get('otMultiplier'),
     });
     if (!parsed.success) {
       return fail(400, { error: parsed.error.issues.map((i) => i.message).join('; ') });

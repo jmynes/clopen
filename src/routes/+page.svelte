@@ -11,7 +11,7 @@
   import * as Card from '$lib/components/ui/card';
   import WeeklyChart from '$lib/components/WeeklyChart.svelte';
   import { formatDay, formatRangeISO, formatWeekRange, todayISO } from '$lib/date';
-  import { addDays, countWorkdays, loggedHours, weekDates } from '$lib/timesheet';
+  import { addDays, countWorkdays, loggedHours, overtimeHours, weekDates } from '$lib/timesheet';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -106,7 +106,12 @@
   const net = $derived(Math.round((logged - expectedHours) * 100) / 100);
 
   const expectedDollars = $derived(expectedHours * data.hourlyRate);
-  const earnedDollars = $derived(logged * data.hourlyRate);
+  // Day-hours beyond the baseline earn at the multiplier when enabled;
+  // otherwise everything is straight time (overtime still banks either way).
+  const otHours = $derived(data.otMultiplierEnabled ? overtimeHours(inRange, data.dailyHours) : 0);
+  const earnedDollars = $derived(
+    (logged - otHours) * data.hourlyRate + otHours * data.hourlyRate * data.otMultiplier,
+  );
   const dollarsDelta = $derived(earnedDollars - expectedDollars);
 
   // Period state: future / in-progress / done.

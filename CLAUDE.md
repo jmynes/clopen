@@ -10,9 +10,10 @@ chosen period (week / bi-week / month / quarter / year), did I work the hours I
 owe, and is my pay right?*
 
 **Model:** hourly pay; baseline of `dailyHours` (default 8h) on each configured
-workday (default Mon–Fri → 40h/week). Overtime is tracked but **not** paid at a
-premium — it banks against shortfalls because we compare *total* logged hours
-to *total* expected hours up to the as-of date. **Leave** is a first-class
+workday (default Mon–Fri → 40h/week). Overtime is tracked and banks against shortfalls because we compare *total*
+logged hours to *total* expected hours up to the as-of date; by default it is
+**not** paid at a premium, but an optional setting pays day-hours beyond the
+baseline at `otMultiplier` × rate (default 1.5×, toggled off). **Leave** is a first-class
 entry-kind taxonomy (8 kinds in paid/unpaid pairs: PTO/UPTO, Sick, Holiday,
 Vacation). Paid kinds credit the daily baseline (default 8h, no clock times);
 unpaid kinds record 0h with the same badge but a dashed outline. **No excused days** — any unlogged workday is a deficit.
@@ -71,7 +72,7 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
 ## Architecture
 
 - `src/lib/timesheet.ts` — pure make-whole math: `countWorkdays`,
-  `expectedHours`, `loggedHours`, `makeWholeStatus`, `weeklyBreakdown`,
+  `expectedHours`, `loggedHours`, `overtimeHours`, `makeWholeStatus`, `weeklyBreakdown`,
   `weekDates`, `yearStartOf`, `parseTimeInput`, `hoursBetween`. Timezone-safe
   (UTC arithmetic on explicit dates). `hoursBetween` wraps past midnight when
   the end time precedes the start. `makeWholeStatus` takes an optional `epoch`
@@ -87,7 +88,9 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
     `hideWeekendsGrid` (booleans, default false — hide blank Sat/Sun rows in the
     entries views, and Sat/Sun rows in the weekly grid which implies the former;
     weekend days with entries always show), `expandNotes` (boolean, default
-    false — entry notes start expanded in the Entries views).
+    false — entry notes start expanded in the Entries views),
+    `otMultiplierEnabled` / `otMultiplier` (default false / 1.5 — pay day-hours
+    beyond the baseline at the multiplier; dashboard earnings only).
 - `src/lib/db/index.ts` — Drizzle/libSQL client, **lazy-constructed via Proxy**
   so module load doesn't open a connection during SvelteKit's build analyse pass.
   Local default `file:./local.db`.
