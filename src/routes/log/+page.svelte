@@ -992,8 +992,8 @@
         >
           <span class="w-28 shrink-0">Day</span>
           {#if weekMode === 'clock'}
-            <span class="w-40 shrink-0">In</span>
-            <span class="w-40 shrink-0">Out</span>
+            <span class="w-32 shrink-0">In</span>
+            <span class="w-32 shrink-0">Out</span>
           {:else}
             <span class="w-20 shrink-0">Hours</span>
           {/if}
@@ -1101,7 +1101,7 @@
                 {:else}
                   <div class="grid grid-cols-6 gap-2 lg:contents">
                     {#if weekMode === 'clock'}
-                      <div class="col-span-3 flex flex-col gap-1 lg:w-40 lg:shrink-0">
+                      <div class="col-span-3 flex flex-col gap-1 lg:w-32 lg:shrink-0">
                         <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">In</span>
                         <Input
                           type="text"
@@ -1116,7 +1116,7 @@
                         />
                         {#if rowErr('start')}<p class="text-xs text-destructive">{rowErr('start')}</p>{/if}
                       </div>
-                      <div class="col-span-3 flex flex-col gap-1 lg:w-40 lg:shrink-0">
+                      <div class="col-span-3 flex flex-col gap-1 lg:w-32 lg:shrink-0">
                         <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Out</span>
                         <Input
                           type="text"
@@ -1208,7 +1208,7 @@
                     <div class="grid grid-cols-6 gap-2 lg:contents">
                       <div class="hidden lg:block lg:w-28 lg:shrink-0"></div>
                       {#if weekMode === 'clock'}
-                        <div class="col-span-3 flex flex-col gap-1 lg:w-40 lg:shrink-0">
+                        <div class="col-span-3 flex flex-col gap-1 lg:w-32 lg:shrink-0">
                           <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">In</span>
                           <Input
                             type="text"
@@ -1227,7 +1227,7 @@
                           />
                           {#if weekErrors[`start-${i}-${j + 1}`]}<p class="text-xs text-destructive">{weekErrors[`start-${i}-${j + 1}`]}</p>{/if}
                         </div>
-                        <div class="col-span-3 flex flex-col gap-1 lg:w-40 lg:shrink-0">
+                        <div class="col-span-3 flex flex-col gap-1 lg:w-32 lg:shrink-0">
                           <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Out</span>
                           <Input
                             type="text"
