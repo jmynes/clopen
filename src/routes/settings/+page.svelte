@@ -119,7 +119,7 @@
         </Card.Header>
         <Card.Content class="flex flex-col divide-y divide-border/50">
           <section class="flex flex-col gap-3 pb-5">
-            <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Compensation</h3>
+            <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">Compensation</h3>
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div class="flex flex-col gap-1.5">
                 <Label for="hourlyRate">Hourly rate (USD)</Label>
@@ -150,7 +150,7 @@
           </section>
 
           <section class="flex flex-col gap-3 py-5">
-            <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Overtime</h3>
+            <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">Overtime</h3>
             <div class="rounded-md border border-input text-sm transition-colors has-checked:border-primary has-checked:bg-accent">
               <label class="flex cursor-pointer items-start gap-2 px-3 py-2">
                 <input type="checkbox" name="otMultiplierEnabled" bind:checked={otEnabled} class="mt-0.5 accent-primary" />
@@ -199,7 +199,7 @@
             </div>
           </section>
           <section class="flex flex-col gap-4 pt-5">
-            <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Schedule</h3>
+            <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">Schedule</h3>
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div class="flex flex-col gap-1.5">
                 <Label for="weekStartsOn">Week starts on</Label>
@@ -257,7 +257,7 @@
         </Card.Header>
         <Card.Content class="flex flex-col divide-y divide-border/50">
           <fieldset class="flex flex-col gap-3 pb-5">
-            <legend class="float-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            <legend class="float-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:w-full max-md:text-center">
               Weekends
             </legend>
             <label
@@ -296,7 +296,7 @@
           </fieldset>
 
           <fieldset class="flex flex-col gap-3 py-5">
-            <legend class="float-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            <legend class="float-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:w-full max-md:text-center">
               Notes
             </legend>
             <label
@@ -314,7 +314,7 @@
           </fieldset>
 
           <section class="flex flex-col gap-3 pt-5">
-            <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Clock</h3>
+            <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">Clock</h3>
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div class="flex flex-col gap-1.5">
                 <Label for="timeFormat">Time format</Label>
