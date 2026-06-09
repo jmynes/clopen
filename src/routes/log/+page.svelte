@@ -8,17 +8,14 @@
   import Minimize2 from '@lucide/svelte/icons/minimize-2';
   import Palmtree from '@lucide/svelte/icons/palmtree';
   import PartyPopper from '@lucide/svelte/icons/party-popper';
-  import Pencil from '@lucide/svelte/icons/pencil';
   import Plane from '@lucide/svelte/icons/plane';
   import Plus from '@lucide/svelte/icons/plus';
-  import StickyNote from '@lucide/svelte/icons/sticky-note';
   import Thermometer from '@lucide/svelte/icons/thermometer';
-  import Trash2 from '@lucide/svelte/icons/trash-2';
   import Upload from '@lucide/svelte/icons/upload';
   import X from '@lucide/svelte/icons/x';
+  import { innerWidth } from 'svelte/reactivity/window';
   import { slide } from 'svelte/transition';
   import { enhance } from '$app/forms';
-  import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
   import * as Dialog from '$lib/components/ui/dialog';
@@ -219,6 +216,20 @@
   };
   let entriesPeriod = $state<Period>('year');
   let entriesAnchor = $state(todayISO());
+  // The entries table (md+) and stacked list (below md) are alternates; with
+  // hundreds of rows per period, rendering both and hiding one via CSS doubles
+  // the work. SSR/hydration (width unknown) renders both — the md:/md:hidden
+  // classes pick one visually — then the first client measure tears down the
+  // unused view.
+  const showEntriesTable = $derived(innerWidth.current === undefined || innerWidth.current >= 768);
+  const showEntriesList = $derived(innerWidth.current === undefined || innerWidth.current < 768);
+
+  // Entry-row action buttons are plain elements (ghost icon-button classes
+  // inlined) — with ~365 rows in a year view, per-row components are the
+  // difference between an instant and a multi-second period switch.
+  const ROW_BTN =
+    'inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-transparent transition-all outline-none select-none hover:bg-muted hover:text-foreground active:translate-y-px focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:hover:bg-muted/50';
+
   // Per-entry note accordion. Rows without an override follow the expandNotes
   // setting, so toggling the setting flips every untouched row at once.
   let noteOverrides = $state<Map<string, boolean>>(new Map());
@@ -1077,6 +1088,7 @@
       {:else if pagedEntries.length === 0}
         <p class="py-8 text-center text-sm text-muted-foreground">No entries in this {entriesPeriod}.</p>
       {:else}
+        {#if showEntriesTable}
         <div
           class="hidden overflow-y-auto rounded-md border border-input md:block {entriesExpanded
             ? 'min-h-0 flex-1'
@@ -1154,7 +1166,11 @@
                 </Table.Cell>
                 <Table.Cell class="text-center">
                   {#if !entryLeave && dayTotals[entry.date] > data.dailyHours}
-                    <Badge variant="secondary" class="bg-amber-500/15 text-amber-600 dark:text-amber-400">OT</Badge>
+                    <span
+                      class="inline-flex items-center rounded-md bg-amber-500/15 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400"
+                    >
+                      OT
+                    </span>
                   {/if}
                 </Table.Cell>
                 <Table.Cell class="text-center">
@@ -1171,33 +1187,7 @@
                 </Table.Cell>
                 <Table.Cell class="text-right">
                   <div class="flex justify-end gap-1">
-                    {#if entry.note}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        type="button"
-                        class={isNoteOpen(entry.id) ? 'bg-accent' : ''}
-                        aria-label={isNoteOpen(entry.id) ? 'Hide note' : 'Show note'}
-                        aria-expanded={isNoteOpen(entry.id)}
-                        onclick={() => toggleNote(entry.id)}
-                      >
-                        <StickyNote class="size-4" />
-                      </Button>
-                    {:else}
-                      <span class="inline-block size-8"></span>
-                    {/if}
-                    <Button variant="ghost" size="icon" onclick={() => openEdit(entry)} aria-label="Edit entry">
-                      <Pencil class="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      type="button"
-                      aria-label="Delete entry"
-                      onclick={() => confirmDelete(entry)}
-                    >
-                      <Trash2 class="size-4 text-destructive" />
-                    </Button>
+                    {@render rowActions(entry, true)}
                   </div>
                 </Table.Cell>
               </Table.Row>
@@ -1211,7 +1201,7 @@
                 >
                   <Table.Cell colspan={8} class="py-2">
                     <div transition:slide={{ duration: 150 }} class="flex items-start gap-2 text-sm text-muted-foreground">
-                      <StickyNote class="mt-0.5 size-3.5 shrink-0" />
+                      {@render iconNote('mt-0.5 size-3.5 shrink-0')}
                       <span class="whitespace-pre-wrap">{entry.note}</span>
                     </div>
                   </Table.Cell>
@@ -1222,8 +1212,10 @@
           </Table.Body>
         </Table.Root>
         </div>
+        {/if}
 
         <!-- mobile entries list: same rows, stacked layout -->
+        {#if showEntriesList}
         <div
           class="divide-y divide-input overflow-y-auto rounded-md border border-input md:hidden {entriesExpanded
             ? 'min-h-0 flex-1'
@@ -1263,7 +1255,11 @@
                       <span class="ml-1">{formatDay(entry.date).replace(/^\w+,\s/, '')}</span>
                     </span>
                     {#if !entryLeave && dayTotals[entry.date] > data.dailyHours}
-                      <Badge variant="secondary" class="bg-amber-500/15 text-amber-600 dark:text-amber-400">OT</Badge>
+                      <span
+                        class="inline-flex items-center rounded-md bg-amber-500/15 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400"
+                      >
+                        OT
+                      </span>
                     {/if}
                     {#if entryLeave}
                       {@const Icon = LEAVE_ICON[entryLeave]}
@@ -1295,31 +1291,7 @@
                 <div class="flex shrink-0 flex-col items-end gap-1">
                   <span class="font-mono text-sm font-medium tabular-nums">{hrs(entry.hours - entry.breakHours)}</span>
                   <div class="flex gap-1">
-                    {#if entry.note}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        type="button"
-                        class={isNoteOpen(entry.id) ? 'bg-accent' : ''}
-                        aria-label={isNoteOpen(entry.id) ? 'Hide note' : 'Show note'}
-                        aria-expanded={isNoteOpen(entry.id)}
-                        onclick={() => toggleNote(entry.id)}
-                      >
-                        <StickyNote class="size-4" />
-                      </Button>
-                    {/if}
-                    <Button variant="ghost" size="icon" onclick={() => openEdit(entry)} aria-label="Edit entry">
-                      <Pencil class="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      type="button"
-                      aria-label="Delete entry"
-                      onclick={() => confirmDelete(entry)}
-                    >
-                      <Trash2 class="size-4 text-destructive" />
-                    </Button>
+                    {@render rowActions(entry)}
                   </div>
                 </div>
                 </div>
@@ -1328,7 +1300,7 @@
                     transition:slide={{ duration: 150 }}
                     class="flex items-start gap-2 border-t border-border/40 px-3 py-2 text-sm text-muted-foreground"
                   >
-                    <StickyNote class="mt-0.5 size-3.5 shrink-0" />
+                    {@render iconNote('mt-0.5 size-3.5 shrink-0')}
                     <span class="whitespace-pre-wrap">{entry.note}</span>
                   </div>
                 {/if}
@@ -1336,6 +1308,7 @@
             {/if}
           {/each}
         </div>
+        {/if}
       {/if}
     </Card.Content>
   </Card.Root>
@@ -1635,6 +1608,88 @@
     </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>
+
+<!-- Inline lucide SVGs (pencil / trash-2 / sticky-note, ISC): snippets render
+     plain elements, so the hundreds of entry rows skip component overhead. -->
+{#snippet iconPencil()}
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    class="size-4"
+    aria-hidden="true"
+  >
+    <path
+      d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"
+    />
+    <path d="m15 5 4 4" />
+  </svg>
+{/snippet}
+
+{#snippet iconTrash()}
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    class="size-4 text-destructive"
+    aria-hidden="true"
+  >
+    <path d="M10 11v6" />
+    <path d="M14 11v6" />
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+    <path d="M3 6h18" />
+    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+  </svg>
+{/snippet}
+
+{#snippet iconNote(cls = 'size-4')}
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    class={cls}
+    aria-hidden="true"
+  >
+    <path
+      d="M21 9a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 15 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2z"
+    />
+    <path d="M15 3v5a1 1 0 0 0 1 1h5" />
+  </svg>
+{/snippet}
+
+{#snippet rowActions(entry: TimeEntry, spacer = false)}
+  {#if entry.note}
+    <button
+      type="button"
+      class="{ROW_BTN} {isNoteOpen(entry.id) ? 'bg-accent' : ''}"
+      aria-label={isNoteOpen(entry.id) ? 'Hide note' : 'Show note'}
+      aria-expanded={isNoteOpen(entry.id)}
+      onclick={() => toggleNote(entry.id)}
+    >
+      {@render iconNote()}
+    </button>
+  {:else if spacer}
+    <span class="inline-block size-8"></span>
+  {/if}
+  <button type="button" class={ROW_BTN} aria-label="Edit entry" onclick={() => openEdit(entry)}>
+    {@render iconPencil()}
+  </button>
+  <button type="button" class={ROW_BTN} aria-label="Delete entry" onclick={() => confirmDelete(entry)}>
+    {@render iconTrash()}
+  </button>
+{/snippet}
 
 {#snippet clockTime(t: string)}
   {@const p = splitMeridiem(formatTime(t, data.timeFormat))}
