@@ -100,6 +100,25 @@
   --chart-5: oklch(0.645 0.246 16.439);
 }
 
+@layer utilities {
+  /* Diagonal hatch overlay used on unpaid leave rows so they read as "not paid"
+     at a glance even when the row already carries a leave-family tint. */
+  .unpaid-hatch {
+    background-image: repeating-linear-gradient(
+      135deg,
+      transparent 0 6px,
+      rgb(0 0 0 / 0.06) 6px 7px
+    );
+  }
+  .dark .unpaid-hatch {
+    background-image: repeating-linear-gradient(
+      135deg,
+      transparent 0 6px,
+      rgb(255 255 255 / 0.05) 6px 7px
+    );
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

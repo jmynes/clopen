@@ -1003,9 +1003,10 @@
               {:else}
                 {@const entry = row.entry}
                 {@const entryLeave = entry.entryKind !== 'work' ? (entry.entryKind as LeaveKind) : null}
+                {@const leaveIsUnpaid = entryLeave ? !LEAVE_META[entryLeave].paid : false}
                 <Table.Row
                   class={entryLeave
-                    ? KIND_CLASSES[entryLeave].row
+                    ? KIND_CLASSES[entryLeave].row + (leaveIsUnpaid ? ' unpaid-hatch' : '')
                     : idx % 2 === 1
                       ? 'bg-muted/70 hover:bg-muted!'
                       : 'hover:bg-muted/30!'}
