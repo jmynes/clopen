@@ -9,7 +9,7 @@ const WEEKDAY_FMT = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZon
 const LONG_FMT = new Intl.DateTimeFormat('en-US', {
   weekday: 'short',
   month: 'short',
-  day: 'numeric',
+  day: '2-digit',
   timeZone: 'UTC',
 });
 
