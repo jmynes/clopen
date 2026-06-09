@@ -207,46 +207,59 @@ export const actions: Actions = {
     };
 
     // weekStart is the first day of the grid; each row is the next day after it,
-    // so this is independent of which weekday the week starts on.
+    // so this is independent of which weekday the week starts on. Each day may
+    // carry extra inline shifts suffixed -1..-N (`start-3-1` = day 3, shift 2).
+    const MAX_EXTRA_SHIFTS = 5;
     type RowResult = {
-      i: number;
+      /** Error-key suffix: "3" for the main row, "3-1" for an extra shift. */
+      key: string;
       parsed:
         | ReturnType<typeof clockEntryInput.safeParse>
         | ReturnType<typeof entryInput.safeParse>
         | ReturnType<typeof leaveEntryInput.safeParse>;
-    } | null;
-    const rows: RowResult[] = Array.from({ length: 7 }, (_, i): RowResult => {
+    };
+    const filled: RowResult[] = [];
+    for (let i = 0; i < 7; i++) {
       const date = addDays(weekStart, i);
-      // Leave rows take precedence over the chosen clock/hours mode for that row.
+      // Leave rows take precedence over the chosen clock/hours mode for that
+      // row, and a leave day has no shifts.
       const leaveValue = String(form.get(`leave-${i}`) ?? '');
       if (isLeaveKind(leaveValue)) {
         const note = form.get(`note-${i}`) ?? undefined;
-        return { i, parsed: leaveEntryInput.safeParse({ date, note, kind: leaveValue, dailyHours: 8 }) };
+        filled.push({
+          key: String(i),
+          parsed: leaveEntryInput.safeParse({ date, note, kind: leaveValue, dailyHours: 8 }),
+        });
+        continue;
       }
-      const breakHours = form.get(`break-${i}`) || undefined;
-      const note = form.get(`note-${i}`) ?? undefined;
-      if (clock) {
-        const startTime = String(form.get(`start-${i}`) ?? '').trim();
-        const endTime = String(form.get(`end-${i}`) ?? '').trim();
-        if (!startTime && !endTime) return null; // empty row
-        return { i, parsed: clockEntryInput.safeParse({ date, startTime, endTime, breakHours, note }) };
+      for (let j = 0; j <= MAX_EXTRA_SHIFTS; j++) {
+        const sfx = j === 0 ? `-${i}` : `-${i}-${j}`;
+        const key = sfx.slice(1);
+        const breakHours = form.get(`break${sfx}`) || undefined;
+        const note = form.get(`note${sfx}`) ?? undefined;
+        if (clock) {
+          const startTime = String(form.get(`start${sfx}`) ?? '').trim();
+          const endTime = String(form.get(`end${sfx}`) ?? '').trim();
+          if (!startTime && !endTime) continue; // empty row/shift
+          filled.push({ key, parsed: clockEntryInput.safeParse({ date, startTime, endTime, breakHours, note }) });
+        } else {
+          const hours = String(form.get(`hours${sfx}`) ?? '').trim();
+          if (!hours) continue; // empty row/shift
+          filled.push({ key, parsed: entryInput.safeParse({ date, hours, breakHours, note }) });
+        }
       }
-      const hours = String(form.get(`hours-${i}`) ?? '').trim();
-      if (!hours) return null; // empty row
-      return { i, parsed: entryInput.safeParse({ date, hours, breakHours, note }) };
-    });
+    }
 
-    const filled = rows.filter((r): r is NonNullable<RowResult> => r !== null);
     if (filled.length === 0) return fail(400, { weekError: 'Fill in at least one day' });
 
     const weekFieldErrors: Record<string, string> = {};
-    for (const { i, parsed } of filled) {
+    for (const { key, parsed } of filled) {
       if (parsed.success) continue;
       for (const issue of parsed.error.issues) {
         const schemaField = String(issue.path[0] ?? '_');
         const inputName = FIELD_TO_INPUT[schemaField] ?? schemaField;
-        const key = `${inputName}-${i}`;
-        if (!weekFieldErrors[key]) weekFieldErrors[key] = issue.message;
+        const errKey = `${inputName}-${key}`;
+        if (!weekFieldErrors[errKey]) weekFieldErrors[errKey] = issue.message;
       }
     }
     if (Object.keys(weekFieldErrors).length > 0) {

@@ -6,6 +6,7 @@
   import Download from '@lucide/svelte/icons/download';
   import Maximize2 from '@lucide/svelte/icons/maximize-2';
   import Minimize2 from '@lucide/svelte/icons/minimize-2';
+  import Minus from '@lucide/svelte/icons/minus';
   import Palmtree from '@lucide/svelte/icons/palmtree';
   import PartyPopper from '@lucide/svelte/icons/party-popper';
   import Plane from '@lucide/svelte/icons/plane';
@@ -422,6 +423,28 @@
   // Column order per mode; paste/fill distribute across these (notes included).
   const gridCols = $derived(weekMode === 'clock' ? ['start', 'end', 'break', 'note'] : ['hours', 'break', 'note']);
 
+  // Inline extra shifts per day (offset-indexed). Unlike the main rows these
+  // are controlled state: paste and Fill deliberately ignore sub-rows, so
+  // bindings keep add/remove/renumber simple. Field names submit as
+  // `start-{i}-{j}` (shift j >= 1); the server probes those suffixes.
+  type SubShift = { start: string; end: string; hours: string; brk: string; note: string };
+  const emptySubShifts = (): SubShift[][] => Array.from({ length: 7 }, () => []);
+  let subShifts = $state<SubShift[][]>(emptySubShifts());
+  const MAX_EXTRA_SHIFTS = 5;
+  function addSubShift(i: number) {
+    if (subShifts[i].length >= MAX_EXTRA_SHIFTS) return;
+    subShifts[i].push({ start: '', end: '', hours: '', brk: '', note: '' });
+  }
+  function removeSubShift(i: number, j: number) {
+    subShifts[i].splice(j, 1);
+  }
+  // Navigating to another week discards the extra shift rows along with
+  // everything the keyed inputs already drop.
+  $effect(() => {
+    void weekStart;
+    subShifts = emptySubShifts();
+  });
+
   // Per-row computed Worked totals, read from the DOM (the grid is deliberately
   // uncontrolled: paste and fill write input values directly). Recomputed on
   // every input event and after any programmatic write.
@@ -439,6 +462,25 @@
       const h = Number(inputByName(`hours-${i}`)?.value);
       if (!h) return null;
       return Math.max(0, h - brk);
+    });
+    // Fold in the controlled sub-shifts (a day with only a complete sub-shift
+    // still shows a total).
+    weekTotals = weekTotals.map((main, i) => {
+      let total = main;
+      for (const sh of subShifts[i] ?? []) {
+        const sbrk = Number(sh.brk) || 0;
+        let v: number | null = null;
+        if (weekMode === 'clock') {
+          const ss = parseTimeInput(sh.start);
+          const se = parseTimeInput(sh.end);
+          if (ss && se) v = Math.max(0, hoursBetween(ss, se) - sbrk);
+        } else {
+          const h = Number(sh.hours);
+          if (h) v = Math.max(0, h - sbrk);
+        }
+        if (v !== null) total = (total ?? 0) + v;
+      }
+      return total;
     });
   }
   // Week navigation and mode switches recreate the inputs; re-read once the
@@ -476,6 +518,7 @@
       if (/^(start|end|break|hours|note)-\d$/.test(el.name)) el.value = '';
     });
     leaveRows = new Map();
+    subShifts = emptySubShifts();
     recomputeWeekTotals();
   }
 
@@ -609,10 +652,10 @@
     if (e.key !== 'Enter') return;
     const t = e.target;
     if (!(t instanceof HTMLInputElement)) return;
-    if (!/^(start|end|break|hours|note)-\d$/.test(t.name)) return;
+    if (!/^(start|end|break|hours|note)-\d(?:-\d)?$/.test(t.name)) return;
     e.preventDefault();
     const inputs = Array.from(weekForm?.querySelectorAll<HTMLInputElement>('input[name]') ?? []).filter((el) =>
-      /^(start|end|break|hours|note)-\d$/.test(el.name),
+      /^(start|end|break|hours|note)-\d(?:-\d)?$/.test(el.name),
     );
     const i = inputs.indexOf(t);
     if (i >= 0 && i + 1 < inputs.length) inputs[i + 1].focus();
@@ -933,7 +976,13 @@
         onfocusin={onGridFocusIn}
         oninput={recomputeWeekTotals}
         onkeydown={onGridKeydown}
-        use:enhance={conflictAwareEnhance({ resetOnSuccess: true, onSuccess: recomputeWeekTotals })}
+        use:enhance={conflictAwareEnhance({
+          resetOnSuccess: true,
+          onSuccess: () => {
+            subShifts = emptySubShifts();
+            recomputeWeekTotals();
+          },
+        })}
         class="flex flex-col gap-3"
       >
         <input type="hidden" name="weekStart" value={weekStart} />
@@ -961,7 +1010,7 @@
             {@const isLeave = leaveKind !== null}
             {@const rowUnpaid = isLeave ? !LEAVE_META[leaveKind].paid : false}
             <div
-              class="flex flex-col rounded-md max-lg:overflow-hidden max-lg:rounded-lg lg:flex-row lg:items-start lg:gap-3 lg:px-2 lg:py-1 {isLeave
+              class="flex flex-col rounded-md max-lg:overflow-hidden max-lg:rounded-lg lg:flex-row lg:flex-wrap lg:items-start lg:gap-3 lg:px-2 lg:py-1 {isLeave
                 ? KIND_CLASSES[leaveKind].row + (rowUnpaid ? ' unpaid-hatch' : '')
                 : isWeekend(date)
                   ? 'bg-amber-500/5 ring-1 ring-inset ring-amber-500/20'
@@ -975,6 +1024,7 @@
                   <span class="font-medium">{weekdayShort(date)}</span>
                   <span class="ml-1 text-muted-foreground">{formatDay(date).replace(/^\w+,\s/, '')}</span>
                 </div>
+                <div class="flex items-center gap-1.5 lg:contents">
                 <Select.Root
                   type="single"
                   value={leaveKind ?? 'work'}
@@ -1018,6 +1068,18 @@
                     {/each}
                   </Select.Content>
                 </Select.Root>
+                {#if !isLeave}
+                  <button
+                    type="button"
+                    class="{ROW_BTN} lg:order-last"
+                    title="Add a shift"
+                    aria-label="Add a shift for {weekdayShort(date)}"
+                    onclick={() => addSubShift(i)}
+                  >
+                    <Plus class="size-4" />
+                  </button>
+                {/if}
+                </div>
               </div>
               <!-- card body below lg -->
               <div class="flex flex-col gap-2 p-2.5 lg:contents">
@@ -1126,6 +1188,126 @@
                   </div>
                 {/if}
               </div>
+              {#if !isLeave}
+                {#each subShifts[i] as shift, j (j)}
+                  <div class="flex flex-col gap-2 px-2.5 pb-2.5 lg:basis-full lg:flex-row lg:items-start lg:gap-3 lg:p-0 lg:pb-1">
+                    <div class="flex items-center justify-between lg:hidden">
+                      <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                        Shift {j + 2}
+                      </span>
+                      <button
+                        type="button"
+                        class={ROW_BTN}
+                        title="Remove this shift"
+                        aria-label="Remove shift {j + 2} for {weekdayShort(date)}"
+                        onclick={() => removeSubShift(i, j)}
+                      >
+                        <Minus class="size-4" />
+                      </button>
+                    </div>
+                    <div class="grid grid-cols-6 gap-2 lg:contents">
+                      <div class="hidden lg:block lg:w-28 lg:shrink-0"></div>
+                      {#if weekMode === 'clock'}
+                        <div class="col-span-3 flex flex-col gap-1 lg:w-40 lg:shrink-0">
+                          <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">In</span>
+                          <Input
+                            type="text"
+                            name="start-{i}-{j + 1}"
+                            inputmode="numeric"
+                            autocomplete="off"
+                            placeholder={startPlaceholder}
+                            bind:value={shift.start}
+                            onblur={() => {
+                              const parsed = parseTimeInput(shift.start);
+                              if (parsed) shift.start = formatTime(parsed, data.timeFormat);
+                            }}
+                            aria-label="Clock in for {weekdayShort(date)} shift {j + 2}"
+                            aria-invalid={weekErrors[`start-${i}-${j + 1}`] ? 'true' : undefined}
+                            class="font-mono tabular-nums"
+                          />
+                          {#if weekErrors[`start-${i}-${j + 1}`]}<p class="text-xs text-destructive">{weekErrors[`start-${i}-${j + 1}`]}</p>{/if}
+                        </div>
+                        <div class="col-span-3 flex flex-col gap-1 lg:w-40 lg:shrink-0">
+                          <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Out</span>
+                          <Input
+                            type="text"
+                            name="end-{i}-{j + 1}"
+                            inputmode="numeric"
+                            autocomplete="off"
+                            placeholder={endPlaceholder}
+                            bind:value={shift.end}
+                            onblur={() => {
+                              const parsed = parseTimeInput(shift.end);
+                              if (parsed) shift.end = formatTime(parsed, data.timeFormat);
+                            }}
+                            aria-label="Clock out for {weekdayShort(date)} shift {j + 2}"
+                            aria-invalid={weekErrors[`end-${i}-${j + 1}`] ? 'true' : undefined}
+                            class="font-mono tabular-nums"
+                          />
+                          {#if weekErrors[`end-${i}-${j + 1}`]}<p class="text-xs text-destructive">{weekErrors[`end-${i}-${j + 1}`]}</p>{/if}
+                        </div>
+                      {:else}
+                        <div class="col-span-3 flex flex-col gap-1 lg:w-20 lg:shrink-0">
+                          <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Hours</span>
+                          <Input
+                            type="number"
+                            name="hours-{i}-{j + 1}"
+                            step="0.25"
+                            min="0.25"
+                            max="24"
+                            placeholder="0"
+                            bind:value={shift.hours}
+                            aria-label="Hours for {weekdayShort(date)} shift {j + 2}"
+                            aria-invalid={weekErrors[`hours-${i}-${j + 1}`] ? 'true' : undefined}
+                            class="font-mono tabular-nums"
+                          />
+                          {#if weekErrors[`hours-${i}-${j + 1}`]}<p class="text-xs text-destructive">{weekErrors[`hours-${i}-${j + 1}`]}</p>{/if}
+                        </div>
+                      {/if}
+                      <div class="col-span-3 flex flex-col gap-1 lg:w-20 lg:shrink-0">
+                        <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Break</span>
+                        <Input
+                          type="number"
+                          name="break-{i}-{j + 1}"
+                          step="0.25"
+                          min="0"
+                          max="24"
+                          placeholder="0.0h"
+                          bind:value={shift.brk}
+                          aria-label="Break for {weekdayShort(date)} shift {j + 2}"
+                          aria-invalid={weekErrors[`break-${i}-${j + 1}`] ? 'true' : undefined}
+                          class="font-mono tabular-nums"
+                        />
+                        {#if weekErrors[`break-${i}-${j + 1}`]}<p class="text-xs text-destructive">{weekErrors[`break-${i}-${j + 1}`]}</p>{/if}
+                      </div>
+                      <div class="hidden lg:block lg:w-20 lg:shrink-0"></div>
+                      <div class="{weekMode === 'clock' ? 'col-span-3' : 'col-span-6'} flex flex-col gap-1 lg:flex-1">
+                        <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Note</span>
+                        <Input
+                          type="text"
+                          name="note-{i}-{j + 1}"
+                          placeholder="Note (optional)"
+                          bind:value={shift.note}
+                          aria-label="Note for {weekdayShort(date)} shift {j + 2}"
+                          aria-invalid={weekErrors[`note-${i}-${j + 1}`] ? 'true' : undefined}
+                        />
+                        {#if weekErrors[`note-${i}-${j + 1}`]}<p class="text-xs text-destructive">{weekErrors[`note-${i}-${j + 1}`]}</p>{/if}
+                      </div>
+                      <div class="hidden lg:flex lg:h-8 lg:w-40 lg:shrink-0 lg:items-center lg:justify-end">
+                        <button
+                          type="button"
+                          class={ROW_BTN}
+                          title="Remove this shift"
+                          aria-label="Remove shift {j + 2} for {weekdayShort(date)}"
+                          onclick={() => removeSubShift(i, j)}
+                        >
+                          <Minus class="size-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                {/each}
+              {/if}
             </div>
           {/each}
         </div>
@@ -1143,7 +1325,7 @@
           </Tooltip.Root>
           <span class="hidden text-xs text-muted-foreground lg:inline">Tip: paste a block from a spreadsheet into any cell.</span>
           {#if form?.weekAdded}
-            <span class="text-sm text-success">Added {form.weekAdded} {form.weekAdded === 1 ? 'day' : 'days'}.</span>
+            <span class="text-sm text-success">Added {form.weekAdded} {form.weekAdded === 1 ? 'entry' : 'entries'}.</span>
           {:else if form && 'weekError' in form && form.weekError}
             <span class="text-sm text-destructive">{form.weekError}</span>
           {/if}
