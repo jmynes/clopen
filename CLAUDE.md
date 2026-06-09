@@ -11,9 +11,10 @@ owe, and is my pay right?*
 **Model:** hourly pay; baseline of `dailyHours` (default 8h) on each configured
 workday (default Mon–Fri → 40h/week). Overtime is tracked but **not** paid at a
 premium — it banks against shortfalls because we compare *total* logged hours
-to *total* expected hours up to the as-of date. **PTO** is a first-class entry
-kind that credits the daily baseline (default 8h, no clock times) so a day off
-doesn't put you behind. **No excused days** — any unlogged workday is a deficit.
+to *total* expected hours up to the as-of date. **Leave** is a first-class
+entry-kind taxonomy (8 kinds in paid/unpaid pairs: PTO/UPTO, Sick, Holiday,
+Vacation). Paid kinds credit the daily baseline (default 8h, no clock times);
+unpaid kinds record 0h with the same badge but a dashed outline. **No excused days** — any unlogged workday is a deficit.
 The accrual lower bound is the **tracking epoch** in settings (defaults to the
 job start date) rather than Jan 1, so year-one isn't backfilled. Runs locally;
 no auth, no deploy.
@@ -84,13 +85,18 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   Entries module also exports `findExistingDates`, `listEntriesByDates`, and
   `deleteEntriesByDates` for the conflict-resolution flow. `toWorkSettings` maps
   a settings row into the shape the math expects.
+- `src/lib/leave-kinds.ts` — single source of truth for the leave taxonomy:
+  `ENTRY_KINDS` (`'work' | 'pto' | 'pto_unpaid' | …`), `LEAVE_KINDS` (the same
+  set minus 'work'), `LEAVE_META` (label / short / paid / color family), and
+  `leaveHours(kind, dailyHours)`.
 - `src/lib/schemas/*` — Zod schemas:
   - `entryInput` — plain hours-mode (positive hours, optional break/note).
   - `clockEntryInput` — start + end times; computed hours via `hoursBetween`
     (wraps for overnight shifts); error `"Clock in and clock out can't match"`
     when start == end.
-  - `ptoEntryInput` — date + optional note; produces an `EntryInput` with
-    `isPto: true`, `hours` defaulted to 8, no clock times, zero break.
+  - `leaveEntryInput` — date + `kind` (LeaveKind) + optional note; produces an
+    `EntryInput` whose `entryKind` reflects the kind and whose `hours` is the
+    daily baseline for paid kinds, 0 for unpaid.
   - `settingsInput` — adds `epoch` (ISO regex) and `timeFormat` (`12h | 24h`).
 - `src/lib/date.ts` — local `todayISO()` (via `@internationalized/date`) and
   display formatters: `formatTime(hhmm, mode)` (zero-padded, mode-aware),
@@ -99,18 +105,23 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   for bi-week labels).
 - `src/lib/csv.ts` — RFC-4180 CSV parser/serializer used by Export/Import.
 - `src/routes/+page.*` — dashboard. Period selector (default **bi-weekly**) +
-  prev/next/today nav drives a derived bucket. The hero answers *Made it / Came
-  up short / Ahead of pace / Behind pace / On pace / Not started* based on
-  bucket-vs-today state. Period math runs client-side from `data.entries`,
-  clamped lower by epoch and upper by today. Year-view weekly chart sits below.
+  prev/next/today nav drives a derived bucket. The hero answers
+  *Beat it · overtime banked / Made it / Came up short / Ahead of pace / Behind
+  pace / On pace / Not started* based on bucket-vs-today state. Period math
+  runs client-side from `data.entries`, clamped lower by epoch and upper by
+  today. Year-view weekly chart sits below.
 - `src/routes/log/+page.*` — entries page. Three forms (single add, weekly
   grid, CSV import) share a `conflictAwareEnhance` factory that surfaces
   duplicate-date conflicts in a dialog (`overwrite | keep existing | cancel`).
-  The weekly grid supports per-row PTO toggle, fill-down, spreadsheet paste,
-  Enter-to-advance navigation, and a red Clear button. The entries table is
-  paginated by the same period set (default yearly), capped at ~14 visible
-  rows with a sticky header, pads unlogged days with em-dashes, tints PTO rows
-  green, and renders delete in a confirm dialog.
+  Add-an-entry has a 4×2 grid of leave-kind shortcut buttons under the regular
+  fields. The weekly grid uses a shadcn `Select` per row with icons and color
+  badges so the chosen leave kind reads at a glance; selecting one hides the
+  clock/break inputs and swaps the In column for a "Sick · 8.00h paid" /
+  "Vacation · unpaid" chip. The edit modal carries the same Type chooser.
+  The entries table is paginated by the same period set (default yearly),
+  capped at ~14 visible rows with a sticky header, pads unlogged days with
+  em-dashes, tints leave rows in their color family (and darkens on hover
+  rather than overwriting), and renders delete in a confirm dialog.
 - `src/routes/settings/+page.*` — pay rate, daily hours, workdays, tracking
   epoch, week-start, time format.
 

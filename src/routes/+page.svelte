@@ -3,6 +3,7 @@
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import Clock from '@lucide/svelte/icons/clock';
+  import Sparkles from '@lucide/svelte/icons/sparkles';
   import TrendingDown from '@lucide/svelte/icons/trending-down';
   import TrendingUp from '@lucide/svelte/icons/trending-up';
   import { Badge } from '$lib/components/ui/badge';
@@ -115,7 +116,9 @@
     return 'progress';
   });
 
-  const made = $derived(net >= 0 && periodState === 'done');
+  // Done states: exactly even (made), positive (beat — overtime banked), negative (short).
+  const made = $derived(net === 0 && periodState === 'done');
+  const beat = $derived(net > 0 && periodState === 'done');
   const short = $derived(net < 0 && periodState === 'done');
   const ahead = $derived(net > 0 && periodState === 'progress');
   const behind = $derived(net < 0 && periodState === 'progress');
@@ -146,20 +149,23 @@
 
   // Hero accent color tracks status.
   const accent = $derived(
-    made
-      ? 'border-success/40'
-      : short
-        ? 'border-destructive/40'
-        : ahead
-          ? 'border-success/40'
-          : behind
-            ? 'border-amber-500/40'
-            : 'border-input',
+    beat
+      ? 'border-emerald-500/50'
+      : made
+        ? 'border-success/40'
+        : short
+          ? 'border-destructive/40'
+          : ahead
+            ? 'border-success/40'
+            : behind
+              ? 'border-amber-500/40'
+              : 'border-input',
   );
 
   const subtitle = $derived.by(() => {
     if (periodState === 'future') return `This period hasn't started yet. ${hrs(expectedHours)} expected when it does.`;
     if (periodState === 'done') {
+      if (beat) return `Logged ${hrs(logged)} against the ${hrs(expectedHours)} target — +${hrs(net)} overtime banked.`;
       if (made) return `Logged ${hrs(logged)} against the ${hrs(expectedHours)} target.`;
       return `Short by ${hrs(Math.abs(net))}. Logged ${hrs(logged)} of ${hrs(expectedHours)} target.`;
     }
@@ -215,7 +221,11 @@
     <Card.Content class="flex flex-col gap-6 p-8 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <div class="flex items-center gap-2 text-sm font-medium">
-          {#if made}
+          {#if beat}
+            <span class="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+              <Sparkles class="size-4" /> Beat it · overtime banked
+            </span>
+          {:else if made}
             <span class="inline-flex items-center gap-1.5 text-success"><Check class="size-4" /> Made it</span>
           {:else if short}
             <span class="inline-flex items-center gap-1.5 text-destructive"><TrendingDown class="size-4" /> Came up short</span>
@@ -230,7 +240,7 @@
           {/if}
         </div>
         <div
-          class="mt-2 font-mono text-6xl font-bold tabular-nums tracking-tight {made || ahead
+          class="mt-2 font-mono text-6xl font-bold tabular-nums tracking-tight {beat || made || ahead
             ? 'text-success'
             : short
               ? 'text-destructive'

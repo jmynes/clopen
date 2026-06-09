@@ -371,54 +371,54 @@
   > = {
     pto: {
       badge: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
-      row: 'bg-emerald-500/10 ring-1 ring-inset ring-emerald-500/30',
+      row: 'bg-emerald-500/10 hover:bg-emerald-500/20! ring-1 ring-inset ring-emerald-500/30',
       button:
         'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400',
       activeButton: 'bg-emerald-500/25 ring-2 ring-inset ring-emerald-500/60',
     },
     pto_unpaid: {
       badge: 'bg-emerald-500/10 text-emerald-700 ring-1 ring-inset ring-emerald-500/40 dark:text-emerald-300',
-      row: 'bg-emerald-500/5 ring-1 ring-inset ring-emerald-500/25',
+      row: 'bg-emerald-500/5 hover:bg-emerald-500/15! ring-1 ring-inset ring-emerald-500/25',
       button:
         'border-dashed border-emerald-500/50 bg-emerald-500/5 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-400',
       activeButton: 'bg-emerald-500/15 ring-2 ring-inset ring-emerald-500/50',
     },
     sick_paid: {
       badge: 'bg-rose-500/15 text-rose-700 dark:text-rose-300',
-      row: 'bg-rose-500/10 ring-1 ring-inset ring-rose-500/30',
+      row: 'bg-rose-500/10 hover:bg-rose-500/20! ring-1 ring-inset ring-rose-500/30',
       button: 'border-rose-500/40 bg-rose-500/10 text-rose-700 hover:bg-rose-500/20 dark:text-rose-400',
       activeButton: 'bg-rose-500/25 ring-2 ring-inset ring-rose-500/60',
     },
     sick_unpaid: {
       badge: 'bg-rose-500/10 text-rose-700 ring-1 ring-inset ring-rose-500/40 dark:text-rose-300',
-      row: 'bg-rose-500/5 ring-1 ring-inset ring-rose-500/25',
+      row: 'bg-rose-500/5 hover:bg-rose-500/15! ring-1 ring-inset ring-rose-500/25',
       button:
         'border-dashed border-rose-500/50 bg-rose-500/5 text-rose-700 hover:bg-rose-500/15 dark:text-rose-400',
       activeButton: 'bg-rose-500/15 ring-2 ring-inset ring-rose-500/50',
     },
     holiday_paid: {
       badge: 'bg-violet-500/15 text-violet-700 dark:text-violet-300',
-      row: 'bg-violet-500/10 ring-1 ring-inset ring-violet-500/30',
+      row: 'bg-violet-500/10 hover:bg-violet-500/20! ring-1 ring-inset ring-violet-500/30',
       button:
         'border-violet-500/40 bg-violet-500/10 text-violet-700 hover:bg-violet-500/20 dark:text-violet-400',
       activeButton: 'bg-violet-500/25 ring-2 ring-inset ring-violet-500/60',
     },
     holiday_unpaid: {
       badge: 'bg-violet-500/10 text-violet-700 ring-1 ring-inset ring-violet-500/40 dark:text-violet-300',
-      row: 'bg-violet-500/5 ring-1 ring-inset ring-violet-500/25',
+      row: 'bg-violet-500/5 hover:bg-violet-500/15! ring-1 ring-inset ring-violet-500/25',
       button:
         'border-dashed border-violet-500/50 bg-violet-500/5 text-violet-700 hover:bg-violet-500/15 dark:text-violet-400',
       activeButton: 'bg-violet-500/15 ring-2 ring-inset ring-violet-500/50',
     },
     vacation_paid: {
       badge: 'bg-sky-500/15 text-sky-700 dark:text-sky-300',
-      row: 'bg-sky-500/10 ring-1 ring-inset ring-sky-500/30',
+      row: 'bg-sky-500/10 hover:bg-sky-500/20! ring-1 ring-inset ring-sky-500/30',
       button: 'border-sky-500/40 bg-sky-500/10 text-sky-700 hover:bg-sky-500/20 dark:text-sky-400',
       activeButton: 'bg-sky-500/25 ring-2 ring-inset ring-sky-500/60',
     },
     vacation_unpaid: {
       badge: 'bg-sky-500/10 text-sky-700 ring-1 ring-inset ring-sky-500/40 dark:text-sky-300',
-      row: 'bg-sky-500/5 ring-1 ring-inset ring-sky-500/25',
+      row: 'bg-sky-500/5 hover:bg-sky-500/15! ring-1 ring-inset ring-sky-500/25',
       button:
         'border-dashed border-sky-500/50 bg-sky-500/5 text-sky-700 hover:bg-sky-500/15 dark:text-sky-400',
       activeButton: 'bg-sky-500/15 ring-2 ring-inset ring-sky-500/50',
@@ -615,27 +615,29 @@
         </div>
         <Button type="submit"><Plus class="size-4" /> Add</Button>
         <input type="hidden" name="kind" value="" bind:this={addKindInput} />
-        <div class="flex w-full basis-full flex-wrap items-center gap-2">
+        <div class="flex w-full basis-full flex-col gap-2">
           <span class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Or log leave</span>
-          {#each LEAVE_KINDS as kind (kind)}
-            {@const Icon = LEAVE_ICON[kind]}
-            <Button
-              type="submit"
-              variant="outline"
-              size="sm"
-              class={KIND_CLASSES[kind].button}
-              onclick={(e) => {
-                if (addModeInput) addModeInput.value = 'leave';
-                if (addKindInput) addKindInput.value = kind;
-                const form = (e.currentTarget as HTMLButtonElement).form;
-                form?.querySelectorAll<HTMLInputElement>('input[required]').forEach((el) => {
-                  if (el.name !== 'date') el.removeAttribute('required');
-                });
-              }}
-            >
-              <Icon class="size-4" /> {LEAVE_META[kind].label}
-            </Button>
-          {/each}
+          <div class="grid w-fit grid-flow-col grid-rows-2 gap-2">
+            {#each LEAVE_KINDS as kind (kind)}
+              {@const Icon = LEAVE_ICON[kind]}
+              <Button
+                type="submit"
+                variant="outline"
+                size="sm"
+                class={KIND_CLASSES[kind].button + ' justify-start'}
+                onclick={(e) => {
+                  if (addModeInput) addModeInput.value = 'leave';
+                  if (addKindInput) addKindInput.value = kind;
+                  const form = (e.currentTarget as HTMLButtonElement).form;
+                  form?.querySelectorAll<HTMLInputElement>('input[required]').forEach((el) => {
+                    if (el.name !== 'date') el.removeAttribute('required');
+                  });
+                }}
+              >
+                <Icon class="size-4" /> {LEAVE_META[kind].label}
+              </Button>
+            {/each}
+          </div>
         </div>
       </form>
     </Card.Content>
@@ -1000,8 +1002,10 @@
                 {@const entryLeave = entry.entryKind !== 'work' ? (entry.entryKind as LeaveKind) : null}
                 <Table.Row
                   class={entryLeave
-                    ? KIND_CLASSES[entryLeave].row + ' hover:bg-muted/30'
-                    : 'even:bg-muted/70'}
+                    ? KIND_CLASSES[entryLeave].row
+                    : idx % 2 === 1
+                      ? 'bg-muted/70 hover:bg-muted!'
+                      : 'hover:bg-muted/30!'}
                 >
                 <Table.Cell class="font-mono text-sm uppercase tabular-nums">
                   <span class="text-muted-foreground">{weekdayShort(entry.date)}</span>

@@ -12,8 +12,9 @@ paid the right amount?**
   year-one doesn't backfill expected hours before you began.
 - **Overtime banks.** Extra hours offset shortfalls; they aren't paid at a
   premium — the app compares *total logged* against *total expected*.
-- **PTO is paid.** PTO entries credit the daily baseline (8h by default) so a
-  day off doesn't put you behind.
+- **Leave taxonomy.** Eight kinds in paid/unpaid pairs: **PTO / UPTO**,
+  **Sick (paid / unpaid)**, **Holiday (paid / unpaid)**, **Vacation (paid /
+  unpaid)**. Paid kinds credit the daily baseline; unpaid kinds record 0h.
 - **Cumulative-timesheet CSV import.** Pre-existing "Day of the week" sheets
   with `Check-in / Check-out / Total hours` columns import directly, including
   shifts that cross midnight.
@@ -42,19 +43,35 @@ bun run dev            # http://localhost:5173
 
 ## Features at a glance
 
-- **Dashboard hero** — `Made it / Came up short / Ahead of pace / Behind pace /
-  On pace / Not started` plus the period's actual vs. target earnings.
+- **Dashboard hero** — `Beat it / Made it / Came up short / Ahead of pace /
+  Behind pace / On pace / Not started`. Done periods with net > 0 surface as
+  "Beat it · overtime banked"; done periods with net == 0 are "Made it"; the
+  in-progress states explain pace vs. target.
 - **Pagination & blanks** — entries table scopes to the active bucket and pads
-  unlogged days with em-dashes so the gaps are obvious.
-- **PTO entries** — green-tinted row in the table, dedicated badge column,
-  per-row toggle in the weekly grid that hides clock/break inputs.
+  unlogged days with em-dashes so the gaps are obvious. Hovering a row darkens
+  its existing color (PTO row gets a deeper emerald, zebra rows get a deeper
+  muted) rather than overwriting it.
+- **Leave entries** — colored badge in the Type column (Palmtree, Thermometer,
+  PartyPopper, Plane). Paid kinds use a filled chip; unpaid kinds use a dashed
+  outline. The row picks up a matching subtle tint.
+- **Add an entry** — a 4×2 grid of leave shortcut buttons (PTO/UPTO,
+  Sick paid/unpaid, Holiday paid/unpaid, Vacation paid/unpaid) sits below the
+  regular fields, so a one-tap leave log is always at hand.
+- **Log a week** — per-row Type select with icons and color-keyed labels.
+  Choosing a leave kind hides clock/break and shows a "Sick · 8.00h paid" /
+  "Vacation · unpaid" badge in the In column.
+- **Edit modal** — same Type chooser as Add an entry, letting you flip any
+  entry between Work and any of the eight leave kinds.
 - **Overnight shifts** — clock-out earlier than clock-in is treated as next-day
   on the same date; the entries table tags it `+1d`.
 - **Duplicate-date guard** — if you try to add a date that already has entries
   the app pops a dialog showing both sides and asks: overwrite, keep existing,
   or cancel.
-- **AM/PM color hint** — softened rose/sky tint on the meridiem so you can scan
+- **AM/PM color hint** — rose `AM` and sky `PM` on the meridiem so you can scan
   start/end at a glance.
+- **Theme switch** — segmented sun/moon control right of Settings; OS-preferred
+  theme by default, persisted in localStorage, applied before first paint to
+  avoid FOUC.
 
 ## Scripts
 
