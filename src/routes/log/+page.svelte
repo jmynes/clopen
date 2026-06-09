@@ -645,7 +645,7 @@
             </div>
             {#if isPto}
               <input type="hidden" name="pto-{i}" value="true" />
-              <div class="flex flex-1 items-center gap-2 pt-1">
+              <div class="flex flex-1 items-center gap-2">
                 <span
                   class="rounded-md bg-emerald-500/15 px-2 py-0.5 font-mono text-xs font-medium uppercase tracking-wider text-emerald-700 dark:text-emerald-400"
                 >
