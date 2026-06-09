@@ -87,6 +87,18 @@
 
   let editing = $state<TimeEntry | null>(null);
   let editOpen = $state(false);
+  // Blank-day create mode: the same dialog posts to ?/add for that date.
+  let creatingDate = $state<string | null>(null);
+  function openCreate(date: string) {
+    editing = null;
+    creatingDate = date;
+    editKind = 'work';
+    editMode = 'clock';
+    editOpen = true;
+  }
+
+  // The dialog edits (editFieldErrors) or creates via ?/add (fieldErrors).
+  const dialogErrors = $derived(editing ? editErrors : addErrors);
 
   // Delete-confirmation dialog state — populated by the trash button on a row.
   let deleting = $state<TimeEntry | null>(null);
@@ -157,6 +169,7 @@
 
   function openEdit(entry: TimeEntry) {
     editing = entry;
+    creatingDate = null;
     editKind = entry.entryKind as 'work' | LeaveKind;
     editMode = entry.startTime && entry.endTime ? 'clock' : 'hours';
     editOpen = true;
@@ -1189,8 +1202,9 @@
                   <Table.Cell class="text-right font-mono tabular-nums">—</Table.Cell>
                   <Table.Cell class="text-center"></Table.Cell>
                   <Table.Cell class="text-center"></Table.Cell>
-                  <!-- Match the action-cell height (icon buttons are size-8) so blank rows line up with entry rows exactly. -->
-                  <Table.Cell class="pr-4 text-right"><span class="inline-block h-8 align-middle"></span></Table.Cell>
+                  <Table.Cell class="pr-4 text-right">
+                    <div class="flex justify-end gap-1">{@render blankActions(row.date)}</div>
+                  </Table.Cell>
                 </Table.Row>
               {:else}
                 {@const entry = row.entry}
@@ -1300,7 +1314,7 @@
                   <span>{weekdayShort(row.date)}</span>
                   <span class="ml-1">{formatDay(row.date).replace(/^\w+,\s/, '')}</span>
                 </span>
-                <span class="font-mono text-sm">—</span>
+                <div class="flex gap-1">{@render blankActions(row.date)}</div>
               </div>
             {:else}
               {@const entry = row.entry}
@@ -1384,13 +1398,15 @@
 <Dialog.Root bind:open={editOpen}>
   <Dialog.Content class="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
     <Dialog.Header>
-      <Dialog.Title>Edit entry</Dialog.Title>
-      <Dialog.Description>Change the date, hours, break, or note for this entry.</Dialog.Description>
+      <Dialog.Title>{editing ? 'Edit entry' : 'Add entry'}</Dialog.Title>
+      <Dialog.Description>
+        {editing ? 'Change the date, hours, break, or note for this entry.' : 'Log work or leave for this day.'}
+      </Dialog.Description>
     </Dialog.Header>
-    {#if editing}
+    {#if editing || creatingDate}
       <form
         method="POST"
-        action="?/update"
+        action={editing ? '?/update' : '?/add'}
         use:enhance={() => {
           return async ({ update, result }) => {
             await update();
@@ -1399,7 +1415,9 @@
         }}
         class="flex flex-col gap-4"
       >
-        <input type="hidden" name="id" value={editing.id} />
+        {#if editing}
+          <input type="hidden" name="id" value={editing.id} />
+        {/if}
         <input type="hidden" name="mode" value={editKind === 'work' ? editMode : 'leave'} />
         {#if editKind !== 'work'}
           <input type="hidden" name="kind" value={editKind} />
@@ -1410,12 +1428,12 @@
             id="edit-date"
             type="date"
             name="date"
-            value={editing.date}
+            value={editing?.date ?? creatingDate ?? ''}
             max={todayISO()}
             required
-            aria-invalid={editErrors.date ? 'true' : undefined}
+            aria-invalid={dialogErrors.date ? 'true' : undefined}
           />
-          {#if editErrors.date}<p class="text-xs text-destructive">{editErrors.date}</p>{/if}
+          {#if dialogErrors.date}<p class="text-xs text-destructive">{dialogErrors.date}</p>{/if}
         </div>
 
         <!-- entry kind chooser -->
@@ -1478,12 +1496,12 @@
                 inputmode="numeric"
                 autocomplete="off"
                 placeholder={startPlaceholder}
-                value={timeLabel(editing.startTime)}
+                value={timeLabel(editing?.startTime ?? null)}
                 onblur={normalizeTime}
                 required
-                aria-invalid={editErrors.startTime ? 'true' : undefined}
+                aria-invalid={dialogErrors.startTime ? 'true' : undefined}
               />
-              {#if editErrors.startTime}<p class="text-xs text-destructive">{editErrors.startTime}</p>{/if}
+              {#if dialogErrors.startTime}<p class="text-xs text-destructive">{dialogErrors.startTime}</p>{/if}
             </div>
             <div class="flex flex-col gap-1.5">
               <Label for="edit-end">Clock out</Label>
@@ -1494,12 +1512,12 @@
                 inputmode="numeric"
                 autocomplete="off"
                 placeholder={endPlaceholder}
-                value={timeLabel(editing.endTime)}
+                value={timeLabel(editing?.endTime ?? null)}
                 onblur={normalizeTime}
                 required
-                aria-invalid={editErrors.endTime ? 'true' : undefined}
+                aria-invalid={dialogErrors.endTime ? 'true' : undefined}
               />
-              {#if editErrors.endTime}<p class="text-xs text-destructive">{editErrors.endTime}</p>{/if}
+              {#if dialogErrors.endTime}<p class="text-xs text-destructive">{dialogErrors.endTime}</p>{/if}
             </div>
           {:else}
             <div class="flex flex-col gap-1.5">
@@ -1511,11 +1529,11 @@
                 step="0.25"
                 min="0.25"
                 max="24"
-                value={editing.hours}
+                value={editing?.hours ?? ''}
                 required
-                aria-invalid={editErrors.hours ? 'true' : undefined}
+                aria-invalid={dialogErrors.hours ? 'true' : undefined}
               />
-              {#if editErrors.hours}<p class="text-xs text-destructive">{editErrors.hours}</p>{/if}
+              {#if dialogErrors.hours}<p class="text-xs text-destructive">{dialogErrors.hours}</p>{/if}
             </div>
           {/if}
           <div class="flex flex-col gap-1.5">
@@ -1527,10 +1545,10 @@
               step="0.25"
               min="0"
               max="24"
-              value={editing.breakHours}
-              aria-invalid={editErrors.breakHours ? 'true' : undefined}
+              value={editing?.breakHours ?? ''}
+              aria-invalid={dialogErrors.breakHours ? 'true' : undefined}
             />
-            {#if editErrors.breakHours}<p class="text-xs text-destructive">{editErrors.breakHours}</p>{/if}
+            {#if dialogErrors.breakHours}<p class="text-xs text-destructive">{dialogErrors.breakHours}</p>{/if}
           </div>
         </div>
         {/if}
@@ -1540,13 +1558,13 @@
             id="edit-note"
             type="text"
             name="note"
-            value={editing.note ?? ''}
-            aria-invalid={editErrors.note ? 'true' : undefined}
+            value={editing?.note ?? ''}
+            aria-invalid={dialogErrors.note ? 'true' : undefined}
           />
-          {#if editErrors.note}<p class="text-xs text-destructive">{editErrors.note}</p>{/if}
+          {#if dialogErrors.note}<p class="text-xs text-destructive">{dialogErrors.note}</p>{/if}
         </div>
         <Dialog.Footer>
-          <Button type="submit">Save changes</Button>
+          <Button type="submit">{editing ? 'Save changes' : 'Add entry'}</Button>
         </Dialog.Footer>
       </form>
     {/if}
@@ -1753,6 +1771,24 @@
     {@render iconPencil()}
   </button>
   <button type="button" class={ROW_BTN} title="Delete entry" aria-label="Delete entry" onclick={() => confirmDelete(entry)}>
+    {@render iconTrash()}
+  </button>
+{/snippet}
+
+{#snippet blankActions(date: string)}
+  <button type="button" class={ROW_BTN} disabled title="No note" aria-label="No note">
+    {@render iconNote()}
+  </button>
+  <button
+    type="button"
+    class="{ROW_BTN} text-foreground"
+    title="Log this day"
+    aria-label="Log this day"
+    onclick={() => openCreate(date)}
+  >
+    {@render iconPencil()}
+  </button>
+  <button type="button" class={ROW_BTN} disabled title="Nothing to delete" aria-label="Nothing to delete">
     {@render iconTrash()}
   </button>
 {/snippet}
