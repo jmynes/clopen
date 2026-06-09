@@ -122,7 +122,7 @@
               max="10"
               value={data.otMultiplier}
               required
-              class="w-full sm:w-28"
+              class="w-full md:w-28"
             />
           </div>
         </fieldset>
@@ -133,7 +133,7 @@
             Earliest date that counts toward the make-whole baseline. The dashboard's year view still drives expected
             earnings — this just keeps year-one from accruing hours before you started.
           </p>
-          <Input id="epoch" type="date" name="epoch" value={data.epoch} required class="w-full sm:w-48" />
+          <Input id="epoch" type="date" name="epoch" value={data.epoch} required class="w-full md:w-48" />
         </div>
         </Card.Content>
       </Card.Root>
