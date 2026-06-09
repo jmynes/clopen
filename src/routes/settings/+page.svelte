@@ -114,7 +114,7 @@
   >
     <div class="grid items-start gap-6 md:grid-cols-2">
       <Card.Root>
-        <Card.Header>
+        <Card.Header class="max-md:text-center">
           <Card.Title>Pay & schedule</Card.Title>
         </Card.Header>
         <Card.Content class="flex flex-col divide-y divide-border/50">
@@ -252,7 +252,7 @@
       </Card.Root>
 
       <Card.Root>
-        <Card.Header>
+        <Card.Header class="max-md:text-center">
           <Card.Title>Display & entries</Card.Title>
         </Card.Header>
         <Card.Content class="flex flex-col divide-y divide-border/50">
