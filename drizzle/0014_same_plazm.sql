@@ -1,0 +1,1 @@
+ALTER TABLE `settings` ADD `expand_notes` integer DEFAULT false NOT NULL;

@@ -11,10 +11,12 @@
   import Pencil from '@lucide/svelte/icons/pencil';
   import Plane from '@lucide/svelte/icons/plane';
   import Plus from '@lucide/svelte/icons/plus';
+  import StickyNote from '@lucide/svelte/icons/sticky-note';
   import Thermometer from '@lucide/svelte/icons/thermometer';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import Upload from '@lucide/svelte/icons/upload';
   import X from '@lucide/svelte/icons/x';
+  import { slide } from 'svelte/transition';
   import { enhance } from '$app/forms';
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
@@ -217,6 +219,16 @@
   };
   let entriesPeriod = $state<Period>('year');
   let entriesAnchor = $state(todayISO());
+  // Per-entry note accordion. Rows without an override follow the expandNotes
+  // setting, so toggling the setting flips every untouched row at once.
+  let noteOverrides = $state<Map<string, boolean>>(new Map());
+  const isNoteOpen = (id: string) => noteOverrides.get(id) ?? data.expandNotes;
+  function toggleNote(id: string) {
+    const next = new Map(noteOverrides);
+    next.set(id, !isNoteOpen(id));
+    noteOverrides = next;
+  }
+
   // Fullscreen takeover for the entries section. Escape collapses it unless a
   // dialog is open on top (those own the Escape key).
   let entriesExpanded = $state(false);
@@ -1080,8 +1092,7 @@
               <Table.Head class="w-24 text-right font-mono">Worked</Table.Head>
               <Table.Head class="w-14 text-center">OT</Table.Head>
               <Table.Head class="w-36 text-center">Leave</Table.Head>
-              <Table.Head>Note</Table.Head>
-              <Table.Head class="w-24 text-right">Actions</Table.Head>
+              <Table.Head class="w-32 text-right">Actions</Table.Head>
             </Table.Row>
           </Table.Header>
           <Table.Body>
@@ -1100,7 +1111,6 @@
                   <Table.Cell class="text-right font-mono tabular-nums">—</Table.Cell>
                   <Table.Cell class="text-center"></Table.Cell>
                   <Table.Cell class="text-center"></Table.Cell>
-                  <Table.Cell></Table.Cell>
                   <!-- Match the action-cell height (icon buttons are size-8) so blank rows line up with entry rows exactly. -->
                   <Table.Cell class="text-right"><span class="inline-block h-8 align-middle"></span></Table.Cell>
                 </Table.Row>
@@ -1159,11 +1169,23 @@
                     </span>
                   {/if}
                 </Table.Cell>
-                <Table.Cell class="text-muted-foreground">
-                  {entry.note ?? ''}
-                </Table.Cell>
                 <Table.Cell class="text-right">
                   <div class="flex justify-end gap-1">
+                    {#if entry.note}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        type="button"
+                        class={isNoteOpen(entry.id) ? 'bg-accent' : ''}
+                        aria-label={isNoteOpen(entry.id) ? 'Hide note' : 'Show note'}
+                        aria-expanded={isNoteOpen(entry.id)}
+                        onclick={() => toggleNote(entry.id)}
+                      >
+                        <StickyNote class="size-4" />
+                      </Button>
+                    {:else}
+                      <span class="inline-block size-8"></span>
+                    {/if}
                     <Button variant="ghost" size="icon" onclick={() => openEdit(entry)} aria-label="Edit entry">
                       <Pencil class="size-4" />
                     </Button>
@@ -1179,6 +1201,22 @@
                   </div>
                 </Table.Cell>
               </Table.Row>
+              {#if entry.note && isNoteOpen(entry.id)}
+                <Table.Row
+                  class={entryLeave
+                    ? KIND_CLASSES[entryLeave].row + (leaveIsUnpaid ? ' unpaid-hatch' : '')
+                    : idx % 2 === 1
+                      ? 'bg-muted/70 hover:bg-muted/70!'
+                      : 'hover:bg-transparent!'}
+                >
+                  <Table.Cell colspan={8} class="py-2">
+                    <div transition:slide={{ duration: 150 }} class="flex items-start gap-2 text-sm text-muted-foreground">
+                      <StickyNote class="mt-0.5 size-3.5 shrink-0" />
+                      <span class="whitespace-pre-wrap">{entry.note}</span>
+                    </div>
+                  </Table.Cell>
+                </Table.Row>
+              {/if}
               {/if}
             {/each}
           </Table.Body>
@@ -1211,12 +1249,13 @@
               {@const entryLeave = entry.entryKind !== 'work' ? (entry.entryKind as LeaveKind) : null}
               {@const leaveIsUnpaid = entryLeave ? !LEAVE_META[entryLeave].paid : false}
               <div
-                class="flex items-center justify-between gap-3 px-3 py-2 {entryLeave
+                class={entryLeave
                   ? KIND_CLASSES[entryLeave].row + (leaveIsUnpaid ? ' unpaid-hatch' : '')
                   : idx % 2 === 1
                     ? 'bg-muted/70'
-                    : ''}"
+                    : ''}
               >
+                <div class="flex items-center justify-between gap-3 px-3 py-2">
                 <div class="flex min-w-0 flex-col gap-1">
                   <div class="flex flex-wrap items-center gap-2 font-mono text-sm uppercase tabular-nums">
                     <span>
@@ -1252,13 +1291,23 @@
                   {:else if entry.breakHours > 0}
                     <div class="font-mono text-sm tabular-nums text-muted-foreground">{hrs(entry.breakHours)} break</div>
                   {/if}
-                  {#if entry.note}
-                    <p class="text-sm text-muted-foreground">{entry.note}</p>
-                  {/if}
                 </div>
                 <div class="flex shrink-0 flex-col items-end gap-1">
                   <span class="font-mono text-sm font-medium tabular-nums">{hrs(entry.hours - entry.breakHours)}</span>
                   <div class="flex gap-1">
+                    {#if entry.note}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        type="button"
+                        class={isNoteOpen(entry.id) ? 'bg-accent' : ''}
+                        aria-label={isNoteOpen(entry.id) ? 'Hide note' : 'Show note'}
+                        aria-expanded={isNoteOpen(entry.id)}
+                        onclick={() => toggleNote(entry.id)}
+                      >
+                        <StickyNote class="size-4" />
+                      </Button>
+                    {/if}
                     <Button variant="ghost" size="icon" onclick={() => openEdit(entry)} aria-label="Edit entry">
                       <Pencil class="size-4" />
                     </Button>
@@ -1273,6 +1322,16 @@
                     </Button>
                   </div>
                 </div>
+                </div>
+                {#if entry.note && isNoteOpen(entry.id)}
+                  <div
+                    transition:slide={{ duration: 150 }}
+                    class="flex items-start gap-2 border-t border-border/40 px-3 py-2 text-sm text-muted-foreground"
+                  >
+                    <StickyNote class="mt-0.5 size-3.5 shrink-0" />
+                    <span class="whitespace-pre-wrap">{entry.note}</span>
+                  </div>
+                {/if}
               </div>
             {/if}
           {/each}

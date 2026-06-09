@@ -125,6 +125,22 @@
           </label>
         </fieldset>
 
+        <fieldset class="flex flex-col gap-2">
+          <legend class="mb-1 text-sm font-medium">Notes</legend>
+          <label
+            class="flex cursor-pointer items-start gap-2 rounded-md border border-input px-3 py-2 text-sm has-checked:border-primary has-checked:bg-accent"
+          >
+            <input type="checkbox" name="expandNotes" checked={data.expandNotes} class="mt-0.5 accent-primary" />
+            <span>
+              <span class="font-medium">Expand notes by default</span>
+              <span class="block text-xs text-muted-foreground">
+                Entries open with every note accordion expanded. Off keeps notes tucked behind the note action on each
+                row.
+              </span>
+            </span>
+          </label>
+        </fieldset>
+
         <div class="flex flex-col gap-1.5">
           <Label for="epoch">Tracking since</Label>
           <p class="text-xs text-muted-foreground">

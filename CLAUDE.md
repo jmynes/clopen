@@ -79,7 +79,8 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
     `2025-03-16`), `timeFormat` (`'12h' | '24h'`), `hideWeekendsEntries` /
     `hideWeekendsGrid` (booleans, default false — hide blank Sat/Sun rows in the
     entries views, and Sat/Sun rows in the weekly grid which implies the former;
-    weekend days with entries always show).
+    weekend days with entries always show), `expandNotes` (boolean, default
+    false — entry notes start expanded in the Entries views).
 - `src/lib/db/index.ts` — Drizzle/libSQL client, **lazy-constructed via Proxy**
   so module load doesn't open a connection during SvelteKit's build analyse pass.
   Local default `file:./local.db`.
@@ -124,7 +125,10 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   The entries table is paginated by the same period set (default yearly),
   capped at ~14 visible rows with a sticky header, pads unlogged days with
   em-dashes, tints leave rows in their color family (and darkens on hover
-  rather than overwriting), and renders delete in a confirm dialog.
+  rather than overwriting), and renders delete in a confirm dialog. Notes live
+  behind a sticky-note action per row that toggles an accordion under the row
+  (default open state comes from `expandNotes`); an expand button takes the
+  whole section fullscreen.
 - `src/routes/settings/+page.*` — pay rate, daily hours, workdays, weekend
   visibility toggles, tracking epoch, week-start, time format.
 

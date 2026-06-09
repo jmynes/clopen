@@ -18,6 +18,7 @@ const DEFAULTS = {
   timeFormat: '12h',
   hideWeekendsEntries: false,
   hideWeekendsGrid: false,
+  expandNotes: false,
 } satisfies Settings;
 
 /** Read the single settings row, seeding defaults on first access. */
@@ -39,6 +40,7 @@ export async function updateSettings(input: SettingsInput, database: Database = 
     timeFormat: input.timeFormat,
     hideWeekendsEntries: input.hideWeekendsEntries,
     hideWeekendsGrid: input.hideWeekendsGrid,
+    expandNotes: input.expandNotes,
   };
   await database
     .insert(settings)
@@ -54,6 +56,7 @@ export async function updateSettings(input: SettingsInput, database: Database = 
         timeFormat: row.timeFormat,
         hideWeekendsEntries: row.hideWeekendsEntries,
         hideWeekendsGrid: row.hideWeekendsGrid,
+        expandNotes: row.expandNotes,
       },
     });
 }

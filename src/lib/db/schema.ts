@@ -51,6 +51,8 @@ export const settings = sqliteTable('settings', {
    * Entries too; toggle off temporarily to log an odd weekend shift.
    */
   hideWeekendsGrid: integer('hide_weekends_grid', { mode: 'boolean' }).notNull().default(false),
+  /** Start with every entry's note accordion expanded in the Entries views. */
+  expandNotes: integer('expand_notes', { mode: 'boolean' }).notNull().default(false),
 });
 
 export type TimeEntry = typeof timeEntries.$inferSelect;

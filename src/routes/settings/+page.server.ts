@@ -12,6 +12,7 @@ export const load: PageServerLoad = async () => {
     timeFormat: row.timeFormat,
     hideWeekendsEntries: row.hideWeekendsEntries,
     hideWeekendsGrid: row.hideWeekendsGrid,
+    expandNotes: row.expandNotes,
   };
 };
 
@@ -28,6 +29,7 @@ export const actions: Actions = {
       timeFormat: form.get('timeFormat'),
       hideWeekendsEntries: form.has('hideWeekendsEntries'),
       hideWeekendsGrid: form.has('hideWeekendsGrid'),
+      expandNotes: form.has('expandNotes'),
     });
     if (!parsed.success) {
       return fail(400, { error: parsed.error.issues.map((i) => i.message).join('; ') });
