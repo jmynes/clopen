@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1780981252749,
+      "tag": "0000_parallel_mephistopheles",
+      "breakpoints": true
+    }
+  ]
+}
