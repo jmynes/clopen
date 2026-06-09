@@ -533,7 +533,7 @@
               <Table.Head class="w-24 font-mono">Out</Table.Head>
               <Table.Head class="w-20 text-right font-mono">Break</Table.Head>
               <Table.Head class="w-24 text-right font-mono">Worked</Table.Head>
-              <Table.Head class="w-14">OT</Table.Head>
+              <Table.Head class="w-14 text-center">OT</Table.Head>
               <Table.Head>Note</Table.Head>
               <Table.Head class="w-24 text-right">Actions</Table.Head>
             </Table.Row>
@@ -564,7 +564,7 @@
                 <Table.Cell class="text-right font-mono tabular-nums">
                   {hrs(entry.hours - entry.breakHours)}
                 </Table.Cell>
-                <Table.Cell>
+                <Table.Cell class="text-center">
                   {#if dayTotals[entry.date] > data.dailyHours}
                     <Badge variant="secondary" class="bg-amber-500/15 text-amber-600 dark:text-amber-400">OT</Badge>
                   {/if}
