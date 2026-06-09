@@ -8,7 +8,13 @@ import type { WorkSettings } from '$lib/timesheet';
 type Database = typeof defaultDb;
 
 const DEFAULT_ID = 'default';
-const DEFAULTS = { id: DEFAULT_ID, hourlyRate: 25, dailyHours: 8, workdays: '[1,2,3,4,5]' } satisfies Settings;
+const DEFAULTS = {
+  id: DEFAULT_ID,
+  hourlyRate: 25,
+  dailyHours: 8,
+  workdays: '[1,2,3,4,5]',
+  weekStartsOn: 1,
+} satisfies Settings;
 
 /** Read the single settings row, seeding defaults on first access. */
 export async function getSettings(database: Database = defaultDb): Promise<Settings> {
@@ -24,13 +30,19 @@ export async function updateSettings(input: SettingsInput, database: Database = 
     hourlyRate: input.hourlyRate,
     dailyHours: input.dailyHours,
     workdays: JSON.stringify(input.workdays),
+    weekStartsOn: input.weekStartsOn,
   };
   await database
     .insert(settings)
     .values(row)
     .onConflictDoUpdate({
       target: settings.id,
-      set: { hourlyRate: row.hourlyRate, dailyHours: row.dailyHours, workdays: row.workdays },
+      set: {
+        hourlyRate: row.hourlyRate,
+        dailyHours: row.dailyHours,
+        workdays: row.workdays,
+        weekStartsOn: row.weekStartsOn,
+      },
     });
 }
 

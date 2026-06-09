@@ -118,16 +118,20 @@ export function addDays(iso: string, days: number): string {
   return toISO(parseISO(iso) + days * DAY_MS);
 }
 
-/** Monday (ISO) of the week containing `iso`. */
-function mondayOf(iso: string): number {
+/**
+ * Start-of-week (ms) for `iso`. `weekStartsOn` is the ISO weekday the week
+ * begins on (1 = Mon … 7 = Sun); defaults to Monday.
+ */
+function weekStartOf(iso: string, weekStartsOn: number): number {
   const ms = parseISO(iso);
-  return ms - (isoWeekday(ms) - 1) * DAY_MS;
+  const daysBack = (isoWeekday(ms) - weekStartsOn + 7) % 7;
+  return ms - daysBack * DAY_MS;
 }
 
-/** The seven ISO dates (Mon→Sun) of the week containing `iso`. */
-export function weekDates(iso: string): string[] {
-  const monday = mondayOf(iso);
-  return Array.from({ length: 7 }, (_, i) => toISO(monday + i * DAY_MS));
+/** The seven ISO dates of the week containing `iso`, ordered from `weekStartsOn`. */
+export function weekDates(iso: string, weekStartsOn = 1): string[] {
+  const start = weekStartOf(iso, weekStartsOn);
+  return Array.from({ length: 7 }, (_, i) => toISO(start + i * DAY_MS));
 }
 
 export function weeklyBreakdown(params: {
@@ -135,14 +139,15 @@ export function weeklyBreakdown(params: {
   yearStart: string;
   asOf: string;
   settings: WorkSettings;
+  weekStartsOn?: number;
 }): WeekSummary[] {
-  const { entries, yearStart, asOf, settings } = params;
+  const { entries, yearStart, asOf, settings, weekStartsOn = 1 } = params;
   const yearStartMs = parseISO(yearStart);
   const asOfMs = parseISO(asOf);
   if (asOfMs < yearStartMs) return [];
 
   const weeks: WeekSummary[] = [];
-  for (let weekMs = mondayOf(yearStart); weekMs <= asOfMs; weekMs += 7 * DAY_MS) {
+  for (let weekMs = weekStartOf(yearStart, weekStartsOn); weekMs <= asOfMs; weekMs += 7 * DAY_MS) {
     const weekEnd = weekMs + 6 * DAY_MS;
     // Clip the week to the [yearStart, asOf] window.
     const from = Math.max(weekMs, yearStartMs);

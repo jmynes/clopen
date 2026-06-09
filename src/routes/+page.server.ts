@@ -11,11 +11,18 @@ export const load: PageServerLoad = async ({ url }) => {
   const requested = url.searchParams.get('asOf');
   const asOf = requested && ISO_DATE.test(requested) ? requested : today;
 
-  const settings = toWorkSettings(await getSettings());
+  const settingsRow = await getSettings();
+  const settings = toWorkSettings(settingsRow);
   const entries = await listEntries();
 
   const status = makeWholeStatus({ entries, asOf, settings });
-  const weeks = weeklyBreakdown({ entries, yearStart: yearStartOf(asOf), asOf, settings });
+  const weeks = weeklyBreakdown({
+    entries,
+    yearStart: yearStartOf(asOf),
+    asOf,
+    settings,
+    weekStartsOn: settingsRow.weekStartsOn,
+  });
 
   return {
     asOf,

@@ -12,7 +12,7 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import * as Table from '$lib/components/ui/table';
-  import { formatDay, formatWeekRange, todayISO, weekdayShort } from '$lib/date';
+  import { formatDay, formatWeekRange, isWeekend, todayISO, weekdayShort } from '$lib/date';
   import type { TimeEntry } from '$lib/db/schema';
   import { addDays, weekDates } from '$lib/timesheet';
   import type { ActionData, PageData } from './$types';
@@ -38,12 +38,11 @@
   }
 
   // Weekly grid. Rows are keyed by date, so navigating weeks recreates the
-  // inputs (clearing anything typed). Field names hours-0…6 map to weekDates()
-  // order, which the server recomputes from weekStart.
+  // inputs (clearing anything typed). Field names hours-0…6 map to the row
+  // order, which the server recomputes as weekStart + i days.
   let weekAnchor = $state(todayISO());
-  const weekRowDates = $derived(weekDates(weekAnchor));
+  const weekRowDates = $derived(weekDates(weekAnchor, data.weekStartsOn));
   const weekStart = $derived(weekRowDates[0]);
-  const isWeekend = (i: number) => i >= 5;
 </script>
 
 <div class="flex flex-col gap-8">
@@ -124,8 +123,14 @@
         class="flex flex-col gap-3"
       >
         <input type="hidden" name="weekStart" value={weekStart} />
+        <div class="flex items-center gap-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <span class="w-28 shrink-0">Day</span>
+          <span class="w-20 shrink-0">Hours</span>
+          <span class="w-20 shrink-0">Break</span>
+          <span class="flex-1">Note</span>
+        </div>
         {#each weekRowDates as date, i (date)}
-          <div class="flex items-center gap-3 {isWeekend(i) ? 'opacity-70' : ''}">
+          <div class="flex items-center gap-3 {isWeekend(date) ? 'opacity-70' : ''}">
             <div class="w-28 shrink-0 text-sm">
               <span class="font-medium">{weekdayShort(date)}</span>
               <span class="ml-1 text-muted-foreground">{formatDay(date).replace(/^\w+,\s/, '')}</span>
@@ -136,7 +141,7 @@
               step="0.25"
               min="0.25"
               max="24"
-              placeholder={isWeekend(i) ? '—' : '0'}
+              placeholder={isWeekend(date) ? '—' : '0'}
               aria-label="Hours for {weekdayShort(date)}"
               class="w-20"
             />
@@ -146,7 +151,7 @@
               step="0.25"
               min="0"
               max="24"
-              placeholder="break"
+              placeholder="0"
               aria-label="Break for {weekdayShort(date)}"
               class="w-20"
             />

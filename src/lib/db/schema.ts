@@ -28,6 +28,8 @@ export const settings = sqliteTable('settings', {
   hourlyRate: real('hourly_rate').notNull().default(25),
   dailyHours: real('daily_hours').notNull().default(8),
   workdays: text('workdays').notNull().default('[1,2,3,4,5]'),
+  /** ISO weekday the week starts on: 1 = Monday, 7 = Sunday. */
+  weekStartsOn: integer('week_starts_on').notNull().default(1),
 });
 
 export type TimeEntry = typeof timeEntries.$inferSelect;

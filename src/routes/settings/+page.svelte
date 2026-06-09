@@ -78,6 +78,19 @@
           </div>
         </fieldset>
 
+        <div class="flex flex-col gap-1.5">
+          <Label for="weekStartsOn">Week starts on</Label>
+          <p class="text-xs text-muted-foreground">Controls the weekly grid order and how weeks group on the dashboard.</p>
+          <select
+            id="weekStartsOn"
+            name="weekStartsOn"
+            class="h-9 w-48 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+          >
+            <option value="1" selected={data.weekStartsOn === 1}>Monday</option>
+            <option value="7" selected={data.weekStartsOn === 7}>Sunday</option>
+          </select>
+        </div>
+
         <div class="flex items-center gap-3">
           <Button type="submit">Save settings</Button>
           {#if form?.saved}

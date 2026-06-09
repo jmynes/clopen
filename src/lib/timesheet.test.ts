@@ -85,6 +85,19 @@ describe('weekDates', () => {
     expect(dates[0]).toBe('2026-01-05');
     expect(dates[6]).toBe('2026-01-11');
   });
+
+  it('can start the week on Sunday', () => {
+    // 2026-01-01 is Thursday; the Sunday-start week begins Sun 2025-12-28.
+    expect(weekDates('2026-01-01', 7)).toEqual([
+      '2025-12-28',
+      '2025-12-29',
+      '2025-12-30',
+      '2025-12-31',
+      '2026-01-01',
+      '2026-01-02',
+      '2026-01-03',
+    ]);
+  });
 });
 
 describe('expectedHours', () => {
@@ -232,6 +245,19 @@ describe('weeklyBreakdown', () => {
     expect(weeks[1].target).toBe(40);
     expect(weeks[1].logged).toBe(16);
     expect(weeks[1].net).toBe(-24);
+  });
+
+  it('groups weeks from Sunday when configured', () => {
+    const weeks = weeklyBreakdown({
+      yearStart: '2026-01-01',
+      asOf: '2026-01-10', // Saturday
+      settings,
+      entries: [],
+      weekStartsOn: 7,
+    });
+    expect(weeks).toHaveLength(2);
+    expect(weeks[0].weekStart).toBe('2025-12-28'); // Sunday
+    expect(weeks[1].weekStart).toBe('2026-01-04'); // Sunday
   });
 
   it('clips the final week target at a mid-week as-of date', () => {

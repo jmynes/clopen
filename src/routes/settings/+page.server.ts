@@ -4,7 +4,8 @@ import { getSettings, toWorkSettings, updateSettings } from '$lib/server/setting
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
-  return { settings: toWorkSettings(await getSettings()) };
+  const row = await getSettings();
+  return { settings: toWorkSettings(row), weekStartsOn: row.weekStartsOn };
 };
 
 export const actions: Actions = {
@@ -15,6 +16,7 @@ export const actions: Actions = {
       hourlyRate: form.get('hourlyRate'),
       dailyHours: form.get('dailyHours'),
       workdays,
+      weekStartsOn: form.get('weekStartsOn'),
     });
     if (!parsed.success) {
       return fail(400, { error: parsed.error.issues.map((i) => i.message).join('; ') });

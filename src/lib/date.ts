@@ -23,6 +23,12 @@ export function weekdayShort(iso: string): string {
   return WEEKDAY_FMT.format(utcDate(iso));
 }
 
+/** True for Saturday/Sunday — used only for visual dimming. */
+export function isWeekend(iso: string): boolean {
+  const dow = utcDate(iso).getUTCDay(); // 0 = Sun … 6 = Sat
+  return dow === 0 || dow === 6;
+}
+
 /** "Mon, Jan 5" — friendly label for an ISO date. */
 export function formatDay(iso: string): string {
   return LONG_FMT.format(utcDate(iso));

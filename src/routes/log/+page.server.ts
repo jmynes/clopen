@@ -3,15 +3,16 @@ import type { z } from 'zod';
 import { entryInput } from '$lib/schemas/entry';
 import { addEntry, deleteEntry, listEntries, updateEntry } from '$lib/server/entries';
 import { getSettings, toWorkSettings } from '$lib/server/settings';
-import { weekDates } from '$lib/timesheet';
+import { addDays } from '$lib/timesheet';
 import type { Actions, PageServerLoad } from './$types';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export const load: PageServerLoad = async () => {
   const entries = await listEntries();
-  const settings = toWorkSettings(await getSettings());
-  return { entries, dailyHours: settings.dailyHours };
+  const row = await getSettings();
+  const settings = toWorkSettings(row);
+  return { entries, dailyHours: settings.dailyHours, weekStartsOn: row.weekStartsOn };
 };
 
 function parseEntry(form: FormData) {
@@ -70,7 +71,9 @@ export const actions: Actions = {
     const weekStart = String(form.get('weekStart') ?? '');
     if (!ISO_DATE.test(weekStart)) return fail(400, { weekError: 'Invalid week' });
 
-    const dates = weekDates(weekStart);
+    // weekStart is the first day of the grid; each row is the next day after it,
+    // so this is independent of which weekday the week starts on.
+    const dates = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
     const rows = dates
       .map((date, i) => ({
         date,
