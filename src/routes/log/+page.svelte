@@ -544,16 +544,16 @@
 
   <!-- quick add -->
   <Card.Root>
-    <Card.Header class="max-sm:text-center">
+    <Card.Header class="max-md:text-center">
       <Card.Title>Add an entry</Card.Title>
     </Card.Header>
     <Card.Content class="flex flex-col gap-4">
-      <div class="flex w-full rounded-md border border-input p-0.5 text-sm sm:inline-flex sm:w-fit">
+      <div class="flex w-full rounded-md border border-input p-0.5 text-sm md:inline-flex md:w-fit">
         {#each MODE_OPTIONS as opt (opt.m)}
           <button
             type="button"
             onclick={() => (addMode = opt.m)}
-            class="flex-1 rounded-[0.3rem] px-3 py-1.5 transition-colors sm:flex-none sm:py-1 {addMode === opt.m
+            class="flex-1 rounded-[0.3rem] px-3 py-1.5 transition-colors md:flex-none md:py-1 {addMode === opt.m
               ? 'bg-primary text-primary-foreground'
               : 'text-muted-foreground hover:text-foreground'}"
           >
@@ -566,7 +566,7 @@
         method="POST"
         action="?/add"
         use:enhance={conflictAwareEnhance({ resetOnSuccess: true })}
-        class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end"
+        class="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-end"
       >
         <input type="hidden" name="mode" value={addMode} bind:this={addModeInput} />
         <div class="flex flex-col gap-1.5">
@@ -580,12 +580,12 @@
             required
             aria-invalid={addErrors.date ? 'true' : undefined}
             aria-describedby={addErrors.date ? 'date-error' : undefined}
-            class="sm:w-44"
+            class="md:w-44"
           />
           {#if addErrors.date}<p id="date-error" class="text-xs text-destructive">{addErrors.date}</p>{/if}
         </div>
         {#if addMode === 'clock'}
-          <div class="grid grid-cols-2 gap-3 sm:contents">
+          <div class="grid grid-cols-2 gap-3 md:contents">
             <div class="flex flex-col gap-1.5">
               <Label for="startTime">Clock in</Label>
               <Input
@@ -599,7 +599,7 @@
                 required
                 aria-invalid={addErrors.startTime ? 'true' : undefined}
                 aria-describedby={addErrors.startTime ? 'startTime-error' : undefined}
-                class="sm:w-40"
+                class="md:w-40"
               />
               {#if addErrors.startTime}<p id="startTime-error" class="text-xs text-destructive">{addErrors.startTime}</p>{/if}
             </div>
@@ -616,7 +616,7 @@
                 required
                 aria-invalid={addErrors.endTime ? 'true' : undefined}
                 aria-describedby={addErrors.endTime ? 'endTime-error' : undefined}
-                class="sm:w-40"
+                class="md:w-40"
               />
               {#if addErrors.endTime}<p id="endTime-error" class="text-xs text-destructive">{addErrors.endTime}</p>{/if}
             </div>
@@ -635,7 +635,7 @@
               required
               aria-invalid={addErrors.hours ? 'true' : undefined}
               aria-describedby={addErrors.hours ? 'hours-error' : undefined}
-              class="sm:w-24"
+              class="md:w-24"
             />
             {#if addErrors.hours}<p id="hours-error" class="text-xs text-destructive">{addErrors.hours}</p>{/if}
           </div>
@@ -652,7 +652,7 @@
             placeholder="0"
             aria-invalid={addErrors.breakHours ? 'true' : undefined}
             aria-describedby={addErrors.breakHours ? 'breakHours-error' : undefined}
-            class="sm:w-24"
+            class="md:w-24"
           />
           {#if addErrors.breakHours}<p id="breakHours-error" class="text-xs text-destructive">{addErrors.breakHours}</p>{/if}
         </div>
@@ -670,12 +670,12 @@
         </div>
         <input type="hidden" name="kind" value="" bind:this={addKindInput} />
         <div class="flex w-full basis-full flex-wrap items-center gap-3">
-          <Button type="submit" class="hover:bg-primary/75 max-sm:mx-auto max-sm:w-2/3">
+          <Button type="submit" class="hover:bg-primary/75 max-md:mx-auto max-md:w-2/3">
             <Plus class="size-4" /> Add entry
           </Button>
-          <div class="flex w-full flex-col items-start gap-2 sm:ml-auto sm:w-auto sm:flex-row sm:items-center sm:gap-3">
+          <div class="flex w-full flex-col items-start gap-2 md:ml-auto md:w-auto md:flex-row md:items-center md:gap-3">
             <span class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Or log leave</span>
-            <div class="grid w-full grid-cols-2 gap-2 sm:w-fit sm:grid-flow-col sm:grid-cols-none sm:grid-rows-2">
+            <div class="grid w-full grid-cols-2 gap-2 md:w-fit md:grid-flow-col md:grid-cols-none md:grid-rows-2">
               {#each LEAVE_KINDS as kind (kind)}
                 {@const Icon = LEAVE_ICON[kind]}
                 <Button
@@ -704,32 +704,32 @@
 
   <!-- weekly grid -->
   <Card.Root>
-    <Card.Header class="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
-      <div class="max-sm:text-center">
+    <Card.Header class="flex flex-col items-stretch gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-2">
+      <div class="max-md:text-center">
         <Card.Title>Log a week</Card.Title>
         <Card.Description>Fill each day, then add them all at once.</Card.Description>
       </div>
       <!-- Mobile: week nav on its own full-width row, then month/year/This week
-           sharing a line. sm:order-* restores the desktop sequence
-           (month, year, nav, This week) once the sm:contents wrapper dissolves. -->
-      <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-        <div class="flex items-center gap-2 sm:order-3">
+           sharing a line. md:order-* restores the desktop sequence
+           (month, year, nav, This week) once the md:contents wrapper dissolves. -->
+      <div class="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
+        <div class="flex items-center gap-2 md:order-3">
           <Button variant="outline" size="icon" aria-label="Previous week" onclick={() => (weekAnchor = addDays(weekStart, -7))}>
             <ChevronLeft class="size-4" />
           </Button>
-          <span class="min-w-44 flex-1 text-center text-sm font-medium tabular-nums sm:flex-none">
+          <span class="min-w-44 flex-1 text-center text-sm font-medium tabular-nums md:flex-none">
             {formatWeekRange(weekStart, true)}
           </span>
           <Button variant="outline" size="icon" aria-label="Next week" onclick={() => (weekAnchor = addDays(weekStart, 7))}>
             <ChevronRight class="size-4" />
           </Button>
         </div>
-        <div class="flex items-center gap-2 sm:contents">
+        <div class="flex items-center gap-2 md:contents">
           <select
             aria-label="Month"
             value={String(anchorMonth)}
             onchange={(e) => jumpTo(anchorYear, Number(e.currentTarget.value))}
-            class="h-9 flex-1 rounded-md border border-input bg-transparent px-2 text-sm focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none sm:order-1 sm:flex-none"
+            class="h-9 flex-1 rounded-md border border-input bg-transparent px-2 text-sm focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none md:order-1 md:flex-none"
           >
             {#each MONTHS as label, idx (label)}
               <option value={String(idx + 1)}>{label}</option>
@@ -739,25 +739,25 @@
             aria-label="Year"
             value={String(anchorYear)}
             onchange={(e) => jumpTo(Number(e.currentTarget.value), anchorMonth)}
-            class="h-9 flex-1 rounded-md border border-input bg-transparent px-2 text-sm tabular-nums focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none sm:order-2 sm:flex-none"
+            class="h-9 flex-1 rounded-md border border-input bg-transparent px-2 text-sm tabular-nums focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none md:order-2 md:flex-none"
           >
             {#each yearOptions as y (y)}
               <option value={String(y)}>{y}</option>
             {/each}
           </select>
-          <Button variant="outline" size="sm" class="sm:order-4" onclick={() => (weekAnchor = todayISO())}>
+          <Button variant="outline" size="sm" class="md:order-4" onclick={() => (weekAnchor = todayISO())}>
             This week
           </Button>
         </div>
       </div>
     </Card.Header>
     <Card.Content class="flex flex-col gap-4">
-      <div class="flex w-full rounded-md border border-input p-0.5 text-sm sm:inline-flex sm:w-fit">
+      <div class="flex w-full rounded-md border border-input p-0.5 text-sm md:inline-flex md:w-fit">
         {#each MODE_OPTIONS as opt (opt.m)}
           <button
             type="button"
             onclick={() => (weekMode = opt.m)}
-            class="flex-1 rounded-[0.3rem] px-3 py-1.5 transition-colors sm:flex-none sm:py-1 {weekMode === opt.m
+            class="flex-1 rounded-[0.3rem] px-3 py-1.5 transition-colors md:flex-none md:py-1 {weekMode === opt.m
               ? 'bg-primary text-primary-foreground'
               : 'text-muted-foreground hover:text-foreground'}"
           >
@@ -792,7 +792,7 @@
           <span class="flex-1">Note</span>
           <span class="w-40 shrink-0 text-center">Leave</span>
         </div>
-        <div class="grid gap-3 sm:grid-cols-2 lg:contents">
+        <div class="grid gap-3 md:grid-cols-2 lg:contents">
           {#each weekRows as { date, i }, idx (date)}
             {@const rowErr = (col: string) => weekErrors[`${col}-${i}`]}
             {@const leaveKind = leaveRows.get(i) ?? null}
@@ -988,7 +988,7 @@
   {/if}
   <Card.Root
     class={entriesExpanded
-      ? 'fixed inset-0 z-50 overflow-hidden max-sm:rounded-none max-sm:ring-0 sm:inset-6 2xl:inset-x-[calc((100vw-84rem)/2)]'
+      ? 'fixed inset-0 z-50 overflow-hidden max-md:rounded-none max-md:ring-0 md:inset-6 2xl:inset-x-[calc((100vw-84rem)/2)]'
       : ''}
   >
     <Card.Header class="flex flex-row flex-wrap items-center justify-between gap-2">
@@ -1044,7 +1044,7 @@
           onchange={(e) => {
             entriesPeriod = e.currentTarget.value as Period;
           }}
-          class="h-9 shrink-0 basis-full rounded-md border border-input bg-transparent px-2 text-sm focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none sm:basis-auto"
+          class="h-9 shrink-0 basis-full rounded-md border border-input bg-transparent px-2 text-sm focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none md:basis-auto"
         >
           {#each Object.entries(PERIOD_LABELS) as [v, label] (v)}
             <option value={v}>{label}</option>

@@ -47,12 +47,12 @@
 
 <div class="min-h-screen bg-background text-foreground">
   <header class="border-b border-border/70 bg-background/80 backdrop-blur sticky top-0 z-20">
-    <div class="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:h-auto sm:px-6 sm:py-4">
+    <div class="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 md:h-auto md:px-6 md:py-4">
       <div class="flex items-center gap-1">
         <!-- Mobile hamburger (animated bars → X) -->
         <button
           type="button"
-          class="-ml-2 flex h-9 w-9 flex-col items-center justify-center gap-[5px] rounded-md transition-colors hover:bg-accent active:bg-accent sm:hidden"
+          class="-ml-2 flex h-9 w-9 flex-col items-center justify-center gap-[5px] rounded-md transition-colors hover:bg-accent active:bg-accent md:hidden"
           onclick={() => (menuOpen = !menuOpen)}
           aria-label={menuOpen ? 'Close menu' : 'Open menu'}
           aria-expanded={menuOpen}
@@ -67,7 +67,7 @@
         </a>
       </div>
       <nav class="flex items-center gap-1 text-sm">
-        <div class="hidden items-center gap-1 sm:flex">
+        <div class="hidden items-center gap-1 md:flex">
           {#each links as link (link.href)}
             {@const Icon = link.icon}
             <a
@@ -128,13 +128,13 @@
       <!-- h is explicit: Chrome won't stretch an abs-positioned <button> from top/bottom constraints -->
       <button
         type="button"
-        class="fixed inset-x-0 top-14 z-10 h-[calc(100dvh-3.5rem)] cursor-default bg-black/75 sm:hidden"
+        class="fixed inset-x-0 top-14 z-10 h-[calc(100dvh-3.5rem)] cursor-default bg-black/75 md:hidden"
         onclick={() => (menuOpen = false)}
         aria-label="Close menu"
         tabindex={-1}
       ></button>
       <div
-        class="fixed inset-x-0 top-14 z-20 divide-y divide-border/60 border-t border-border/70 bg-background px-4 pb-2 sm:hidden"
+        class="fixed inset-x-0 top-14 z-20 divide-y divide-border/60 border-t border-border/70 bg-background px-4 pb-2 md:hidden"
       >
         {#each links as link (link.href)}
           {@const Icon = link.icon}
@@ -156,14 +156,14 @@
     {/if}
   </header>
 
-  <main class="mx-auto max-w-5xl px-4 py-6 pb-24 sm:px-6 sm:py-10 sm:pb-10">
+  <main class="mx-auto max-w-5xl px-4 py-6 pb-24 md:px-6 md:py-10 md:pb-10">
     {@render children()}
   </main>
 
   <!-- iOS-style tab bar replaces the header links on phones -->
   <nav
     aria-label="Primary"
-    class="fixed inset-x-0 bottom-0 z-10 border-t border-border/70 bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden"
+    class="fixed inset-x-0 bottom-0 z-10 border-t border-border/70 bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
   >
     <div class="grid grid-cols-3">
       {#each links as link (link.href)}
