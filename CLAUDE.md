@@ -146,10 +146,13 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   the whole week (fallback: first row's time fields down). The edit modal
   carries the same Type chooser and doubles as a create dialog: the pencil on
   a blank day opens it posting to `?/add` with that date prefilled.
-  The entries table is paginated by the same period set (default yearly),
-  capped at ~14 visible rows with a sticky header, pads unlogged days with
-  em-dashes, tints leave rows in their color family (and darkens on hover
-  rather than overwriting), and renders delete in a confirm dialog. Notes live
+  The entries table (titled **Ledger** in the UI) is paginated by the same
+  period set (default yearly), capped at ~14 visible rows with a sticky
+  header, pads unlogged days with em-dashes, tints leave rows in their color
+  family (and darkens on hover rather than overwriting), and renders delete
+  in a confirm dialog. Zebra stripes alternate per *day* (not per row) so a
+  multi-shift day reads as one block; the date renders on its first row only,
+  with follow-up rows marked "↳ shift N". Notes live
   behind a sticky-note action per row that toggles an accordion under the row
   (default open state comes from `expandNotes`); an expand button takes the
   whole section fullscreen, and paging back stops at the tracking epoch.

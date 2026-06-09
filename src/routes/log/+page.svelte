@@ -373,7 +373,9 @@
   // Either weekend setting suppresses the blank Sat/Sun padding; days with
   // actual entries always show.
   const hideBlankWeekends = $derived(data.hideWeekendsEntries || data.hideWeekendsGrid);
-  type DisplayRow = { kind: 'entry'; entry: TimeEntry } | { kind: 'blank'; date: string };
+  type DisplayRow =
+    | { kind: 'entry'; entry: TimeEntry; dayIdx: number; shiftNo: number; dayCount: number }
+    | { kind: 'blank'; date: string; dayIdx: number };
   const displayRows = $derived.by<DisplayRow[]>(() => {
     const byDate = new Map<string, TimeEntry[]>();
     for (const e of pagedEntries) {
@@ -386,12 +388,19 @@
     // today so future dates in the bucket (e.g. rest of year) aren't listed.
     const today = todayISO();
     let cursor = entriesBucket.end < today ? entriesBucket.end : today;
+    // dayIdx drives zebra striping per *day*, so a multi-shift day reads as
+    // one block; shiftNo/dayCount let follow-up rows drop the repeated date.
+    let dayIdx = 0;
     while (cursor >= entriesBucket.start) {
       const dayEntries = byDate.get(cursor);
       if (dayEntries && dayEntries.length > 0) {
-        for (const entry of dayEntries) rows.push({ kind: 'entry', entry });
+        dayEntries.forEach((entry, k) => {
+          rows.push({ kind: 'entry', entry, dayIdx, shiftNo: k + 1, dayCount: dayEntries.length });
+        });
+        dayIdx++;
       } else if (cursor >= data.epoch && (!hideBlankWeekends || !isWeekend(cursor))) {
-        rows.push({ kind: 'blank', date: cursor });
+        rows.push({ kind: 'blank', date: cursor, dayIdx });
+        dayIdx++;
       }
       cursor = addDays(cursor, -1);
     }
@@ -1365,7 +1374,7 @@
       type="button"
       class="fixed inset-x-0 top-0 z-40 h-dvh cursor-default bg-black/70"
       onclick={() => (entriesExpanded = false)}
-      aria-label="Collapse entries"
+      aria-label="Collapse ledger"
       tabindex={-1}
     ></button>
   {/if}
@@ -1376,7 +1385,7 @@
   >
     <Card.Header class="flex flex-row flex-wrap items-center justify-between gap-2">
       <div>
-        <Card.Title>Entries</Card.Title>
+        <Card.Title>Ledger</Card.Title>
         <Card.Description>
           {pagedEntries.length} in this {entriesPeriod === 'biweek' ? 'bi-week' : entriesPeriod} · {data.entries.length} total
         </Card.Description>
@@ -1411,7 +1420,7 @@
                 variant="outline"
                 size="sm"
                 type="button"
-                aria-label={entriesExpanded ? 'Collapse entries' : 'Expand entries'}
+                aria-label={entriesExpanded ? 'Collapse ledger' : 'Expand ledger'}
                 onclick={() => (entriesExpanded = !entriesExpanded)}
               >
                 {#if entriesExpanded}
@@ -1422,7 +1431,7 @@
               </Button>
             {/snippet}
           </Tooltip.Trigger>
-          <Tooltip.Content>{entriesExpanded ? 'Exit fullscreen' : 'Fullscreen entries'}</Tooltip.Content>
+          <Tooltip.Content>{entriesExpanded ? 'Exit fullscreen' : 'Fullscreen ledger'}</Tooltip.Content>
         </Tooltip.Root>
       </div>
     </Card.Header>
@@ -1504,7 +1513,7 @@
             {#each displayRows as row, idx (row.kind === 'entry' ? row.entry.id : `blank-${row.date}`)}
               {#if row.kind === 'blank'}
                 <Table.Row
-                  class={`text-muted-foreground/60 ${isWeekend(row.date) ? 'bg-amber-500/10' : idx % 2 === 1 ? 'bg-muted/70' : ''}`}
+                  class={`text-muted-foreground/60 ${isWeekend(row.date) ? 'bg-amber-500/10' : row.dayIdx % 2 === 1 ? 'bg-muted/70' : ''}`}
                 >
                   <Table.Cell class="font-mono text-sm uppercase tabular-nums">
                     <span>{weekdayShort(row.date)}</span>
@@ -1527,13 +1536,19 @@
                 <Table.Row
                   class={entryLeave
                     ? KIND_CLASSES[entryLeave].row + (leaveIsUnpaid ? ' unpaid-hatch' : '')
-                    : idx % 2 === 1
+                    : row.dayIdx % 2 === 1
                       ? 'bg-muted/70 hover:bg-muted!'
                       : 'hover:bg-muted/30!'}
                 >
                 <Table.Cell class="font-mono text-sm uppercase tabular-nums">
-                  <span class="text-muted-foreground">{weekdayShort(entry.date)}</span>
-                  <span class="ml-1">{formatDay(entry.date).replace(/^\w+,\s/, '')}</span>
+                  {#if row.shiftNo === 1}
+                    <span class="text-muted-foreground">{weekdayShort(entry.date)}</span>
+                    <span class="ml-1">{formatDay(entry.date).replace(/^\w+,\s/, '')}</span>
+                  {:else}
+                    <span class="text-xs text-muted-foreground" title="Another shift on {entry.date}">
+                      ↳ shift {row.shiftNo}
+                    </span>
+                  {/if}
                 </Table.Cell>
                 <Table.Cell class="font-mono text-sm tabular-nums">
                   {#if entry.startTime}
@@ -1589,7 +1604,7 @@
                 <Table.Row
                   class={entryLeave
                     ? KIND_CLASSES[entryLeave].row + (leaveIsUnpaid ? ' unpaid-hatch' : '')
-                    : idx % 2 === 1
+                    : row.dayIdx % 2 === 1
                       ? 'bg-muted/70 hover:bg-muted/70!'
                       : 'hover:bg-transparent!'}
                 >
@@ -1620,7 +1635,7 @@
               <div
                 class="flex items-center justify-between px-3 py-2 text-muted-foreground/60 {isWeekend(row.date)
                   ? 'bg-amber-500/10'
-                  : idx % 2 === 1
+                  : row.dayIdx % 2 === 1
                     ? 'bg-muted/70'
                     : ''}"
               >
@@ -1637,17 +1652,21 @@
               <div
                 class={entryLeave
                   ? KIND_CLASSES[entryLeave].row + (leaveIsUnpaid ? ' unpaid-hatch' : '')
-                  : idx % 2 === 1
+                  : row.dayIdx % 2 === 1
                     ? 'bg-muted/70'
                     : ''}
               >
                 <div class="flex items-center justify-between gap-3 px-3 py-2">
                 <div class="flex min-w-0 flex-col gap-1">
                   <div class="flex flex-wrap items-center gap-2 font-mono text-sm uppercase tabular-nums">
-                    <span>
-                      <span class="text-muted-foreground">{weekdayShort(entry.date)}</span>
-                      <span class="ml-1">{formatDay(entry.date).replace(/^\w+,\s/, '')}</span>
-                    </span>
+                    {#if row.shiftNo === 1}
+                      <span>
+                        <span class="text-muted-foreground">{weekdayShort(entry.date)}</span>
+                        <span class="ml-1">{formatDay(entry.date).replace(/^\w+,\s/, '')}</span>
+                      </span>
+                    {:else}
+                      <span class="text-xs text-muted-foreground">↳ shift {row.shiftNo}</span>
+                    {/if}
                     {#if !entryLeave && dayTotals[entry.date] > data.dailyHours}
                       <span
                         title="Worked past the daily baseline" class="inline-flex items-center rounded-md bg-amber-500/15 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400"
