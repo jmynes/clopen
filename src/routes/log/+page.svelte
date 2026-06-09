@@ -239,13 +239,10 @@
     data.entries.filter((e) => e.date >= entriesBucket.start && e.date <= entriesBucket.end),
   );
 
-  // For shorter periods (week/biweek/month) we pad missing days with blank
-  // rows so the user can see at a glance which days went unlogged. For longer
-  // periods this would dump hundreds of blank rows, so we just list real ones.
+  // Pad missing days with blank rows for every period so unlogged days stand
+  // out at a glance. The scrollable container keeps long quarters/years usable.
   type DisplayRow = { kind: 'entry'; entry: TimeEntry } | { kind: 'blank'; date: string };
   const displayRows = $derived.by<DisplayRow[]>(() => {
-    const padBlanks = entriesPeriod === 'week' || entriesPeriod === 'biweek' || entriesPeriod === 'month';
-    if (!padBlanks) return pagedEntries.map((entry) => ({ kind: 'entry', entry }) as DisplayRow);
     const byDate = new Map<string, TimeEntry[]>();
     for (const e of pagedEntries) {
       const list = byDate.get(e.date) ?? [];
@@ -253,8 +250,10 @@
       byDate.set(e.date, list);
     }
     const rows: DisplayRow[] = [];
-    // Walk dates from end → start so newest stays on top.
-    let cursor = entriesBucket.end;
+    // Walk dates from end → start so newest stays on top. Cap upper bound at
+    // today so future dates in the bucket (e.g. rest of year) aren't listed.
+    const today = todayISO();
+    let cursor = entriesBucket.end < today ? entriesBucket.end : today;
     while (cursor >= entriesBucket.start) {
       const dayEntries = byDate.get(cursor);
       if (dayEntries && dayEntries.length > 0) {
@@ -778,12 +777,16 @@
           <Table.Body>
             {#each displayRows as row, idx (row.kind === 'entry' ? row.entry.id : `blank-${row.date}`)}
               {#if row.kind === 'blank'}
-                <Table.Row class={`${idx % 2 === 1 ? 'bg-muted/70' : ''} ${isWeekend(row.date) ? 'bg-amber-500/5' : ''}`}>
+                <Table.Row
+                  class={`h-11 ${idx % 2 === 1 ? 'bg-muted/70' : ''} ${isWeekend(row.date) ? 'bg-amber-500/5' : ''}`}
+                >
                   <Table.Cell class="font-mono text-sm uppercase tabular-nums opacity-60">
                     <span class="text-muted-foreground">{weekdayShort(row.date)}</span>
                     <span class="ml-1">{formatDay(row.date).replace(/^\w+,\s/, '')}</span>
                   </Table.Cell>
-                  <Table.Cell colspan={7} class="text-center text-xs italic text-muted-foreground/70">not logged</Table.Cell>
+                  <Table.Cell colspan={7} class="text-center text-xs italic text-muted-foreground/70">
+                    not logged
+                  </Table.Cell>
                 </Table.Row>
               {:else}
                 {@const entry = row.entry}
