@@ -736,7 +736,7 @@
           </div>
         {/if}
         <div class="flex flex-col gap-1.5">
-          <Label for="breakHours">Break <span class="text-muted-foreground">(h)</span></Label>
+          <Label for="breakHours">Break</Label>
           <Input
             id="breakHours"
             type="number"
@@ -745,7 +745,7 @@
             step="0.25"
             min="0"
             max="24"
-            placeholder="0"
+            placeholder="0.0h"
             aria-invalid={addErrors.breakHours ? 'true' : undefined}
             aria-describedby={addErrors.breakHours ? 'breakHours-error' : undefined}
             class="md:w-24"
@@ -1069,7 +1069,7 @@
                         step="0.25"
                         min="0"
                         max="24"
-                        placeholder="0"
+                        placeholder="0.0h"
                         aria-label="Break for {weekdayShort(date)}"
                         aria-invalid={rowErr('break') ? 'true' : undefined}
                         class="font-mono tabular-nums"
@@ -1628,6 +1628,7 @@
               id="edit-break"
               type="number"
               name="breakHours"
+              placeholder="0.0h"
               step="0.25"
               min="0"
               max="24"
