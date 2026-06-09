@@ -657,7 +657,7 @@
           {:else if form && 'weekError' in form && form.weekError}
             <span class="text-sm text-destructive">{form.weekError}</span>
           {/if}
-          <Button type="button" variant="ghost" onclick={clearWeek} class="ml-auto">
+          <Button type="button" variant="destructive" onclick={clearWeek} class="ml-auto">
             <X class="size-4" /> Clear
           </Button>
         </div>
