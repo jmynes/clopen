@@ -715,15 +715,41 @@
            (month, year, nav, This week) once the md:contents wrapper dissolves. -->
       <div class="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
         <div class="flex items-center gap-2 md:order-3">
-          <Button variant="outline" size="icon" title="Previous week" aria-label="Previous week" onclick={() => (weekAnchor = addDays(weekStart, -7))}>
-            <ChevronLeft class="size-4" />
-          </Button>
+          <Tooltip.Root>
+            <Tooltip.Trigger>
+              {#snippet child({ props })}
+                <Button
+                  {...props}
+                  variant="outline"
+                  size="icon"
+                  aria-label="Previous week"
+                  onclick={() => (weekAnchor = addDays(weekStart, -7))}
+                >
+                  <ChevronLeft class="size-4" />
+                </Button>
+              {/snippet}
+            </Tooltip.Trigger>
+            <Tooltip.Content>Previous week</Tooltip.Content>
+          </Tooltip.Root>
           <span class="min-w-44 flex-1 text-center text-sm font-medium tabular-nums md:flex-none">
             {formatWeekRange(weekStart, true)}
           </span>
-          <Button variant="outline" size="icon" title="Next week" aria-label="Next week" onclick={() => (weekAnchor = addDays(weekStart, 7))}>
-            <ChevronRight class="size-4" />
-          </Button>
+          <Tooltip.Root>
+            <Tooltip.Trigger>
+              {#snippet child({ props })}
+                <Button
+                  {...props}
+                  variant="outline"
+                  size="icon"
+                  aria-label="Next week"
+                  onclick={() => (weekAnchor = addDays(weekStart, 7))}
+                >
+                  <ChevronRight class="size-4" />
+                </Button>
+              {/snippet}
+            </Tooltip.Trigger>
+            <Tooltip.Content>Next week</Tooltip.Content>
+          </Tooltip.Root>
         </div>
         <div class="flex items-center gap-2 md:contents">
           <select
