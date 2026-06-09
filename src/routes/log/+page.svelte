@@ -16,7 +16,7 @@
   import { Label } from '$lib/components/ui/label';
   import * as Table from '$lib/components/ui/table';
   import { toCsv } from '$lib/csv';
-  import { formatDay, formatTime, formatTimeRange, formatWeekRange, isWeekend, todayISO, weekdayShort } from '$lib/date';
+  import { formatDay, formatTime, formatWeekRange, isWeekend, todayISO, weekdayShort } from '$lib/date';
   import type { TimeEntry } from '$lib/db/schema';
   import { addDays, parseTimeInput, weekDates } from '$lib/timesheet';
   import type { ActionData, PageData } from './$types';
@@ -528,8 +528,11 @@
         <Table.Root>
           <Table.Header>
             <Table.Row>
-              <Table.Head class="w-40">Date</Table.Head>
-              <Table.Head class="w-28 text-right">Worked</Table.Head>
+              <Table.Head class="w-32">Date</Table.Head>
+              <Table.Head class="w-24 font-mono">In</Table.Head>
+              <Table.Head class="w-24 font-mono">Out</Table.Head>
+              <Table.Head class="w-20 text-right font-mono">Break</Table.Head>
+              <Table.Head class="w-24 text-right font-mono">Worked</Table.Head>
               <Table.Head>Note</Table.Head>
               <Table.Head class="w-24 text-right">Actions</Table.Head>
             </Table.Row>
@@ -541,22 +544,30 @@
                   <span class="text-muted-foreground">{weekdayShort(entry.date)}</span>
                   <span class="ml-1">{formatDay(entry.date).replace(/^\w+,\s/, '')}</span>
                 </Table.Cell>
+                <Table.Cell class="font-mono text-sm tabular-nums">
+                  {entry.startTime ? formatTime(entry.startTime) : '—'}
+                </Table.Cell>
+                <Table.Cell class="font-mono text-sm tabular-nums">
+                  {#if entry.endTime}
+                    {formatTime(entry.endTime)}
+                    {#if entry.startTime && entry.endTime < entry.startTime}
+                      <span class="ml-1 text-xs text-muted-foreground">+1d</span>
+                    {/if}
+                  {:else}
+                    —
+                  {/if}
+                </Table.Cell>
+                <Table.Cell class="text-right font-mono text-sm tabular-nums text-muted-foreground">
+                  {entry.breakHours > 0 ? hrs(entry.breakHours) : '—'}
+                </Table.Cell>
                 <Table.Cell class="text-right font-mono tabular-nums">
                   {hrs(entry.hours - entry.breakHours)}
                   {#if dayTotals[entry.date] > data.dailyHours}
                     <Badge variant="secondary" class="ml-1 bg-amber-500/15 text-amber-600 dark:text-amber-400">OT</Badge>
                   {/if}
-                  {#if entry.breakHours > 0}
-                    <div class="text-xs font-normal text-muted-foreground">
-                      {hrs(entry.hours)} − {hrs(entry.breakHours)} break
-                    </div>
-                  {/if}
                 </Table.Cell>
                 <Table.Cell class="text-muted-foreground">
-                  {#if entry.startTime && entry.endTime}
-                    <div class="font-mono text-xs tabular-nums">{formatTimeRange(entry.startTime, entry.endTime)}</div>
-                  {/if}
-                  {#if entry.note}<div>{entry.note}</div>{/if}
+                  {entry.note ?? ''}
                 </Table.Cell>
                 <Table.Cell class="text-right">
                   <div class="flex justify-end gap-1">
