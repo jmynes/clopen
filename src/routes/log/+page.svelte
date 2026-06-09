@@ -516,7 +516,7 @@
           />
           {#if addErrors.breakHours}<p id="breakHours-error" class="text-xs text-destructive">{addErrors.breakHours}</p>{/if}
         </div>
-        <div class="flex flex-1 flex-col gap-1.5">
+        <div class="flex w-full basis-full flex-col gap-1.5">
           <Label for="note">Note <span class="text-muted-foreground">(optional)</span></Label>
           <Input
             id="note"
