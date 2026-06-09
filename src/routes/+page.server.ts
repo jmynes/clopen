@@ -34,6 +34,10 @@ export const load: PageServerLoad = async ({ url }) => {
     year: asOf.slice(0, 4),
     hourlyRate: settings.hourlyRate,
     dailyHours: settings.dailyHours,
+    workdays: settings.workdays,
+    weekStartsOn: settingsRow.weekStartsOn,
+    epoch: settingsRow.epoch,
+    entries,
     status,
     weeks,
   };

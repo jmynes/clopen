@@ -212,10 +212,10 @@
         const wk = weekDates(anchor, wsOn)[0];
         const start = addDays(wk, -7);
         const end = addDays(wk, 6);
-        return { start, end, label: formatWeekRange(start, true) + ' → ' + formatDay(end).replace(/^\w+,\s/, '') };
+        return { start, end, label: `${formatWeekRange(start, true)} → ${formatDay(end).replace(/^\w+,\s/, '')}` };
       }
       case 'month': {
-        const start = anchor.slice(0, 7) + '-01';
+        const start = `${anchor.slice(0, 7)}-01`;
         const end = lastDayOf(start);
         const y = Number(anchor.slice(0, 4));
         return { start, end, label: `${MONTHS[Number(anchor.slice(5, 7)) - 1]} ${y}` };
