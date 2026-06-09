@@ -652,33 +652,16 @@
 
   <!-- weekly grid -->
   <Card.Root>
-    <Card.Header class="flex flex-row flex-wrap items-center justify-between gap-2">
+    <Card.Header class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
       <div>
         <Card.Title>Log a week</Card.Title>
         <Card.Description>Fill each day, then add them all at once.</Card.Description>
       </div>
-      <div class="flex flex-wrap items-center gap-2">
-        <select
-          aria-label="Month"
-          value={String(anchorMonth)}
-          onchange={(e) => jumpTo(anchorYear, Number(e.currentTarget.value))}
-          class="h-9 rounded-md border border-input bg-transparent px-2 text-sm focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
-        >
-          {#each MONTHS as label, idx (label)}
-            <option value={String(idx + 1)}>{label}</option>
-          {/each}
-        </select>
-        <select
-          aria-label="Year"
-          value={String(anchorYear)}
-          onchange={(e) => jumpTo(Number(e.currentTarget.value), anchorMonth)}
-          class="h-9 rounded-md border border-input bg-transparent px-2 text-sm tabular-nums focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
-        >
-          {#each yearOptions as y (y)}
-            <option value={String(y)}>{y}</option>
-          {/each}
-        </select>
-        <div class="flex items-center gap-2 max-sm:order-1 max-sm:w-full">
+      <!-- Mobile: week nav on its own full-width row, then month/year/This week
+           sharing a line. sm:order-* restores the desktop sequence
+           (month, year, nav, This week) once the sm:contents wrapper dissolves. -->
+      <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <div class="flex items-center gap-2 sm:order-3">
           <Button variant="outline" size="icon" aria-label="Previous week" onclick={() => (weekAnchor = addDays(weekStart, -7))}>
             <ChevronLeft class="size-4" />
           </Button>
@@ -689,16 +672,40 @@
             <ChevronRight class="size-4" />
           </Button>
         </div>
-        <Button variant="outline" size="sm" onclick={() => (weekAnchor = todayISO())}>This week</Button>
+        <div class="flex items-center gap-2 sm:contents">
+          <select
+            aria-label="Month"
+            value={String(anchorMonth)}
+            onchange={(e) => jumpTo(anchorYear, Number(e.currentTarget.value))}
+            class="h-9 flex-1 rounded-md border border-input bg-transparent px-2 text-sm focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none sm:order-1 sm:flex-none"
+          >
+            {#each MONTHS as label, idx (label)}
+              <option value={String(idx + 1)}>{label}</option>
+            {/each}
+          </select>
+          <select
+            aria-label="Year"
+            value={String(anchorYear)}
+            onchange={(e) => jumpTo(Number(e.currentTarget.value), anchorMonth)}
+            class="h-9 flex-1 rounded-md border border-input bg-transparent px-2 text-sm tabular-nums focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none sm:order-2 sm:flex-none"
+          >
+            {#each yearOptions as y (y)}
+              <option value={String(y)}>{y}</option>
+            {/each}
+          </select>
+          <Button variant="outline" size="sm" class="sm:order-4" onclick={() => (weekAnchor = todayISO())}>
+            This week
+          </Button>
+        </div>
       </div>
     </Card.Header>
     <Card.Content class="flex flex-col gap-4">
-      <div class="inline-flex w-fit rounded-md border border-input p-0.5 text-sm">
+      <div class="flex w-full rounded-md border border-input p-0.5 text-sm sm:inline-flex sm:w-fit">
         {#each MODE_OPTIONS as opt (opt.m)}
           <button
             type="button"
             onclick={() => (weekMode = opt.m)}
-            class="rounded-[0.3rem] px-3 py-1 transition-colors {weekMode === opt.m
+            class="flex-1 rounded-[0.3rem] px-3 py-1.5 transition-colors sm:flex-none sm:py-1 {weekMode === opt.m
               ? 'bg-primary text-primary-foreground'
               : 'text-muted-foreground hover:text-foreground'}"
           >
