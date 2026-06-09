@@ -7,6 +7,7 @@
   import Plus from '@lucide/svelte/icons/plus';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import Upload from '@lucide/svelte/icons/upload';
+  import X from '@lucide/svelte/icons/x';
   import { enhance } from '$app/forms';
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
@@ -195,6 +196,16 @@
     } else {
       cell.value = raw.trim();
     }
+  }
+
+  // Wipe every editable cell in the weekly grid (form.reset would also clear
+  // the hidden weekStart/mode inputs, so we walk the named inputs directly).
+  function clearWeek() {
+    if (!weekForm) return;
+    const inputs = weekForm.querySelectorAll<HTMLInputElement>('input[name]');
+    inputs.forEach((el) => {
+      if (/^(start|end|break|hours|note)-\d$/.test(el.name)) el.value = '';
+    });
   }
 
   // Copy the first day's in/out/break (or hours/break) down to the rest of the week.
@@ -563,6 +574,9 @@
           {:else if form && 'weekError' in form && form.weekError}
             <span class="text-sm text-destructive">{form.weekError}</span>
           {/if}
+          <Button type="button" variant="ghost" onclick={clearWeek} class="ml-auto">
+            <X class="size-4" /> Clear
+          </Button>
         </div>
       </form>
     </Card.Content>
