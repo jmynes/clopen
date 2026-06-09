@@ -786,7 +786,9 @@
                   </Select.Trigger>
                   <Select.Content>
                     <Select.Item value="work">
-                      <span class="inline-flex items-center gap-2 text-muted-foreground">
+                      <span
+                        class="inline-flex items-center gap-2 rounded-md bg-zinc-500/15 px-1 py-0.5 text-zinc-700 dark:text-zinc-300"
+                      >
                         <Briefcase class="size-3.5" />
                         Work
                       </span>
