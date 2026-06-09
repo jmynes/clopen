@@ -530,44 +530,46 @@
             required
             aria-invalid={addErrors.date ? 'true' : undefined}
             aria-describedby={addErrors.date ? 'date-error' : undefined}
-            class="w-44"
+            class="sm:w-44"
           />
           {#if addErrors.date}<p id="date-error" class="text-xs text-destructive">{addErrors.date}</p>{/if}
         </div>
         {#if addMode === 'clock'}
-          <div class="flex flex-col gap-1.5">
-            <Label for="startTime">Clock in</Label>
-            <Input
-              id="startTime"
-              type="text"
-              name="startTime"
-              inputmode="numeric"
-              autocomplete="off"
-              placeholder={startPlaceholder}
-              onblur={normalizeTime}
-              required
-              aria-invalid={addErrors.startTime ? 'true' : undefined}
-              aria-describedby={addErrors.startTime ? 'startTime-error' : undefined}
-              class="w-40"
-            />
-            {#if addErrors.startTime}<p id="startTime-error" class="text-xs text-destructive">{addErrors.startTime}</p>{/if}
-          </div>
-          <div class="flex flex-col gap-1.5">
-            <Label for="endTime">Clock out</Label>
-            <Input
-              id="endTime"
-              type="text"
-              name="endTime"
-              inputmode="numeric"
-              autocomplete="off"
-              placeholder={endPlaceholder}
-              onblur={normalizeTime}
-              required
-              aria-invalid={addErrors.endTime ? 'true' : undefined}
-              aria-describedby={addErrors.endTime ? 'endTime-error' : undefined}
-              class="w-40"
-            />
-            {#if addErrors.endTime}<p id="endTime-error" class="text-xs text-destructive">{addErrors.endTime}</p>{/if}
+          <div class="grid grid-cols-2 gap-3 sm:contents">
+            <div class="flex flex-col gap-1.5">
+              <Label for="startTime">Clock in</Label>
+              <Input
+                id="startTime"
+                type="text"
+                name="startTime"
+                inputmode="numeric"
+                autocomplete="off"
+                placeholder={startPlaceholder}
+                onblur={normalizeTime}
+                required
+                aria-invalid={addErrors.startTime ? 'true' : undefined}
+                aria-describedby={addErrors.startTime ? 'startTime-error' : undefined}
+                class="sm:w-40"
+              />
+              {#if addErrors.startTime}<p id="startTime-error" class="text-xs text-destructive">{addErrors.startTime}</p>{/if}
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <Label for="endTime">Clock out</Label>
+              <Input
+                id="endTime"
+                type="text"
+                name="endTime"
+                inputmode="numeric"
+                autocomplete="off"
+                placeholder={endPlaceholder}
+                onblur={normalizeTime}
+                required
+                aria-invalid={addErrors.endTime ? 'true' : undefined}
+                aria-describedby={addErrors.endTime ? 'endTime-error' : undefined}
+                class="sm:w-40"
+              />
+              {#if addErrors.endTime}<p id="endTime-error" class="text-xs text-destructive">{addErrors.endTime}</p>{/if}
+            </div>
           </div>
         {:else}
           <div class="flex flex-col gap-1.5">
@@ -583,7 +585,7 @@
               required
               aria-invalid={addErrors.hours ? 'true' : undefined}
               aria-describedby={addErrors.hours ? 'hours-error' : undefined}
-              class="w-24"
+              class="sm:w-24"
             />
             {#if addErrors.hours}<p id="hours-error" class="text-xs text-destructive">{addErrors.hours}</p>{/if}
           </div>
@@ -600,7 +602,7 @@
             placeholder="0"
             aria-invalid={addErrors.breakHours ? 'true' : undefined}
             aria-describedby={addErrors.breakHours ? 'breakHours-error' : undefined}
-            class="w-24"
+            class="sm:w-24"
           />
           {#if addErrors.breakHours}<p id="breakHours-error" class="text-xs text-destructive">{addErrors.breakHours}</p>{/if}
         </div>
@@ -619,9 +621,9 @@
         <input type="hidden" name="kind" value="" bind:this={addKindInput} />
         <div class="flex w-full basis-full flex-wrap items-center gap-3">
           <Button type="submit"><Plus class="size-4" /> Add entry</Button>
-          <div class="ml-auto flex items-center gap-3">
+          <div class="flex w-full flex-col items-start gap-2 sm:ml-auto sm:w-auto sm:flex-row sm:items-center sm:gap-3">
             <span class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Or log leave</span>
-            <div class="grid w-fit grid-flow-col grid-rows-2 gap-2">
+            <div class="grid w-full grid-cols-2 gap-2 sm:w-fit sm:grid-flow-col sm:grid-cols-none sm:grid-rows-2">
               {#each LEAVE_KINDS as kind (kind)}
                 {@const Icon = LEAVE_ICON[kind]}
                 <Button
@@ -676,13 +678,15 @@
             <option value={String(y)}>{y}</option>
           {/each}
         </select>
-        <Button variant="outline" size="icon" aria-label="Previous week" onclick={() => (weekAnchor = addDays(weekStart, -7))}>
-          <ChevronLeft class="size-4" />
-        </Button>
-        <span class="min-w-44 text-center text-sm font-medium tabular-nums">{formatWeekRange(weekStart, true)}</span>
-        <Button variant="outline" size="icon" aria-label="Next week" onclick={() => (weekAnchor = addDays(weekStart, 7))}>
-          <ChevronRight class="size-4" />
-        </Button>
+        <div class="flex items-center gap-2">
+          <Button variant="outline" size="icon" aria-label="Previous week" onclick={() => (weekAnchor = addDays(weekStart, -7))}>
+            <ChevronLeft class="size-4" />
+          </Button>
+          <span class="min-w-44 text-center text-sm font-medium tabular-nums">{formatWeekRange(weekStart, true)}</span>
+          <Button variant="outline" size="icon" aria-label="Next week" onclick={() => (weekAnchor = addDays(weekStart, 7))}>
+            <ChevronRight class="size-4" />
+          </Button>
+        </div>
         <Button variant="ghost" size="sm" onclick={() => (weekAnchor = todayISO())}>This week</Button>
       </div>
     </Card.Header>
@@ -714,7 +718,7 @@
         <input type="hidden" name="weekStart" value={weekStart} />
         <input type="hidden" name="mode" value={weekMode} />
         <div
-          class="flex items-center gap-3 px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground"
+          class="hidden items-center gap-3 px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground lg:flex"
         >
           <span class="w-28 shrink-0">Day</span>
           {#if weekMode === 'clock'}
@@ -733,7 +737,7 @@
           {@const isLeave = leaveKind !== null}
           {@const rowUnpaid = isLeave ? !LEAVE_META[leaveKind].paid : false}
           <div
-            class="flex items-start gap-3 rounded-md px-2 py-1 {isLeave
+            class="grid grid-cols-6 gap-x-3 gap-y-2 rounded-md px-2 py-2 lg:flex lg:items-start lg:gap-3 lg:py-1 {isLeave
               ? KIND_CLASSES[leaveKind].row + (rowUnpaid ? ' unpaid-hatch' : '')
               : isWeekend(date)
                 ? 'bg-amber-500/5 ring-1 ring-inset ring-amber-500/15'
@@ -741,7 +745,7 @@
                   ? 'bg-muted/70'
                   : ''}"
           >
-            <div class="flex h-8 w-28 shrink-0 items-center font-mono text-sm uppercase tabular-nums">
+            <div class="col-span-3 flex h-8 items-center font-mono text-sm uppercase tabular-nums lg:w-28 lg:shrink-0">
               <span class="font-medium">{weekdayShort(date)}</span>
               <span class="ml-1 text-muted-foreground">{formatDay(date).replace(/^\w+,\s/, '')}</span>
             </div>
@@ -749,7 +753,7 @@
               {@const meta = LEAVE_META[leaveKind]}
               <input type="hidden" name="leave-{i}" value={leaveKind} />
               <div
-                class="flex h-8 w-40 shrink-0 items-center justify-center rounded-md px-2 font-mono text-xs font-medium uppercase tracking-wider {KIND_CLASSES[leaveKind].badge}"
+                class="col-span-3 flex min-h-8 items-center justify-center rounded-md px-2 font-mono text-xs font-medium uppercase tracking-wider max-lg:order-1 lg:h-8 lg:w-40 lg:shrink-0 {KIND_CLASSES[leaveKind].badge}"
               >
                 {meta.short} · {meta.paid ? '8.00h paid' : 'unpaid'}
               </div>
@@ -758,10 +762,11 @@
                 name="note-{i}"
                 placeholder="Reason (optional)"
                 aria-label="Leave note for {weekdayShort(date)}"
-                class="flex-1"
+                class="col-span-3 flex-1 max-lg:order-1"
               />
             {:else if weekMode === 'clock'}
-              <div class="flex w-40 shrink-0 flex-col gap-1">
+              <div class="col-span-3 flex flex-col gap-1 max-lg:order-1 lg:w-40 lg:shrink-0">
+                <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">In</span>
                 <Input
                   type="text"
                   name="start-{i}"
@@ -775,7 +780,8 @@
                 />
                 {#if rowErr('start')}<p class="text-xs text-destructive">{rowErr('start')}</p>{/if}
               </div>
-              <div class="flex w-40 shrink-0 flex-col gap-1">
+              <div class="col-span-3 flex flex-col gap-1 max-lg:order-1 lg:w-40 lg:shrink-0">
+                <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Out</span>
                 <Input
                   type="text"
                   name="end-{i}"
@@ -790,7 +796,8 @@
                 {#if rowErr('end')}<p class="text-xs text-destructive">{rowErr('end')}</p>{/if}
               </div>
             {:else}
-              <div class="flex w-20 shrink-0 flex-col gap-1">
+              <div class="col-span-3 flex flex-col gap-1 max-lg:order-1 lg:w-20 lg:shrink-0">
+                <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Hours</span>
                 <Input
                   type="number"
                   name="hours-{i}"
@@ -806,7 +813,8 @@
               </div>
             {/if}
             {#if !isLeave}
-              <div class="flex w-20 shrink-0 flex-col gap-1">
+              <div class="{weekMode === 'clock' ? 'col-span-2' : 'col-span-3'} flex flex-col gap-1 max-lg:order-1 lg:w-20 lg:shrink-0">
+                <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Break</span>
                 <Input
                   type="number"
                   name="break-{i}"
@@ -820,7 +828,8 @@
                 />
                 {#if rowErr('break')}<p class="text-xs text-destructive">{rowErr('break')}</p>{/if}
               </div>
-              <div class="flex flex-1 flex-col gap-1">
+              <div class="{weekMode === 'clock' ? 'col-span-4' : 'col-span-6'} flex flex-col gap-1 max-lg:order-1 lg:flex-1">
+                <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Note</span>
                 <Input
                   type="text"
                   name="note-{i}"
@@ -838,7 +847,7 @@
             >
               <Select.Trigger
                 aria-label="Leave kind for {weekdayShort(date)}"
-                class="h-8 w-40 shrink-0 self-center {isLeave ? KIND_CLASSES[leaveKind].button : ''}"
+                class="col-span-3 h-8 w-full self-center lg:w-40 lg:shrink-0 {isLeave ? KIND_CLASSES[leaveKind].button : ''}"
               >
                 {#if isLeave}
                   {@const Icon = LEAVE_ICON[leaveKind]}
@@ -879,7 +888,7 @@
           <Button type="button" variant="outline" onclick={fillDown}>
             <ArrowDownToLine class="size-4" /> Fill down
           </Button>
-          <span class="text-xs text-muted-foreground">Tip: paste a block from a spreadsheet into any cell.</span>
+          <span class="hidden text-xs text-muted-foreground lg:inline">Tip: paste a block from a spreadsheet into any cell.</span>
           {#if form?.weekAdded}
             <span class="text-sm text-success">Added {form.weekAdded} {form.weekAdded === 1 ? 'day' : 'days'}.</span>
           {:else if form && 'weekError' in form && form.weekError}
@@ -928,14 +937,14 @@
     </Card.Header>
     <Card.Content>
       <!-- pagination controls: always a single dedicated row above the table -->
-      <div class="mb-3 flex items-center gap-2">
+      <div class="mb-3 flex flex-wrap items-center gap-2">
         <select
           aria-label="Pagination period"
           value={entriesPeriod}
           onchange={(e) => {
             entriesPeriod = e.currentTarget.value as Period;
           }}
-          class="h-9 shrink-0 rounded-md border border-input bg-transparent px-2 text-sm focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+          class="h-9 shrink-0 basis-full rounded-md border border-input bg-transparent px-2 text-sm focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none sm:basis-auto"
         >
           {#each Object.entries(PERIOD_LABELS) as [v, label] (v)}
             <option value={v}>{label}</option>
@@ -978,7 +987,7 @@
       {:else if pagedEntries.length === 0}
         <p class="py-8 text-center text-sm text-muted-foreground">No entries in this {entriesPeriod}.</p>
       {:else}
-        <div class="max-h-[calc(14*2.75rem+2.5rem)] overflow-y-auto rounded-md border border-input">
+        <div class="hidden max-h-[calc(14*2.75rem+2.5rem)] overflow-y-auto rounded-md border border-input md:block">
         <Table.Root>
           <Table.Header class="sticky top-0 z-10 bg-background">
             <Table.Row>
@@ -1030,24 +1039,14 @@
                 </Table.Cell>
                 <Table.Cell class="font-mono text-sm tabular-nums">
                   {#if entry.startTime}
-                    {@const p = splitMeridiem(formatTime(entry.startTime, data.timeFormat))}
-                    {p.time}{#if p.meridiem}<span
-                        class="ml-1 {p.meridiem === 'AM'
-                          ? 'text-rose-500 dark:text-rose-400'
-                          : 'text-sky-500 dark:text-sky-400'}">{p.meridiem}</span
-                      >{/if}
+                    {@render clockTime(entry.startTime)}
                   {:else}
                     —
                   {/if}
                 </Table.Cell>
                 <Table.Cell class="font-mono text-sm tabular-nums">
                   {#if entry.endTime}
-                    {@const p = splitMeridiem(formatTime(entry.endTime, data.timeFormat))}
-                    {p.time}{#if p.meridiem}<span
-                        class="ml-1 {p.meridiem === 'AM'
-                          ? 'text-rose-500 dark:text-rose-400'
-                          : 'text-sky-500 dark:text-sky-400'}">{p.meridiem}</span
-                      >{/if}
+                    {@render clockTime(entry.endTime)}
                     {#if entry.startTime && entry.endTime < entry.startTime}
                       <span class="ml-1 text-xs text-muted-foreground">+1d</span>
                     {/if}
@@ -1103,6 +1102,93 @@
           </Table.Body>
         </Table.Root>
         </div>
+
+        <!-- mobile entries list: same rows, stacked layout -->
+        <div class="max-h-[calc(14*2.75rem+2.5rem)] divide-y divide-input overflow-y-auto rounded-md border border-input md:hidden">
+          {#each displayRows as row, idx (row.kind === 'entry' ? row.entry.id : `blank-${row.date}`)}
+            {#if row.kind === 'blank'}
+              <div
+                class="flex items-center justify-between px-3 py-2 text-muted-foreground/60 {idx % 2 === 1
+                  ? 'bg-muted/70'
+                  : ''} {isWeekend(row.date) ? 'bg-amber-500/5' : ''}"
+              >
+                <span class="font-mono text-sm uppercase tabular-nums">
+                  <span>{weekdayShort(row.date)}</span>
+                  <span class="ml-1">{formatDay(row.date).replace(/^\w+,\s/, '')}</span>
+                </span>
+                <span class="font-mono text-sm">—</span>
+              </div>
+            {:else}
+              {@const entry = row.entry}
+              {@const entryLeave = entry.entryKind !== 'work' ? (entry.entryKind as LeaveKind) : null}
+              {@const leaveIsUnpaid = entryLeave ? !LEAVE_META[entryLeave].paid : false}
+              <div
+                class="flex items-start justify-between gap-3 px-3 py-2 {entryLeave
+                  ? KIND_CLASSES[entryLeave].row + (leaveIsUnpaid ? ' unpaid-hatch' : '')
+                  : idx % 2 === 1
+                    ? 'bg-muted/70'
+                    : ''}"
+              >
+                <div class="flex min-w-0 flex-col gap-1">
+                  <div class="flex flex-wrap items-center gap-2 font-mono text-sm uppercase tabular-nums">
+                    <span>
+                      <span class="text-muted-foreground">{weekdayShort(entry.date)}</span>
+                      <span class="ml-1">{formatDay(entry.date).replace(/^\w+,\s/, '')}</span>
+                    </span>
+                    {#if !entryLeave && dayTotals[entry.date] > data.dailyHours}
+                      <Badge variant="secondary" class="bg-amber-500/15 text-amber-600 dark:text-amber-400">OT</Badge>
+                    {/if}
+                    {#if entryLeave}
+                      {@const Icon = LEAVE_ICON[entryLeave]}
+                      {@const meta = LEAVE_META[entryLeave]}
+                      <span
+                        class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide {KIND_CLASSES[entryLeave].badge}"
+                        title={meta.label}
+                      >
+                        <Icon class="size-3" /> {meta.short}{meta.paid ? '' : ' (Unpaid)'}
+                      </span>
+                    {/if}
+                  </div>
+                  {#if entry.startTime && entry.endTime}
+                    <div class="font-mono text-sm tabular-nums text-muted-foreground">
+                      {@render clockTime(entry.startTime)}
+                      <span class="mx-0.5">→</span>
+                      {@render clockTime(entry.endTime)}
+                      {#if entry.endTime < entry.startTime}
+                        <span class="ml-1 text-xs">+1d</span>
+                      {/if}
+                      {#if entry.breakHours > 0}
+                        <span class="ml-1 text-xs">· {hrs(entry.breakHours)} break</span>
+                      {/if}
+                    </div>
+                  {:else if entry.breakHours > 0}
+                    <div class="font-mono text-sm tabular-nums text-muted-foreground">{hrs(entry.breakHours)} break</div>
+                  {/if}
+                  {#if entry.note}
+                    <p class="text-sm text-muted-foreground">{entry.note}</p>
+                  {/if}
+                </div>
+                <div class="flex shrink-0 flex-col items-end gap-1">
+                  <span class="font-mono text-sm font-medium tabular-nums">{hrs(entry.hours - entry.breakHours)}</span>
+                  <div class="flex gap-1">
+                    <Button variant="ghost" size="icon" onclick={() => openEdit(entry)} aria-label="Edit entry">
+                      <Pencil class="size-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      type="button"
+                      aria-label="Delete entry"
+                      onclick={() => confirmDelete(entry)}
+                    >
+                      <Trash2 class="size-4 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            {/if}
+          {/each}
+        </div>
       {/if}
     </Card.Content>
   </Card.Root>
@@ -1110,7 +1196,7 @@
 
 <!-- edit dialog -->
 <Dialog.Root bind:open={editOpen}>
-  <Dialog.Content class="sm:max-w-3xl">
+  <Dialog.Content class="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
     <Dialog.Header>
       <Dialog.Title>Edit entry</Dialog.Title>
       <Dialog.Description>Change the date, hours, break, or note for this entry.</Dialog.Description>
@@ -1149,7 +1235,7 @@
         <!-- entry kind chooser -->
         <div class="flex flex-col gap-1.5">
           <span class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Entry type</span>
-          <div class="flex items-stretch gap-2">
+          <div class="flex flex-col gap-2 sm:flex-row sm:items-stretch">
             <Button
               type="button"
               variant={editKind === 'work' ? 'default' : 'outline'}
@@ -1162,7 +1248,7 @@
             >
               <Briefcase class="size-3.5" /> Work
             </Button>
-            <div class="grid grid-flow-col grid-rows-2 gap-2">
+            <div class="grid grid-cols-2 gap-2 sm:grid-flow-col sm:grid-cols-none sm:grid-rows-2">
               {#each LEAVE_KINDS as k (k)}
                 {@const KindIcon = LEAVE_ICON[k]}
                 <Button
@@ -1402,6 +1488,15 @@
     </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>
+
+{#snippet clockTime(t: string)}
+  {@const p = splitMeridiem(formatTime(t, data.timeFormat))}
+  {p.time}{#if p.meridiem}<span
+      class="ml-1 {p.meridiem === 'AM'
+        ? 'text-rose-500 dark:text-rose-400'
+        : 'text-sky-500 dark:text-sky-400'}">{p.meridiem}</span
+    >{/if}
+{/snippet}
 
 {#snippet entrySummary(e: ConflictEntry)}
   {#if e.startTime && e.endTime}
