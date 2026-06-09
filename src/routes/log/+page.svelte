@@ -79,6 +79,16 @@
   let editing = $state<TimeEntry | null>(null);
   let editOpen = $state(false);
 
+  // Delete-confirmation dialog state — populated by the trash button on a row.
+  let deleting = $state<TimeEntry | null>(null);
+  let deleteForm = $state<HTMLFormElement | null>(null);
+  function confirmDelete(entry: TimeEntry) {
+    deleting = entry;
+  }
+  function executeDelete() {
+    deleteForm?.requestSubmit();
+  }
+
   // Conflict-resolution state shared by the add/addWeek/importCsv forms.
   type ConflictEntry = {
     startTime: string | null;
@@ -932,12 +942,15 @@
                     <Button variant="ghost" size="icon" onclick={() => openEdit(entry)} aria-label="Edit entry">
                       <Pencil class="size-4" />
                     </Button>
-                    <form method="POST" action="?/delete" use:enhance>
-                      <input type="hidden" name="id" value={entry.id} />
-                      <Button variant="ghost" size="icon" type="submit" aria-label="Delete entry">
-                        <Trash2 class="size-4 text-destructive" />
-                      </Button>
-                    </form>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      type="button"
+                      aria-label="Delete entry"
+                      onclick={() => confirmDelete(entry)}
+                    >
+                      <Trash2 class="size-4 text-destructive" />
+                    </Button>
                   </div>
                 </Table.Cell>
               </Table.Row>
@@ -1080,6 +1093,64 @@
         </Dialog.Footer>
       </form>
     {/if}
+  </Dialog.Content>
+</Dialog.Root>
+
+<!-- delete confirmation -->
+<Dialog.Root
+  open={deleting !== null}
+  onOpenChange={(o) => {
+    if (!o) deleting = null;
+  }}
+>
+  <Dialog.Content class="sm:max-w-md">
+    <Dialog.Header>
+      <Dialog.Title>Delete this entry?</Dialog.Title>
+      <Dialog.Description>This can't be undone.</Dialog.Description>
+    </Dialog.Header>
+    {#if deleting}
+      <div class="rounded-md border border-input bg-muted/40 p-3 font-mono text-sm tabular-nums">
+        <div class="uppercase">
+          <span class="text-muted-foreground">{weekdayShort(deleting.date)}</span>
+          <span class="ml-1">{formatDay(deleting.date).replace(/^\w+,\s/, '')}</span>
+        </div>
+        <div class="mt-1 text-muted-foreground">
+          {#if deleting.startTime && deleting.endTime}
+            {formatTime(deleting.startTime, data.timeFormat)} → {formatTime(deleting.endTime, data.timeFormat)} ·
+          {/if}
+          {hrs(deleting.hours - deleting.breakHours)} worked{#if deleting.note}
+            <span class="ml-1">· {deleting.note}</span>
+          {/if}
+        </div>
+      </div>
+      <form
+        method="POST"
+        action="?/delete"
+        bind:this={deleteForm}
+        use:enhance={() => async ({ update }) => {
+          await update();
+          deleting = null;
+        }}
+      >
+        <input type="hidden" name="id" value={deleting.id} />
+      </form>
+    {/if}
+    <Dialog.Footer class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <Button
+        variant="outline"
+        onclick={() => (deleting = null)}
+        class="hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        Cancel
+      </Button>
+      <Button
+        variant="destructive"
+        onclick={executeDelete}
+        class="hover:bg-destructive/30 focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2"
+      >
+        Delete
+      </Button>
+    </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>
 
