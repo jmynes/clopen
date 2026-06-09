@@ -132,10 +132,20 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   and the dialog leads with "Add a second shift?" when clock spans don't
   overlap).
   Add-an-entry has a 4×2 grid of leave-kind shortcut buttons under the regular
-  fields. The weekly grid uses a shadcn `Select` per row with icons and color
+  fields and a live read-only Worked total (hours − break) computed from bound
+  inputs. The weekly grid uses a shadcn `Select` per row with icons and color
   badges so the chosen leave kind reads at a glance; selecting one hides the
   clock/break inputs and swaps the In column for a "Sick · 8.00h paid" /
-  "Vacation · unpaid" chip. The edit modal carries the same Type chooser.
+  "Vacation · unpaid" chip. Each non-leave day has a + (beside its Worked
+  field) that adds up to 5 inline extra shifts — controlled sub-rows named
+  `start-{i}-{j}` (j ≥ 1; the server probes those suffixes and keys errors as
+  `start-3-1`), each with its own read-only Worked and a − to remove it.
+  Main-row field names stay `start-{i}` where i is the day offset from
+  weekStart — hiding weekends or adding shifts must never renumber them.
+  Paste and Fill target main rows only; Fill copies the last-touched cell to
+  the whole week (fallback: first row's time fields down). The edit modal
+  carries the same Type chooser and doubles as a create dialog: the pencil on
+  a blank day opens it posting to `?/add` with that date prefilled.
   The entries table is paginated by the same period set (default yearly),
   capped at ~14 visible rows with a sticky header, pads unlogged days with
   em-dashes, tints leave rows in their color family (and darkens on hover
@@ -143,13 +153,19 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   behind a sticky-note action per row that toggles an accordion under the row
   (default open state comes from `expandNotes`); an expand button takes the
   whole section fullscreen, and paging back stops at the tracking epoch.
-  Perf: the table (md+) and the mobile card list are alternates — only the
-  visible one renders client-side (`innerWidth` from
+  Blank-day rows carry the same action cluster (note/delete disabled, pencil
+  live). Perf: the table (md+) and the mobile card list are alternates — only
+  the visible one renders client-side (`innerWidth` from
   `svelte/reactivity/window`), and entry rows are component-free (plain
   buttons + inline-SVG snippets) so a 365-row year switches instantly.
 - `src/routes/settings/+page.*` — two side-by-side cards (Pay & schedule /
-  Display & entries): pay rate, daily hours, workdays, tracking epoch, time
-  format, week-start, weekend visibility toggles, expand-notes-by-default.
+  Display & entries) with uppercase section micro-headers: pay rate, daily
+  hours, workdays (chips ordered by week start), week-start, tracking epoch,
+  overtime multiplier (toggle + readonly-when-off field), time format, weekend
+  visibility toggles, expand-notes-by-default. A footer bar holds Save plus a
+  Cancel that reverts to last-saved values, enabled by comparing serialized
+  FormData snapshots on every input. Tooltips: `Tooltip.Provider` wraps the
+  app in `+layout.svelte`; repeated/per-row controls use native `title`.
 - `src/routes/+layout.svelte` — responsive nav: desktop header links (with
   icons) from `md`; below that an iOS-style bottom tab bar plus a top-left
   hamburger (bars→X morph) opening a slide-down menu over a dim overlay.

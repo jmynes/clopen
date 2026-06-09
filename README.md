@@ -1,107 +1,89 @@
 # Clopen
 
-Clopen — like the shift where you close at night and open the next
-morning (and, fine, the topology pun) — is a personal, single-user
-timesheet tracker that answers two questions: **did I make the hours I owe
-over the period that matters to me, and am I getting paid the right
-amount?**
+**Did you work the hours you owe — and is your pay right?**
 
-- **Baseline:** `dailyHours` (default 8h) on each configured workday (default
-  Mon–Fri = 40h/week).
-- **Period-driven dashboard.** Pick week / bi-week / month / quarter / year and
-  see whether you made it, came up short, or are still on pace.
-- **Tracking epoch.** Year-to-date math is clamped to your start date so
-  year-one doesn't backfill expected hours before you began.
-- **Overtime banks.** Extra hours offset shortfalls — the app compares *total
-  logged* against *total expected*. Optionally, day-hours beyond the baseline
-  earn at a configurable multiplier (default 1.5×, toggled off).
-- **Leave taxonomy.** Eight kinds in paid/unpaid pairs: **PTO / UPTO**,
-  **Sick (paid / unpaid)**, **Holiday (paid / unpaid)**, **Vacation (paid /
-  unpaid)**. Paid kinds credit the daily baseline; unpaid kinds record 0h.
-- **Cumulative-timesheet CSV import.** Pre-existing "Day of the week" sheets
-  with `Check-in / Check-out / Total hours` columns import directly, including
-  shifts that cross midnight.
-- **Fully responsive.** Below 768px the app swaps to mobile chrome — an
-  iOS-style bottom tab bar plus an animated hamburger menu — the weekly grid
-  becomes stacked day cards (two-up on tablets), and entries render as a
-  card list instead of the table.
-- **Local only.** SQLite on disk, no accounts, no cloud.
+Clopen answers those two questions at a glance, for any stretch of time you
+care about. It's a personal timesheet named after the worst shift on the
+schedule — closing at night and opening the next morning — with a topology
+pun thrown in for free.
 
-## Stack
+Everything runs on your machine. No accounts, no cloud, no one watching your
+hours but you.
 
-Bun · SvelteKit 2 / Svelte 5 (runes) · TypeScript (strict) · Tailwind v4 ·
-shadcn-svelte · Drizzle ORM + libSQL · Biome · Vitest.
+## The verdict, not a spreadsheet
+
+Pick a period — week, bi-week, month, quarter, year — and the dashboard hands
+you a verdict: **Beat it · overtime banked**, **Made it**, **Came up short**,
+**Ahead of pace**, **Behind pace**. Behind each verdict: hours logged against
+hours owed, dollars earned against dollars expected, and a week-by-week chart
+of the year so far.
+
+Clopen thinks in *balances*, not punch cards. Long days bank against short
+ones, because what matters is the running total — not whether Tuesday was
+perfect. Your "owed" baseline is yours to define: hours per workday, which
+days count, and the date you started tracking (so your first year isn't
+haunted by months before day one).
+
+## Log time the way it actually happened
+
+- **One entry at a time** — clock in/out (type `2pm`, `230`, `14:00` —
+  Clopen understands) or plain hours, with a live **Worked** total as you
+  type. Overnight shift? Clocking out earlier than you clocked in just works,
+  tagged `+1d`.
+- **A whole week at once** — a spreadsheet-style grid you can paste into
+  straight from Excel or Sheets. **Fill** copies the field you just touched
+  across the week. Worked a split day? Hit **+** on the day and log a second
+  shift right inline.
+- **Leave in one tap** — PTO, sick, holiday, vacation, each in paid and
+  unpaid flavors. Paid leave credits your baseline; unpaid leave is recorded
+  with a dashed badge and a hatched row so it never masquerades as pay.
+- **Double-booked a date?** Clopen shows both versions side by side and asks:
+  overwrite, keep existing, keep both — and when the times don't overlap, it
+  recognizes a second shift when it sees one.
+- **CSV in, CSV out** — import the cumulative timesheet you already keep
+  (it matches your column names, not the other way around) and export
+  everything any time.
+
+## A ledger you can actually read
+
+The entries table pads unlogged days so gaps stare back at you, tints
+weekends amber, color-codes leave by family, and badges overtime days. Notes
+tuck behind a sticky-note button and unfold beneath the row. Need room? One
+click takes the whole ledger fullscreen. Weekends optional, blank history
+capped at your start date, AM rose / PM sky so clock times scan at a glance.
+
+Spot a mistake? Edit or delete any entry in place — even add an entry to an
+empty day right from its row.
+
+## Overtime, your way
+
+By default overtime isn't paid at a premium — it banks against shortfalls.
+But if your job pays time-and-a-half, flip one switch in Settings, set the
+multiplier, and the dashboard's earnings follow suit. Day-hours past your
+baseline earn at the multiplier; the make-whole math stays untouched.
+
+## Pocket-sized when it needs to be
+
+Below tablet width Clopen swaps to mobile chrome: an iOS-style tab bar, a
+hamburger menu, day cards instead of the spreadsheet grid, and a stacked
+entries list. Same data, same math, thumb-friendly.
 
 ## Quick start
 
 ```sh
 bun install
-bun run db:migrate     # creates ./local.db with the schema
+bun run db:migrate     # creates ./local.db
 bun run dev            # http://localhost:5173
 ```
 
-1. **Settings** — hourly rate (defaults to $38.4615 = 80k / 2080h), hours per
-   workday, workdays, week start (Sunday default), tracking epoch, 12h/24h
-   clock format, an optional overtime pay multiplier (default 1.5×, off),
-   weekend visibility (hide empty weekends in Entries and/or the weekly grid),
-   and whether entry notes start expanded.
-2. **Log** — record entries one at a time, a full week at once, or import a CSV.
-   Each row supports clock in/out, plain hours, or a single-tap **PTO** button.
-3. **Dashboard** — pick a period and read off the verdict; the YTD weekly chart
-   stays below for reference.
+Open **Settings**, set your hourly rate and baseline, pick your workdays and
+start date — then start logging on **Log** and let the **Dashboard** keep
+score.
 
-## Features at a glance
+## Under the hood
 
-- **Dashboard hero** — `Beat it / Made it / Came up short / Ahead of pace /
-  Behind pace / On pace / Not started`. Done periods with net > 0 surface as
-  "Beat it · overtime banked"; done periods with net == 0 are "Made it"; the
-  in-progress states explain pace vs. target.
-- **Pagination & blanks** — entries table scopes to the active bucket and pads
-  unlogged days with em-dashes so the gaps are obvious (never earlier than the
-  tracking epoch, and paging back stops there too). Hovering a row darkens
-  its existing color (PTO row gets a deeper emerald, zebra rows get a deeper
-  muted) rather than overwriting it. Weekends tint amber; either weekend
-  setting hides the empty ones while days with logged time always show.
-- **Notes on demand** — each entry's note sits behind a sticky-note action
-  that slides an accordion open under the row; a setting flips the default to
-  expanded.
-- **Fullscreen entries** — an expand button takes the whole Entries section
-  into a fullscreen overlay (full-bleed on phones, capped width on huge
-  monitors) with the table at full height; Escape or the backdrop collapses
-  it.
-- **Leave entries** — colored badge in the Type column (Palmtree, Thermometer,
-  PartyPopper, Plane). Paid kinds use a filled chip; unpaid kinds use a dashed
-  outline. The row picks up a matching subtle tint.
-- **Add an entry** — a 4×2 grid of leave shortcut buttons (PTO/UPTO,
-  Sick paid/unpaid, Holiday paid/unpaid, Vacation paid/unpaid) sits below the
-  regular fields, so a one-tap leave log is always at hand.
-- **Log a week** — per-row Type select with icons and color-keyed labels.
-  Choosing a leave kind hides clock/break and shows a "Sick · 8.00h paid" /
-  "Vacation · unpaid" badge in the In column.
-- **Edit modal** — same Type chooser as Add an entry, letting you flip any
-  entry between Work and any of the eight leave kinds.
-- **Overnight shifts** — clock-out earlier than clock-in is treated as next-day
-  on the same date; the entries table tags it `+1d`.
-- **Duplicate-date guard** — if you try to add a date that already has entries
-  the app pops a dialog showing both sides and asks: overwrite, keep existing,
-  or cancel.
-- **AM/PM color hint** — rose `AM` and sky `PM` on the meridiem so you can scan
-  start/end at a glance.
-- **Theme switch** — segmented sun/moon control right of Settings; OS-preferred
-  theme by default, persisted in localStorage, applied before first paint to
-  avoid FOUC.
-
-## Scripts
-
-| Command | Description |
-| --- | --- |
-| `bun run dev` | Dev server |
-| `bun run build` / `bun run preview` | Production build / preview |
-| `bun run check` | `svelte-check` (types + a11y) — must be 0/0 |
-| `bun run lint` / `lint:fix` | Biome check / auto-fix — must be 0/0 |
-| `bun run test` | Vitest (make-whole math + DB CRUD) |
-| `bun run db:generate` / `db:migrate` / `db:studio` | Drizzle migrations / studio |
-
-The make-whole math is pure and lives in `src/lib/timesheet.ts`, covered by
-`src/lib/timesheet.test.ts`. See [`CLAUDE.md`](./CLAUDE.md) for architecture and
-conventions.
+Bun · SvelteKit 2 / Svelte 5 · TypeScript (strict) · Tailwind v4 ·
+shadcn-svelte · Drizzle + libSQL · Biome · Vitest. The make-whole math is a
+pure, fully unit-tested module (`src/lib/timesheet.ts`); the UI and database
+are thin layers around it. Architecture, conventions, and the full command
+list live in [`CLAUDE.md`](./CLAUDE.md).
