@@ -615,7 +615,7 @@
         </div>
         <input type="hidden" name="kind" value="" bind:this={addKindInput} />
         <div class="flex w-full basis-full flex-wrap items-center gap-3">
-          <Button type="submit"><Plus class="size-4" /> Add</Button>
+          <Button type="submit"><Plus class="size-4" /> Add entry</Button>
           <div class="ml-auto flex items-center gap-3">
             <span class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Or log leave</span>
             <div class="grid w-fit grid-flow-col grid-rows-2 gap-2">
