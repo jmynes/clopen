@@ -820,7 +820,7 @@
                 >
                   <Select.Trigger
                     aria-label="Leave kind for {weekdayShort(date)}"
-                    class="h-8 w-36 shrink-0 lg:order-last lg:w-40 lg:self-center {isLeave ? KIND_CLASSES[leaveKind].button : ''}"
+                    class="h-8 w-44 lg:order-last lg:w-40 lg:shrink-0 lg:self-center {isLeave ? KIND_CLASSES[leaveKind].button : ''}"
                   >
                     {#if isLeave}
                       {@const Icon = LEAVE_ICON[leaveKind]}
