@@ -23,6 +23,12 @@ no auth, no deploy.
 The math lives in `src/lib/timesheet.ts` (pure, fully unit-tested) — the heart
 of the app. UI and DB are thin layers around it.
 
+Fully responsive: below 768px (`md`) the app uses mobile chrome — an iOS-style
+bottom tab bar plus an animated hamburger menu — and the data-dense surfaces
+swap layouts (weekly grid → stacked day cards, entries table → card list).
+Desktop spreadsheet behavior (column alignment, paste, fill-down) returns at
+`lg` via `lg:contents` wrappers that dissolve the mobile structure.
+
 ## Commands
 
 ```bash
@@ -73,7 +79,7 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   day, partial weeks, year-boundary, Sunday-start weeks, overnight shifts).
 - `src/lib/db/schema.ts` — Drizzle tables:
   - `time_entries`: `id`, `date`, `hours`, `breakHours`, `startTime`, `endTime`,
-    `note`, `isPto`, `createdAt`. Multiple entries per day are allowed.
+    `note`, `entryKind`, `createdAt`. Multiple entries per day are allowed.
   - `settings` (single row, `id = 'default'`): `hourlyRate` (default 38.4615 =
     80k / 2080h), `dailyHours`, `workdays` (JSON `[1..7]`, ISO weekday numbers),
     `weekStartsOn` (1 = Mon, 7 = Sun; default 7), `epoch` (ISO date, default
@@ -102,7 +108,8 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   - `leaveEntryInput` — date + `kind` (LeaveKind) + optional note; produces an
     `EntryInput` whose `entryKind` reflects the kind and whose `hours` is the
     daily baseline for paid kinds, 0 for unpaid.
-  - `settingsInput` — adds `epoch` (ISO regex) and `timeFormat` (`12h | 24h`).
+  - `settingsInput` — adds `epoch` (ISO regex), `timeFormat` (`12h | 24h`), and
+    the `hideWeekendsEntries` / `hideWeekendsGrid` / `expandNotes` booleans.
 - `src/lib/date.ts` — local `todayISO()` (via `@internationalized/date`) and
   display formatters: `formatTime(hhmm, mode)` (zero-padded, mode-aware),
   `formatTimeRange` (annotates overnight ranges with `(+1d)`), `formatDay`
@@ -129,9 +136,17 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   rather than overwriting), and renders delete in a confirm dialog. Notes live
   behind a sticky-note action per row that toggles an accordion under the row
   (default open state comes from `expandNotes`); an expand button takes the
-  whole section fullscreen.
-- `src/routes/settings/+page.*` — pay rate, daily hours, workdays, weekend
-  visibility toggles, tracking epoch, week-start, time format.
+  whole section fullscreen, and paging back stops at the tracking epoch.
+  Perf: the table (md+) and the mobile card list are alternates — only the
+  visible one renders client-side (`innerWidth` from
+  `svelte/reactivity/window`), and entry rows are component-free (plain
+  buttons + inline-SVG snippets) so a 365-row year switches instantly.
+- `src/routes/settings/+page.*` — two side-by-side cards (Pay & schedule /
+  Display & entries): pay rate, daily hours, workdays, tracking epoch, time
+  format, week-start, weekend visibility toggles, expand-notes-by-default.
+- `src/routes/+layout.svelte` — responsive nav: desktop header links (with
+  icons) from `md`; below that an iOS-style bottom tab bar plus a top-left
+  hamburger (bars→X morph) opening a slide-down menu over a dim overlay.
 
 ## CSV import format
 

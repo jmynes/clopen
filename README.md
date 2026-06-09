@@ -2,9 +2,9 @@
 
 Clopen — like the shift where you close at night and open the next
 morning (and, fine, the topology pun) — is a personal, single-user
-timesheet tracker that answers two questions: **did I
-make the hours I owe over the period that matters to me, and am I getting
-paid the right amount?**
+timesheet tracker that answers two questions: **did I make the hours I owe
+over the period that matters to me, and am I getting paid the right
+amount?**
 
 - **Baseline:** `dailyHours` (default 8h) on each configured workday (default
   Mon–Fri = 40h/week).
@@ -20,6 +20,10 @@ paid the right amount?**
 - **Cumulative-timesheet CSV import.** Pre-existing "Day of the week" sheets
   with `Check-in / Check-out / Total hours` columns import directly, including
   shifts that cross midnight.
+- **Fully responsive.** Below 768px the app swaps to mobile chrome — an
+  iOS-style bottom tab bar plus an animated hamburger menu — the weekly grid
+  becomes stacked day cards (two-up on tablets), and entries render as a
+  card list instead of the table.
 - **Local only.** SQLite on disk, no accounts, no cloud.
 
 ## Stack
@@ -36,8 +40,9 @@ bun run dev            # http://localhost:5173
 ```
 
 1. **Settings** — hourly rate (defaults to $38.4615 = 80k / 2080h), hours per
-   workday, workdays, week start (Sunday default), tracking epoch, and 12h/24h
-   clock format.
+   workday, workdays, week start (Sunday default), tracking epoch, 12h/24h
+   clock format, weekend visibility (hide empty weekends in Entries and/or the
+   weekly grid), and whether entry notes start expanded.
 2. **Log** — record entries one at a time, a full week at once, or import a CSV.
    Each row supports clock in/out, plain hours, or a single-tap **PTO** button.
 3. **Dashboard** — pick a period and read off the verdict; the YTD weekly chart
@@ -50,9 +55,18 @@ bun run dev            # http://localhost:5173
   "Beat it · overtime banked"; done periods with net == 0 are "Made it"; the
   in-progress states explain pace vs. target.
 - **Pagination & blanks** — entries table scopes to the active bucket and pads
-  unlogged days with em-dashes so the gaps are obvious. Hovering a row darkens
+  unlogged days with em-dashes so the gaps are obvious (never earlier than the
+  tracking epoch, and paging back stops there too). Hovering a row darkens
   its existing color (PTO row gets a deeper emerald, zebra rows get a deeper
-  muted) rather than overwriting it.
+  muted) rather than overwriting it. Weekends tint amber; either weekend
+  setting hides the empty ones while days with logged time always show.
+- **Notes on demand** — each entry's note sits behind a sticky-note action
+  that slides an accordion open under the row; a setting flips the default to
+  expanded.
+- **Fullscreen entries** — an expand button takes the whole Entries section
+  into a fullscreen overlay (full-bleed on phones, capped width on huge
+  monitors) with the table at full height; Escape or the backdrop collapses
+  it.
 - **Leave entries** — colored badge in the Type column (Palmtree, Thermometer,
   PartyPopper, Plane). Paid kinds use a filled chip; unpaid kinds use a dashed
   outline. The row picks up a matching subtle tint.
