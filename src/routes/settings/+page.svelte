@@ -226,25 +226,23 @@
               <p class="text-xs text-muted-foreground">
                 Days that accrue the baseline. Default is Mon–Fri (8h × 5 = 40h/week).
               </p>
-              <!-- Deterministic 4 + 3 split, both rows centered, at every width -->
-              <div class="mt-1 flex flex-col gap-1.5">
-                {#each [orderedWeekdays.slice(0, 4), orderedWeekdays.slice(4)] as chipRow, ri (ri)}
-                  <div class="flex justify-center gap-1.5">
-                    {#each chipRow as day (day.n)}
-                      <label
-                        class="flex w-16 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-input px-1 py-2 text-sm has-checked:border-primary has-checked:bg-accent md:w-auto md:max-w-[calc(25%-4.5px)] md:flex-1 md:basis-0"
-                      >
-                        <input
-                          type="checkbox"
-                          name="workdays"
-                          value={day.n}
-                          checked={selected.has(day.n)}
-                          class="accent-primary"
-                        />
-                        {day.label}
-                      </label>
-                    {/each}
-                  </div>
+              <!-- Below md: content-sized chips wrap only as needed, rows centered.
+                   From md: basis pins four equal cells per row, so the 4+3 split
+                   falls out of the wrap with the short row centered. -->
+              <div class="mt-1 flex flex-wrap justify-center gap-1.5">
+                {#each orderedWeekdays as day (day.n)}
+                  <label
+                    class="flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-input px-3 py-2 text-sm has-checked:border-primary has-checked:bg-accent md:basis-[calc(25%-4.5px)] md:px-1"
+                  >
+                    <input
+                      type="checkbox"
+                      name="workdays"
+                      value={day.n}
+                      checked={selected.has(day.n)}
+                      class="accent-primary"
+                    />
+                    {day.label}
+                  </label>
                 {/each}
               </div>
             </fieldset>
