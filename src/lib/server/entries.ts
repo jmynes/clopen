@@ -63,6 +63,16 @@ export async function findExistingDates(dates: string[], database: Database = de
   return rows.map((r) => r.date);
 }
 
+/** Return every entry whose date is in `dates`, ordered by date then createdAt. */
+export async function listEntriesByDates(dates: string[], database: Database = defaultDb): Promise<TimeEntry[]> {
+  if (dates.length === 0) return [];
+  return database
+    .select()
+    .from(timeEntries)
+    .where(inArray(timeEntries.date, dates))
+    .orderBy(asc(timeEntries.date), asc(timeEntries.createdAt));
+}
+
 /** Bulk delete every entry whose date is in `dates`. Used when overwriting on conflict. */
 export async function deleteEntriesByDates(dates: string[], database: Database = defaultDb): Promise<void> {
   if (dates.length === 0) return;

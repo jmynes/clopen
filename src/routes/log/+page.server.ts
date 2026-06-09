@@ -8,6 +8,7 @@ import {
   deleteEntry,
   findExistingDates,
   listEntries,
+  listEntriesByDates,
   updateEntry,
 } from '$lib/server/entries';
 import { getSettings, toWorkSettings } from '$lib/server/settings';
@@ -58,26 +59,83 @@ function fieldErrorsOf(parsed: z.ZodError, prefix = ''): Record<string, string> 
 
 type ConflictStrategy = 'overwrite' | 'skip' | undefined;
 
+/** Per-conflict payload sent to the client: every existing row for a date plus the proposed replacement. */
+export type ConflictRow = {
+  date: string;
+  existing: Array<{
+    startTime: string | null;
+    endTime: string | null;
+    hours: number;
+    breakHours: number;
+    note: string | null;
+  }>;
+  proposed: {
+    startTime: string | null;
+    endTime: string | null;
+    hours: number;
+    breakHours: number;
+    note: string | null;
+  };
+};
+
 function parseStrategy(v: FormDataEntryValue | null): ConflictStrategy {
   return v === 'overwrite' || v === 'skip' ? v : undefined;
 }
 
 // Decide which incoming entries actually get inserted given a strategy.
-// Returns `ok: false` with the list of duplicate dates when no strategy was
+// Returns `ok: false` with per-date conflict details when no strategy was
 // supplied — the caller surfaces that to the client so the user can choose.
 async function applyConflictStrategy(
   inputs: EntryInput[],
   strategy: ConflictStrategy,
-): Promise<{ ok: true; toInsert: EntryInput[]; overwroteCount: number } | { ok: false; duplicates: string[] }> {
+): Promise<{ ok: true; toInsert: EntryInput[]; overwroteCount: number } | { ok: false; conflicts: ConflictRow[] }> {
   const dates = [...new Set(inputs.map((i) => i.date))];
-  const existing = await findExistingDates(dates);
-  if (existing.length === 0) return { ok: true, toInsert: inputs, overwroteCount: 0 };
-  if (!strategy) return { ok: false, duplicates: existing };
-  if (strategy === 'overwrite') {
-    await deleteEntriesByDates(existing);
-    return { ok: true, toInsert: inputs, overwroteCount: existing.length };
+  const existingDates = await findExistingDates(dates);
+  if (existingDates.length === 0) return { ok: true, toInsert: inputs, overwroteCount: 0 };
+  if (!strategy) {
+    const existingRows = await listEntriesByDates(existingDates);
+    const byDate = new Map<string, ConflictRow['existing']>();
+    for (const r of existingRows) {
+      const list = byDate.get(r.date) ?? [];
+      list.push({
+        startTime: r.startTime,
+        endTime: r.endTime,
+        hours: r.hours,
+        breakHours: r.breakHours,
+        note: r.note,
+      });
+      byDate.set(r.date, list);
+    }
+    // Pair each conflict date with the first proposed entry for that date.
+    const proposedByDate = new Map<string, EntryInput>();
+    for (const inp of inputs) {
+      if (!proposedByDate.has(inp.date)) proposedByDate.set(inp.date, inp);
+    }
+    const conflicts: ConflictRow[] = existingDates
+      .sort()
+      .map((date) => {
+        const p = proposedByDate.get(date);
+        if (!p) return null;
+        return {
+          date,
+          existing: byDate.get(date) ?? [],
+          proposed: {
+            startTime: p.startTime,
+            endTime: p.endTime,
+            hours: p.hours,
+            breakHours: p.breakHours,
+            note: p.note,
+          },
+        };
+      })
+      .filter((c): c is ConflictRow => c !== null);
+    return { ok: false, conflicts };
   }
-  const skipSet = new Set(existing);
+  if (strategy === 'overwrite') {
+    await deleteEntriesByDates(existingDates);
+    return { ok: true, toInsert: inputs, overwroteCount: existingDates.length };
+  }
+  const skipSet = new Set(existingDates);
   return { ok: true, toInsert: inputs.filter((i) => !skipSet.has(i.date)), overwroteCount: 0 };
 }
 
@@ -97,7 +155,7 @@ export const actions: Actions = {
     }
     const strategy = parseStrategy(form.get('conflictStrategy'));
     const resolved = await applyConflictStrategy([parsed.data], strategy);
-    if (!resolved.ok) return fail(409, { conflict: true, duplicates: resolved.duplicates });
+    if (!resolved.ok) return fail(409, { conflict: true, conflicts: resolved.conflicts });
     for (const e of resolved.toInsert) await addEntry(e);
     return { added: resolved.toInsert.length, overwrote: resolved.overwroteCount };
   },
@@ -180,7 +238,7 @@ export const actions: Actions = {
       .filter((v): v is EntryInput => v !== null);
     const strategy = parseStrategy(form.get('conflictStrategy'));
     const resolved = await applyConflictStrategy(validInputs, strategy);
-    if (!resolved.ok) return fail(409, { weekConflict: true, duplicates: resolved.duplicates });
+    if (!resolved.ok) return fail(409, { weekConflict: true, conflicts: resolved.conflicts });
     for (const e of resolved.toInsert) await addEntry(e);
     return { weekAdded: resolved.toInsert.length, weekOverwrote: resolved.overwroteCount };
   },
@@ -237,7 +295,7 @@ export const actions: Actions = {
     }
     const strategy = parseStrategy(form.get('conflictStrategy'));
     const resolved = await applyConflictStrategy(inputs, strategy);
-    if (!resolved.ok) return fail(409, { importConflict: true, duplicates: resolved.duplicates });
+    if (!resolved.ok) return fail(409, { importConflict: true, conflicts: resolved.conflicts });
     for (const input of resolved.toInsert) await addEntry(input);
     return {
       imported: resolved.toInsert.length,

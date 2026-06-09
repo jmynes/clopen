@@ -77,8 +77,16 @@
   let editOpen = $state(false);
 
   // Conflict-resolution state shared by the add/addWeek/importCsv forms.
+  type ConflictEntry = {
+    startTime: string | null;
+    endTime: string | null;
+    hours: number;
+    breakHours: number;
+    note: string | null;
+  };
+  type ConflictRow = { date: string; existing: ConflictEntry[]; proposed: ConflictEntry };
   let conflictForm = $state<HTMLFormElement | null>(null);
-  let conflictDates = $state<string[]>([]);
+  let conflicts = $state<ConflictRow[]>([]);
   function clearConflictStrategy(formEl: HTMLFormElement) {
     formEl.querySelector('input[name="conflictStrategy"]')?.remove();
   }
@@ -86,7 +94,7 @@
     const formEl = conflictForm;
     if (!formEl || strategy === 'cancel') {
       conflictForm = null;
-      conflictDates = [];
+      conflicts = [];
       return;
     }
     let input = formEl.querySelector<HTMLInputElement>('input[name="conflictStrategy"]');
@@ -97,7 +105,7 @@
       formEl.appendChild(input);
     }
     input.value = strategy;
-    conflictDates = [];
+    conflicts = [];
     formEl.requestSubmit();
   }
   // Re-runnable enhance factory: closes over a `resetOnSuccess` flag so the
@@ -109,10 +117,10 @@
       if (!formData.has('conflictStrategy')) clearConflictStrategy(formElement);
       return async ({ result, update }: { result: { type: string; data?: Record<string, unknown> }; update: (o?: { reset?: boolean }) => Promise<void> }) => {
         const data = result.data;
-        const conflicts = data?.duplicates;
-        if (result.type === 'failure' && Array.isArray(conflicts) && conflicts.length > 0) {
+        const conflictList = data?.conflicts;
+        if (result.type === 'failure' && Array.isArray(conflictList) && conflictList.length > 0) {
           conflictForm = formElement;
-          conflictDates = conflicts as string[];
+          conflicts = conflictList as ConflictRow[];
           return;
         }
         clearConflictStrategy(formElement);
@@ -820,29 +828,87 @@
 </Dialog.Root>
 
 <!-- duplicate-date conflict resolution -->
-<Dialog.Root open={conflictDates.length > 0} onOpenChange={(o) => !o && resolveConflict('cancel')}>
-  <Dialog.Content class="sm:max-w-md">
+<Dialog.Root open={conflicts.length > 0} onOpenChange={(o) => !o && resolveConflict('cancel')}>
+  <Dialog.Content class="sm:max-w-2xl">
     <Dialog.Header>
       <Dialog.Title>Entries already exist</Dialog.Title>
       <Dialog.Description>
-        {conflictDates.length === 1
+        {conflicts.length === 1
           ? 'An entry already exists for this date.'
-          : `Entries already exist for ${conflictDates.length} of these dates.`}
+          : `Entries already exist for ${conflicts.length} of these dates.`}
         Choose how to handle the conflict — other rows in the batch are unaffected by your choice.
       </Dialog.Description>
     </Dialog.Header>
-    <ul class="max-h-40 overflow-y-auto rounded-md border border-input bg-muted/40 p-2 font-mono text-sm">
-      {#each conflictDates as d (d)}
-        <li class="uppercase">
-          <span class="text-muted-foreground">{weekdayShort(d)}</span>
-          <span class="ml-1">{formatDay(d).replace(/^\w+,\s/, '')}</span>
-        </li>
+    <div class="flex max-h-[60vh] flex-col gap-3 overflow-y-auto pr-1">
+      {#each conflicts as c (c.date)}
+        <div class="rounded-md border border-input">
+          <div class="border-b border-input bg-muted/40 px-3 py-1.5 font-mono text-sm uppercase tabular-nums">
+            <span class="text-muted-foreground">{weekdayShort(c.date)}</span>
+            <span class="ml-1">{formatDay(c.date).replace(/^\w+,\s/, '')}</span>
+          </div>
+          <div class="grid grid-cols-1 divide-y divide-input sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+            <div class="space-y-1 bg-amber-500/5 p-3">
+              <p class="text-xs font-medium uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                Existing{c.existing.length > 1 ? ` · ${c.existing.length} entries` : ''}
+              </p>
+              {#each c.existing as e, i (i)}
+                {@render entrySummary(e)}
+              {/each}
+            </div>
+            <div class="space-y-1 bg-emerald-500/5 p-3">
+              <p class="text-xs font-medium uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                Proposed
+              </p>
+              {@render entrySummary(c.proposed)}
+            </div>
+          </div>
+        </div>
       {/each}
-    </ul>
+    </div>
     <Dialog.Footer class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-      <Button variant="ghost" onclick={() => resolveConflict('cancel')}>Cancel everything</Button>
-      <Button variant="outline" onclick={() => resolveConflict('skip')}>Keep existing</Button>
-      <Button variant="destructive" onclick={() => resolveConflict('overwrite')}>Overwrite</Button>
+      <Button
+        variant="outline"
+        onclick={() => resolveConflict('cancel')}
+        class="hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        Cancel everything
+      </Button>
+      <Button
+        variant="outline"
+        onclick={() => resolveConflict('skip')}
+        class="border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+      >
+        Keep existing
+      </Button>
+      <Button
+        variant="destructive"
+        onclick={() => resolveConflict('overwrite')}
+        class="hover:bg-destructive/30 focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2"
+      >
+        Overwrite
+      </Button>
     </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>
+
+{#snippet entrySummary(e: ConflictEntry)}
+  <div class="font-mono text-sm tabular-nums">
+    {#if e.startTime && e.endTime}
+      {@const sp = splitMeridiem(formatTime(e.startTime, data.timeFormat))}
+      {@const ep = splitMeridiem(formatTime(e.endTime, data.timeFormat))}
+      <span>{sp.time}</span>{#if sp.meridiem}<span
+          class="ml-0.5 {sp.meridiem === 'AM' ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}"
+          >{sp.meridiem}</span
+        >{/if}
+      <span class="mx-1 text-muted-foreground">→</span>
+      <span>{ep.time}</span>{#if ep.meridiem}<span
+          class="ml-0.5 {ep.meridiem === 'AM' ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}"
+          >{ep.meridiem}</span
+        >{/if}
+      {#if e.endTime < e.startTime}<span class="ml-1 text-xs text-muted-foreground">+1d</span>{/if}
+    {/if}
+    <span class="ml-2 text-muted-foreground">{hrs(e.hours - e.breakHours)} worked</span>
+    {#if e.breakHours > 0}<span class="ml-1 text-xs text-muted-foreground">· {hrs(e.breakHours)} break</span>{/if}
+  </div>
+  {#if e.note}<p class="text-xs text-muted-foreground">{e.note}</p>{/if}
+{/snippet}
