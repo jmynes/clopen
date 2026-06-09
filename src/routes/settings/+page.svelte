@@ -1,5 +1,6 @@
 <script lang="ts">
   import Check from '@lucide/svelte/icons/check';
+  import { onMount, tick } from 'svelte';
   import { enhance } from '$app/forms';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
@@ -32,6 +33,58 @@
   // svelte-ignore state_referenced_locally
   let weekStartsOnValue = $state(String(data.weekStartsOn));
   const orderedWeekdays = $derived(weekStartsOnValue === '7' ? [WEEKDAYS[6], ...WEEKDAYS.slice(0, 6)] : WEEKDAYS);
+
+  // Dirty tracking for the Cancel button: snapshot the serialized form on
+  // mount, re-snapshot after every save/cancel, and compare on each input.
+  let formEl: HTMLFormElement | null = $state(null);
+  let baseline = '';
+  let dirty = $state(false);
+  function snapshot(): string {
+    if (!formEl) return '';
+    const parts: string[] = [];
+    for (const [k, v] of new FormData(formEl)) {
+      if (typeof v === 'string') parts.push(`${k}=${v}`);
+    }
+    return parts.join('&');
+  }
+  function refreshDirty() {
+    dirty = snapshot() !== baseline;
+  }
+  onMount(() => {
+    baseline = snapshot();
+  });
+
+  // Restore every field to the last-saved values (the current load data).
+  // form.reset() won't do: it reverts to first-render defaults, not last save.
+  async function cancelChanges() {
+    if (!formEl) return;
+    const set = (name: string, value: string) => {
+      const el = formEl?.elements.namedItem(name);
+      if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement) el.value = value;
+    };
+    set('hourlyRate', String(data.settings.hourlyRate));
+    set('dailyHours', String(data.settings.dailyHours));
+    set('epoch', data.epoch);
+    set('timeFormat', data.timeFormat);
+    for (const box of formEl.querySelectorAll<HTMLInputElement>('input[name="workdays"]')) {
+      box.checked = selected.has(Number(box.value));
+    }
+    const flags: Array<[string, boolean]> = [
+      ['hideWeekendsEntries', data.hideWeekendsEntries],
+      ['hideWeekendsGrid', data.hideWeekendsGrid],
+      ['expandNotes', data.expandNotes],
+    ];
+    for (const [name, value] of flags) {
+      const el = formEl.elements.namedItem(name);
+      if (el instanceof HTMLInputElement) el.checked = value;
+    }
+    otEnabled = data.otMultiplierEnabled;
+    otMultiplierValue = data.otMultiplier;
+    weekStartsOnValue = String(data.weekStartsOn);
+    await tick();
+    baseline = snapshot();
+    dirty = false;
+  }
 </script>
 
 <div class="flex flex-col gap-8">
@@ -47,9 +100,15 @@
        wiping the workdays selection on every save. -->
   <form
     method="POST"
+    bind:this={formEl}
+    oninput={refreshDirty}
+    onchange={refreshDirty}
     use:enhance={() =>
       async ({ update }) => {
         await update({ reset: false });
+        await tick();
+        baseline = snapshot();
+        dirty = false;
       }}
     class="flex flex-col gap-6"
   >
@@ -284,7 +343,10 @@
       {:else if form && 'error' in form && form.error}
         <span class="text-sm text-destructive">{form.error}</span>
       {/if}
-      <Button type="submit" class="hover:bg-primary/75 max-md:w-full">Save settings</Button>
+      <Button type="button" variant="outline" disabled={!dirty} onclick={cancelChanges} class="max-md:flex-1">
+        Cancel
+      </Button>
+      <Button type="submit" class="hover:bg-primary/75 max-md:flex-1">Save settings</Button>
     </div>
   </form>
 </div>
