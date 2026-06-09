@@ -1296,7 +1296,7 @@
                         />
                         {#if weekErrors[`note-${i}-${j + 1}`]}<p class="text-xs text-destructive">{weekErrors[`note-${i}-${j + 1}`]}</p>{/if}
                       </div>
-                      <div class="hidden lg:flex lg:h-8 lg:w-40 lg:shrink-0 lg:items-center lg:justify-end">
+                      <div class="hidden lg:flex lg:h-8 lg:w-8 lg:shrink-0 lg:items-center">
                         <button
                           type="button"
                           class={ROW_BTN}
