@@ -30,19 +30,23 @@
     </p>
   </div>
 
-  <Card.Root class="max-w-xl">
-    <Card.Content class="p-6">
-      <!-- reset: false — a reset would revert checkboxes to defaultChecked, which is
-           false for all of them after a client-side navigation (no SSR attributes),
-           wiping the workdays selection on every save. -->
-      <form
-        method="POST"
-        use:enhance={() =>
-          async ({ update }) => {
-            await update({ reset: false });
-          }}
-        class="flex flex-col gap-6"
-      >
+  <!-- reset: false — a reset would revert checkboxes to defaultChecked, which is
+       false for all of them after a client-side navigation (no SSR attributes),
+       wiping the workdays selection on every save. -->
+  <form
+    method="POST"
+    use:enhance={() =>
+      async ({ update }) => {
+        await update({ reset: false });
+      }}
+    class="flex flex-col gap-6"
+  >
+    <div class="grid items-start gap-6 md:grid-cols-2">
+      <Card.Root>
+        <Card.Header>
+          <Card.Title>Pay & schedule</Card.Title>
+        </Card.Header>
+        <Card.Content class="flex flex-col gap-6">
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div class="flex flex-col gap-1.5">
             <Label for="hourlyRate">Hourly rate (USD)</Label>
@@ -88,6 +92,22 @@
           </div>
         </fieldset>
 
+        <div class="flex flex-col gap-1.5">
+          <Label for="epoch">Tracking since</Label>
+          <p class="text-xs text-muted-foreground">
+            Earliest date that counts toward the make-whole baseline. The dashboard's year view still drives expected
+            earnings — this just keeps year-one from accruing hours before you started.
+          </p>
+          <Input id="epoch" type="date" name="epoch" value={data.epoch} required class="w-full sm:w-48" />
+        </div>
+        </Card.Content>
+      </Card.Root>
+
+      <Card.Root>
+        <Card.Header>
+          <Card.Title>Display & entries</Card.Title>
+        </Card.Header>
+        <Card.Content class="flex flex-col gap-6">
         <fieldset class="flex flex-col gap-2">
           <legend class="mb-1 text-sm font-medium">Weekends</legend>
           <label
@@ -142,15 +162,6 @@
         </fieldset>
 
         <div class="flex flex-col gap-1.5">
-          <Label for="epoch">Tracking since</Label>
-          <p class="text-xs text-muted-foreground">
-            Earliest date that counts toward the make-whole baseline. The dashboard's year view still drives expected
-            earnings — this just keeps year-one from accruing hours before you started.
-          </p>
-          <Input id="epoch" type="date" name="epoch" value={data.epoch} required class="w-full sm:w-48" />
-        </div>
-
-        <div class="flex flex-col gap-1.5">
           <Label for="timeFormat">Time format</Label>
           <p class="text-xs text-muted-foreground">Display clock times in 12-hour (09:00 AM) or 24-hour (09:00) format.</p>
           <select
@@ -175,16 +186,17 @@
             <option value="7" selected={data.weekStartsOn === 7}>Sunday</option>
           </select>
         </div>
+        </Card.Content>
+      </Card.Root>
+    </div>
 
-        <div class="flex items-center gap-3">
-          <Button type="submit">Save settings</Button>
-          {#if form?.saved}
-            <span class="flex items-center gap-1 text-sm text-success"><Check class="size-4" /> Saved</span>
-          {:else if form && 'error' in form && form.error}
-            <span class="text-sm text-destructive">{form.error}</span>
-          {/if}
-        </div>
-      </form>
-    </Card.Content>
-  </Card.Root>
+    <div class="flex items-center gap-3">
+      <Button type="submit" class="hover:bg-primary/75">Save settings</Button>
+      {#if form?.saved}
+        <span class="flex items-center gap-1 text-sm text-success"><Check class="size-4" /> Saved</span>
+      {:else if form && 'error' in form && form.error}
+        <span class="text-sm text-destructive">{form.error}</span>
+      {/if}
+    </div>
+  </form>
 </div>
