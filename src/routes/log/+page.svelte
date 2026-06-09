@@ -732,11 +732,11 @@
             {/if}
             <Button
               type="button"
-              variant={isPto ? 'outline' : 'ghost'}
+              variant="outline"
               size="sm"
-              class="shrink-0 {isPto
-                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400'
-                : ''}"
+              class="shrink-0 border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 {isPto
+                ? 'bg-emerald-500/20 ring-2 ring-inset ring-emerald-500/50'
+                : 'bg-emerald-500/10'}"
               onclick={() => togglePtoRow(i)}
               aria-pressed={isPto}
               aria-label="Toggle PTO for {weekdayShort(date)}"
