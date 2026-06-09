@@ -50,6 +50,13 @@
       "when": 1781024893769,
       "tag": "0006_overjoyed_hellcat",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1781024923991,
+      "tag": "0007_normal_leech",
+      "breakpoints": true
     }
   ]
 }

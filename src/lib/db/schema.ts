@@ -28,7 +28,7 @@ export const timeEntries = sqliteTable('time_entries', {
  */
 export const settings = sqliteTable('settings', {
   id: text('id').primaryKey().default('default'),
-  hourlyRate: real('hourly_rate').notNull().default(40),
+  hourlyRate: real('hourly_rate').notNull().default(38.46),
   dailyHours: real('daily_hours').notNull().default(8),
   workdays: text('workdays').notNull().default('[1,2,3,4,5]'),
   /** ISO weekday the week starts on: 1 = Monday, 7 = Sunday. */

@@ -1,0 +1,1 @@
+ALTER TABLE `settings` ALTER COLUMN "hourly_rate" TO "hourly_rate" real NOT NULL DEFAULT 38.46;
