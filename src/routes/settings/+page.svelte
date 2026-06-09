@@ -1,0 +1,92 @@
+<script lang="ts">
+  import Check from '@lucide/svelte/icons/check';
+  import { enhance } from '$app/forms';
+  import { Button } from '$lib/components/ui/button';
+  import * as Card from '$lib/components/ui/card';
+  import { Input } from '$lib/components/ui/input';
+  import { Label } from '$lib/components/ui/label';
+  import type { ActionData, PageData } from './$types';
+
+  let { data, form }: { data: PageData; form: ActionData } = $props();
+
+  const WEEKDAYS = [
+    { n: 1, label: 'Mon' },
+    { n: 2, label: 'Tue' },
+    { n: 3, label: 'Wed' },
+    { n: 4, label: 'Thu' },
+    { n: 5, label: 'Fri' },
+    { n: 6, label: 'Sat' },
+    { n: 7, label: 'Sun' },
+  ];
+
+  const selected = $derived(new Set(data.settings.workdays));
+</script>
+
+<div class="flex flex-col gap-8">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Settings</h1>
+    <p class="mt-1 text-sm text-muted-foreground">
+      Your pay rate and the baseline that defines a "whole" week.
+    </p>
+  </div>
+
+  <Card.Root class="max-w-xl">
+    <Card.Content class="p-6">
+      <form method="POST" use:enhance class="flex flex-col gap-6">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div class="flex flex-col gap-1.5">
+            <Label for="hourlyRate">Hourly rate (USD)</Label>
+            <Input
+              id="hourlyRate"
+              type="number"
+              name="hourlyRate"
+              step="0.01"
+              min="0"
+              value={data.settings.hourlyRate}
+              required
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <Label for="dailyHours">Hours per workday</Label>
+            <Input
+              id="dailyHours"
+              type="number"
+              name="dailyHours"
+              step="0.25"
+              min="0.25"
+              max="24"
+              value={data.settings.dailyHours}
+              required
+            />
+          </div>
+        </div>
+
+        <fieldset class="flex flex-col gap-2">
+          <legend class="mb-1 text-sm font-medium">Workdays</legend>
+          <p class="mb-2 text-xs text-muted-foreground">
+            Days that accrue the baseline. Default is Mon–Fri (8h × 5 = 40h/week).
+          </p>
+          <div class="flex flex-wrap gap-2">
+            {#each WEEKDAYS as day (day.n)}
+              <label
+                class="flex cursor-pointer items-center gap-2 rounded-md border border-input px-3 py-2 text-sm has-checked:border-primary has-checked:bg-accent"
+              >
+                <input type="checkbox" name="workdays" value={day.n} checked={selected.has(day.n)} class="accent-primary" />
+                {day.label}
+              </label>
+            {/each}
+          </div>
+        </fieldset>
+
+        <div class="flex items-center gap-3">
+          <Button type="submit">Save settings</Button>
+          {#if form?.saved}
+            <span class="flex items-center gap-1 text-sm text-success"><Check class="size-4" /> Saved</span>
+          {:else if form && 'error' in form && form.error}
+            <span class="text-sm text-destructive">{form.error}</span>
+          {/if}
+        </div>
+      </form>
+    </Card.Content>
+  </Card.Root>
+</div>
