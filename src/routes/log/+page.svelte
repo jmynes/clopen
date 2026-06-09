@@ -856,7 +856,7 @@
                   type="submit"
                   variant="outline"
                   size="sm"
-                  class={KIND_CLASSES[kind].button + ' justify-start'}
+                  class="{KIND_CLASSES[kind].button} justify-start"
                   onclick={(e) => {
                     if (addModeInput) addModeInput.value = 'leave';
                     if (addKindInput) addKindInput.value = kind;
@@ -1773,9 +1773,7 @@
                   type="button"
                   variant="outline"
                   size="sm"
-                  class={KIND_CLASSES[k].button +
-                    ' justify-start' +
-                    (editKind === k ? ' ' + KIND_CLASSES[k].activeButton : '')}
+                  class="{KIND_CLASSES[k].button} justify-start {editKind === k ? KIND_CLASSES[k].activeButton : ''}"
                   onclick={() => (editKind = k)}
                 >
                   <KindIcon class="size-3.5" /> {LEAVE_META[k].label}
