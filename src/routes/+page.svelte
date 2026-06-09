@@ -213,7 +213,7 @@
     <Button variant="outline" size="icon" class="shrink-0" aria-label="Next period" onclick={() => shiftPage(1)}>
       <ChevronRight class="size-4" />
     </Button>
-    <Button variant="ghost" size="sm" class="shrink-0" onclick={() => (anchor = data.today)}>Today</Button>
+    <Button variant="outline" size="sm" class="shrink-0" onclick={() => (anchor = data.today)}>Today</Button>
   </div>
 
   <!-- hero -->

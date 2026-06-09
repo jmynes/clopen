@@ -689,7 +689,7 @@
             <ChevronRight class="size-4" />
           </Button>
         </div>
-        <Button variant="ghost" size="sm" onclick={() => (weekAnchor = todayISO())}>This week</Button>
+        <Button variant="outline" size="sm" onclick={() => (weekAnchor = todayISO())}>This week</Button>
       </div>
     </Card.Header>
     <Card.Content class="flex flex-col gap-4">
@@ -983,7 +983,7 @@
         >
           <ChevronRight class="size-4" />
         </Button>
-        <Button variant="ghost" size="sm" class="shrink-0" onclick={() => (entriesAnchor = todayISO())}>Today</Button>
+        <Button variant="outline" size="sm" class="shrink-0" onclick={() => (entriesAnchor = todayISO())}>Today</Button>
       </div>
       {#if form?.imported}
         <p class="mb-3 text-sm text-success">
