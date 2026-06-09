@@ -732,7 +732,7 @@
               type="button"
               variant="outline"
               size="sm"
-              class="shrink-0 self-center border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 {isPto
+              class="w-24 shrink-0 self-center border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400 {isPto
                 ? 'bg-emerald-500/20 ring-2 ring-inset ring-emerald-500/50'
                 : 'bg-emerald-500/10'}"
               onclick={() => togglePtoRow(i)}
@@ -754,7 +754,7 @@
           {:else if form && 'weekError' in form && form.weekError}
             <span class="text-sm text-destructive">{form.weekError}</span>
           {/if}
-          <Button type="button" variant="destructive" onclick={clearWeek} class="ml-auto">
+          <Button type="button" variant="destructive" onclick={clearWeek} class="ml-auto w-24">
             <X class="size-4" /> Clear
           </Button>
         </div>
