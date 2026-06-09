@@ -1,5 +1,8 @@
 <script lang="ts">
   import CalendarClock from '@lucide/svelte/icons/calendar-clock';
+  import Moon from '@lucide/svelte/icons/moon';
+  import Sun from '@lucide/svelte/icons/sun';
+  import { onMount } from 'svelte';
   import { page } from '$app/state';
   import favicon from '$lib/assets/favicon.svg';
   import '../app.css';
@@ -14,6 +17,20 @@
 
   function isActive(href: string): boolean {
     return href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href);
+  }
+
+  // Theme is applied by an inline script in app.html before paint. Sync the
+  // local state from the resulting class on mount so the toggle reflects truth.
+  let dark = $state(false);
+  onMount(() => {
+    dark = document.documentElement.classList.contains('dark');
+  });
+  function toggleTheme() {
+    dark = !dark;
+    document.documentElement.classList.toggle('dark', dark);
+    try {
+      localStorage.setItem('theme', dark ? 'dark' : 'light');
+    } catch (_) {}
   }
 </script>
 
@@ -43,6 +60,22 @@
             {link.label}
           </a>
         {/each}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={dark}
+          aria-label="Toggle dark mode"
+          onclick={toggleTheme}
+          class="relative ml-2 inline-flex h-7 w-14 shrink-0 cursor-pointer items-center rounded-full border border-input bg-muted/50 transition-colors hover:bg-muted focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+        >
+          <Sun class="absolute left-1.5 size-3.5 text-amber-500" aria-hidden="true" />
+          <Moon class="absolute right-1.5 size-3.5 text-sky-400" aria-hidden="true" />
+          <span
+            class="pointer-events-none inline-block size-5 transform rounded-full bg-background shadow ring-1 ring-border transition-transform {dark
+              ? 'translate-x-8'
+              : 'translate-x-1'}"
+          ></span>
+        </button>
       </nav>
     </div>
   </header>

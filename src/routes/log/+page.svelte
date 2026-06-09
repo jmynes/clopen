@@ -898,8 +898,8 @@
                     {@const p = splitMeridiem(formatTime(entry.startTime, data.timeFormat))}
                     {p.time}{#if p.meridiem}<span
                         class="ml-1 {p.meridiem === 'AM'
-                          ? 'text-rose-400/80 dark:text-rose-300/70'
-                          : 'text-sky-400/80 dark:text-sky-300/70'}">{p.meridiem}</span
+                          ? 'text-rose-500 dark:text-rose-400'
+                          : 'text-sky-500 dark:text-sky-400'}">{p.meridiem}</span
                       >{/if}
                   {:else}
                     —
@@ -910,8 +910,8 @@
                     {@const p = splitMeridiem(formatTime(entry.endTime, data.timeFormat))}
                     {p.time}{#if p.meridiem}<span
                         class="ml-1 {p.meridiem === 'AM'
-                          ? 'text-rose-400/80 dark:text-rose-300/70'
-                          : 'text-sky-400/80 dark:text-sky-300/70'}">{p.meridiem}</span
+                          ? 'text-rose-500 dark:text-rose-400'
+                          : 'text-sky-500 dark:text-sky-400'}">{p.meridiem}</span
                       >{/if}
                     {#if entry.startTime && entry.endTime < entry.startTime}
                       <span class="ml-1 text-xs text-muted-foreground">+1d</span>
@@ -1226,12 +1226,12 @@
     {@const ep = splitMeridiem(formatTime(e.endTime, data.timeFormat))}
     <div class="font-mono text-sm tabular-nums">
       <span>{sp.time}</span>{#if sp.meridiem}<span
-          class="ml-0.5 {sp.meridiem === 'AM' ? 'text-rose-400/80 dark:text-rose-300/70' : 'text-sky-400/80 dark:text-sky-300/70'}"
+          class="ml-0.5 {sp.meridiem === 'AM' ? 'text-rose-500 dark:text-rose-400' : 'text-sky-500 dark:text-sky-400'}"
           >{sp.meridiem}</span
         >{/if}
       <span class="mx-1 text-muted-foreground">→</span>
       <span>{ep.time}</span>{#if ep.meridiem}<span
-          class="ml-0.5 {ep.meridiem === 'AM' ? 'text-rose-400/80 dark:text-rose-300/70' : 'text-sky-400/80 dark:text-sky-300/70'}"
+          class="ml-0.5 {ep.meridiem === 'AM' ? 'text-rose-500 dark:text-rose-400' : 'text-sky-500 dark:text-sky-400'}"
           >{ep.meridiem}</span
         >{/if}
       {#if e.endTime < e.startTime}<span class="ml-1 text-xs text-muted-foreground">+1d</span>{/if}
