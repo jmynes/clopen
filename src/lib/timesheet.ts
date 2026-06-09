@@ -178,7 +178,7 @@ function weekStartOf(iso: string, weekStartsOn: number): number {
 }
 
 /** The seven ISO dates of the week containing `iso`, ordered from `weekStartsOn`. */
-export function weekDates(iso: string, weekStartsOn = 1): string[] {
+export function weekDates(iso: string, weekStartsOn = 7): string[] {
   const start = weekStartOf(iso, weekStartsOn);
   return Array.from({ length: 7 }, (_, i) => toISO(start + i * DAY_MS));
 }
@@ -190,7 +190,7 @@ export function weeklyBreakdown(params: {
   settings: WorkSettings;
   weekStartsOn?: number;
 }): WeekSummary[] {
-  const { entries, yearStart, asOf, settings, weekStartsOn = 1 } = params;
+  const { entries, yearStart, asOf, settings, weekStartsOn = 7 } = params;
   const yearStartMs = parseISO(yearStart);
   const asOfMs = parseISO(asOf);
   if (asOfMs < yearStartMs) return [];

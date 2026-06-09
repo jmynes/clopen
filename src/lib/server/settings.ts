@@ -13,7 +13,7 @@ const DEFAULTS = {
   hourlyRate: 25,
   dailyHours: 8,
   workdays: '[1,2,3,4,5]',
-  weekStartsOn: 1,
+  weekStartsOn: 7,
 } satisfies Settings;
 
 /** Read the single settings row, seeding defaults on first access. */

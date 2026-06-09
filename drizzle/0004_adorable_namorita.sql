@@ -1,0 +1,1 @@
+ALTER TABLE `settings` ALTER COLUMN "week_starts_on" TO "week_starts_on" integer NOT NULL DEFAULT 7;

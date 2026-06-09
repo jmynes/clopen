@@ -25,6 +25,18 @@
 
   const hrs = (n: number) => `${n.toLocaleString('en-US', { maximumFractionDigits: 2 })}h`;
 
+  // Inline field-error lookups for each form on this page.
+  function errorsFrom(key: 'fieldErrors' | 'editFieldErrors' | 'weekFieldErrors'): Record<string, string> {
+    if (form && key in form) {
+      const v = (form as Record<string, unknown>)[key];
+      if (v && typeof v === 'object') return v as Record<string, string>;
+    }
+    return {};
+  }
+  const addErrors = $derived(errorsFrom('fieldErrors'));
+  const editErrors = $derived(errorsFrom('editFieldErrors'));
+  const weekErrors = $derived(errorsFrom('weekFieldErrors'));
+
   // Reformat a free-typed time ("2pm", "230", "14:00") to a friendly label on blur.
   function normalizeTime(e: FocusEvent & { currentTarget: HTMLInputElement }) {
     const parsed = parseTimeInput(e.currentTarget.value);
@@ -201,7 +213,18 @@
         <input type="hidden" name="mode" value={addMode} />
         <div class="flex flex-col gap-1.5">
           <Label for="date">Date</Label>
-          <Input id="date" type="date" name="date" value={todayISO()} max={todayISO()} required class="w-44" />
+          <Input
+            id="date"
+            type="date"
+            name="date"
+            value={todayISO()}
+            max={todayISO()}
+            required
+            aria-invalid={addErrors.date ? 'true' : undefined}
+            aria-describedby={addErrors.date ? 'date-error' : undefined}
+            class="w-44"
+          />
+          {#if addErrors.date}<p id="date-error" class="text-xs text-destructive">{addErrors.date}</p>{/if}
         </div>
         {#if addMode === 'clock'}
           <div class="flex flex-col gap-1.5">
@@ -215,8 +238,11 @@
               placeholder="9:00 am"
               onblur={normalizeTime}
               required
+              aria-invalid={addErrors.startTime ? 'true' : undefined}
+              aria-describedby={addErrors.startTime ? 'startTime-error' : undefined}
               class="w-40"
             />
+            {#if addErrors.startTime}<p id="startTime-error" class="text-xs text-destructive">{addErrors.startTime}</p>{/if}
           </div>
           <div class="flex flex-col gap-1.5">
             <Label for="endTime">Clock out</Label>
@@ -229,28 +255,61 @@
               placeholder="5:30 pm"
               onblur={normalizeTime}
               required
+              aria-invalid={addErrors.endTime ? 'true' : undefined}
+              aria-describedby={addErrors.endTime ? 'endTime-error' : undefined}
               class="w-40"
             />
+            {#if addErrors.endTime}<p id="endTime-error" class="text-xs text-destructive">{addErrors.endTime}</p>{/if}
           </div>
         {:else}
           <div class="flex flex-col gap-1.5">
             <Label for="hours">Hours</Label>
-            <Input id="hours" type="number" name="hours" step="0.25" min="0.25" max="24" placeholder="8" required class="w-24" />
+            <Input
+              id="hours"
+              type="number"
+              name="hours"
+              step="0.25"
+              min="0.25"
+              max="24"
+              placeholder="8"
+              required
+              aria-invalid={addErrors.hours ? 'true' : undefined}
+              aria-describedby={addErrors.hours ? 'hours-error' : undefined}
+              class="w-24"
+            />
+            {#if addErrors.hours}<p id="hours-error" class="text-xs text-destructive">{addErrors.hours}</p>{/if}
           </div>
         {/if}
         <div class="flex flex-col gap-1.5">
           <Label for="breakHours">Break <span class="text-muted-foreground">(h)</span></Label>
-          <Input id="breakHours" type="number" name="breakHours" step="0.25" min="0" max="24" placeholder="0" class="w-24" />
+          <Input
+            id="breakHours"
+            type="number"
+            name="breakHours"
+            step="0.25"
+            min="0"
+            max="24"
+            placeholder="0"
+            aria-invalid={addErrors.breakHours ? 'true' : undefined}
+            aria-describedby={addErrors.breakHours ? 'breakHours-error' : undefined}
+            class="w-24"
+          />
+          {#if addErrors.breakHours}<p id="breakHours-error" class="text-xs text-destructive">{addErrors.breakHours}</p>{/if}
         </div>
         <div class="flex flex-1 flex-col gap-1.5">
           <Label for="note">Note <span class="text-muted-foreground">(optional)</span></Label>
-          <Input id="note" type="text" name="note" placeholder="What did you work on?" />
+          <Input
+            id="note"
+            type="text"
+            name="note"
+            placeholder="What did you work on?"
+            aria-invalid={addErrors.note ? 'true' : undefined}
+            aria-describedby={addErrors.note ? 'note-error' : undefined}
+          />
+          {#if addErrors.note}<p id="note-error" class="text-xs text-destructive">{addErrors.note}</p>{/if}
         </div>
         <Button type="submit"><Plus class="size-4" /> Add</Button>
       </form>
-      {#if form && 'error' in form && form.error}
-        <p class="text-sm text-destructive">{form.error}</p>
-      {/if}
     </Card.Content>
   </Card.Root>
 
@@ -333,55 +392,77 @@
           <span class="flex-1">Note</span>
         </div>
         {#each weekRowDates as date, i (date)}
-          <div class="flex items-center gap-3 {isWeekend(date) ? 'opacity-70' : ''}">
-            <div class="w-28 shrink-0 text-sm">
+          {@const rowErr = (col: string) => weekErrors[`${col}-${i}`]}
+          <div class="flex items-start gap-3 {isWeekend(date) ? 'opacity-70' : ''}">
+            <div class="w-28 shrink-0 pt-2 text-sm">
               <span class="font-medium">{weekdayShort(date)}</span>
               <span class="ml-1 text-muted-foreground">{formatDay(date).replace(/^\w+,\s/, '')}</span>
             </div>
             {#if weekMode === 'clock'}
-              <Input
-                type="text"
-                name="start-{i}"
-                inputmode="numeric"
-                autocomplete="off"
-                placeholder="9:00 am"
-                onblur={normalizeTime}
-                aria-label="Clock in for {weekdayShort(date)}"
-                class="w-40 shrink-0"
-              />
-              <Input
-                type="text"
-                name="end-{i}"
-                inputmode="numeric"
-                autocomplete="off"
-                placeholder="5:30 pm"
-                onblur={normalizeTime}
-                aria-label="Clock out for {weekdayShort(date)}"
-                class="w-40 shrink-0"
-              />
+              <div class="flex w-40 shrink-0 flex-col gap-1">
+                <Input
+                  type="text"
+                  name="start-{i}"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  placeholder="9:00 am"
+                  onblur={normalizeTime}
+                  aria-label="Clock in for {weekdayShort(date)}"
+                  aria-invalid={rowErr('start') ? 'true' : undefined}
+                />
+                {#if rowErr('start')}<p class="text-xs text-destructive">{rowErr('start')}</p>{/if}
+              </div>
+              <div class="flex w-40 shrink-0 flex-col gap-1">
+                <Input
+                  type="text"
+                  name="end-{i}"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  placeholder="5:30 pm"
+                  onblur={normalizeTime}
+                  aria-label="Clock out for {weekdayShort(date)}"
+                  aria-invalid={rowErr('end') ? 'true' : undefined}
+                />
+                {#if rowErr('end')}<p class="text-xs text-destructive">{rowErr('end')}</p>{/if}
+              </div>
             {:else}
+              <div class="flex w-20 shrink-0 flex-col gap-1">
+                <Input
+                  type="number"
+                  name="hours-{i}"
+                  step="0.25"
+                  min="0.25"
+                  max="24"
+                  placeholder={isWeekend(date) ? '—' : '0'}
+                  aria-label="Hours for {weekdayShort(date)}"
+                  aria-invalid={rowErr('hours') ? 'true' : undefined}
+                />
+                {#if rowErr('hours')}<p class="text-xs text-destructive">{rowErr('hours')}</p>{/if}
+              </div>
+            {/if}
+            <div class="flex w-20 shrink-0 flex-col gap-1">
               <Input
                 type="number"
-                name="hours-{i}"
+                name="break-{i}"
                 step="0.25"
-                min="0.25"
+                min="0"
                 max="24"
-                placeholder={isWeekend(date) ? '—' : '0'}
-                aria-label="Hours for {weekdayShort(date)}"
-                class="w-20 shrink-0"
+                placeholder="0"
+                aria-label="Break for {weekdayShort(date)}"
+                aria-invalid={rowErr('break') ? 'true' : undefined}
               />
-            {/if}
-            <Input
-              type="number"
-              name="break-{i}"
-              step="0.25"
-              min="0"
-              max="24"
-              placeholder="0"
-              aria-label="Break for {weekdayShort(date)}"
-              class="w-20 shrink-0"
-            />
-            <Input type="text" name="note-{i}" placeholder="Note (optional)" aria-label="Note for {weekdayShort(date)}" />
+              {#if rowErr('break')}<p class="text-xs text-destructive">{rowErr('break')}</p>{/if}
+            </div>
+            <div class="flex flex-1 flex-col gap-1">
+              <Input
+                type="text"
+                name="note-{i}"
+                placeholder="Note (optional)"
+                aria-label="Note for {weekdayShort(date)}"
+                aria-invalid={rowErr('note') ? 'true' : undefined}
+              />
+              {#if rowErr('note')}<p class="text-xs text-destructive">{rowErr('note')}</p>{/if}
+            </div>
           </div>
         {/each}
         <div class="mt-1 flex flex-wrap items-center gap-3">
@@ -511,9 +592,9 @@
         method="POST"
         action="?/update"
         use:enhance={() => {
-          return async ({ update }) => {
+          return async ({ update, result }) => {
             await update();
-            editOpen = false;
+            if (result.type === 'success') editOpen = false;
           };
         }}
         class="flex flex-col gap-4"
@@ -522,7 +603,16 @@
         <input type="hidden" name="mode" value={editMode} />
         <div class="flex flex-col gap-1.5">
           <Label for="edit-date">Date</Label>
-          <Input id="edit-date" type="date" name="date" value={editing.date} max={todayISO()} required />
+          <Input
+            id="edit-date"
+            type="date"
+            name="date"
+            value={editing.date}
+            max={todayISO()}
+            required
+            aria-invalid={editErrors.date ? 'true' : undefined}
+          />
+          {#if editErrors.date}<p class="text-xs text-destructive">{editErrors.date}</p>{/if}
         </div>
         <div class="inline-flex w-fit rounded-md border border-input p-0.5 text-sm">
           {#each MODE_OPTIONS as opt (opt.m)}
@@ -551,7 +641,9 @@
                 value={timeLabel(editing.startTime)}
                 onblur={normalizeTime}
                 required
+                aria-invalid={editErrors.startTime ? 'true' : undefined}
               />
+              {#if editErrors.startTime}<p class="text-xs text-destructive">{editErrors.startTime}</p>{/if}
             </div>
             <div class="flex flex-col gap-1.5">
               <Label for="edit-end">Clock out</Label>
@@ -565,22 +657,52 @@
                 value={timeLabel(editing.endTime)}
                 onblur={normalizeTime}
                 required
+                aria-invalid={editErrors.endTime ? 'true' : undefined}
               />
+              {#if editErrors.endTime}<p class="text-xs text-destructive">{editErrors.endTime}</p>{/if}
             </div>
           {:else}
             <div class="flex flex-col gap-1.5">
               <Label for="edit-hours">Hours</Label>
-              <Input id="edit-hours" type="number" name="hours" step="0.25" min="0.25" max="24" value={editing.hours} required />
+              <Input
+                id="edit-hours"
+                type="number"
+                name="hours"
+                step="0.25"
+                min="0.25"
+                max="24"
+                value={editing.hours}
+                required
+                aria-invalid={editErrors.hours ? 'true' : undefined}
+              />
+              {#if editErrors.hours}<p class="text-xs text-destructive">{editErrors.hours}</p>{/if}
             </div>
           {/if}
           <div class="flex flex-col gap-1.5">
             <Label for="edit-break">Break (h)</Label>
-            <Input id="edit-break" type="number" name="breakHours" step="0.25" min="0" max="24" value={editing.breakHours} />
+            <Input
+              id="edit-break"
+              type="number"
+              name="breakHours"
+              step="0.25"
+              min="0"
+              max="24"
+              value={editing.breakHours}
+              aria-invalid={editErrors.breakHours ? 'true' : undefined}
+            />
+            {#if editErrors.breakHours}<p class="text-xs text-destructive">{editErrors.breakHours}</p>{/if}
           </div>
         </div>
         <div class="flex flex-col gap-1.5">
           <Label for="edit-note">Note</Label>
-          <Input id="edit-note" type="text" name="note" value={editing.note ?? ''} />
+          <Input
+            id="edit-note"
+            type="text"
+            name="note"
+            value={editing.note ?? ''}
+            aria-invalid={editErrors.note ? 'true' : undefined}
+          />
+          {#if editErrors.note}<p class="text-xs text-destructive">{editErrors.note}</p>{/if}
         </div>
         <Dialog.Footer>
           <Button type="submit">Save changes</Button>

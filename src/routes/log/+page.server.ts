@@ -33,13 +33,24 @@ function flattenError(parsed: z.ZodError): string {
   return parsed.issues.map((i) => i.message).join('; ');
 }
 
+// Map zod issues to { fieldName: firstMessage }. `prefix` lets the weekly grid
+// scope errors to a specific row, e.g. `start-3`.
+function fieldErrorsOf(parsed: z.ZodError, prefix = ''): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const i of parsed.issues) {
+    const key = `${prefix}${String(i.path[0] ?? '_')}`;
+    if (!out[key]) out[key] = i.message;
+  }
+  return out;
+}
+
 export const actions: Actions = {
   add: async ({ request }) => {
     const form = await request.formData();
     const parsed = parseEntry(form);
     if (!parsed.success) {
       return fail(400, {
-        error: flattenError(parsed.error),
+        fieldErrors: fieldErrorsOf(parsed.error),
         values: {
           date: String(form.get('date') ?? ''),
           hours: String(form.get('hours') ?? ''),
@@ -56,7 +67,7 @@ export const actions: Actions = {
     const id = String(form.get('id') ?? '');
     if (!id) return fail(400, { error: 'Missing entry id' });
     const parsed = parseEntry(form);
-    if (!parsed.success) return fail(400, { error: flattenError(parsed.error) });
+    if (!parsed.success) return fail(400, { editFieldErrors: fieldErrorsOf(parsed.error) });
     await updateEntry(id, parsed.data);
     return { updated: true };
   },
@@ -77,9 +88,22 @@ export const actions: Actions = {
     if (!ISO_DATE.test(weekStart)) return fail(400, { weekError: 'Invalid week' });
     const clock = form.get('mode') === 'clock';
 
+    // Schema field name → form input name (per row, suffixed with -i later).
+    const FIELD_TO_INPUT: Record<string, string> = {
+      startTime: 'start',
+      endTime: 'end',
+      breakHours: 'break',
+      hours: 'hours',
+      note: 'note',
+    };
+
     // weekStart is the first day of the grid; each row is the next day after it,
     // so this is independent of which weekday the week starts on.
-    const parsed = Array.from({ length: 7 }, (_, i) => {
+    type RowResult = {
+      i: number;
+      parsed: ReturnType<typeof clockEntryInput.safeParse> | ReturnType<typeof entryInput.safeParse>;
+    } | null;
+    const rows: RowResult[] = Array.from({ length: 7 }, (_, i): RowResult => {
       const date = addDays(weekStart, i);
       const breakHours = form.get(`break-${i}`) || undefined;
       const note = form.get(`note-${i}`) ?? undefined;
@@ -87,22 +111,34 @@ export const actions: Actions = {
         const startTime = String(form.get(`start-${i}`) ?? '').trim();
         const endTime = String(form.get(`end-${i}`) ?? '').trim();
         if (!startTime && !endTime) return null; // empty row
-        return clockEntryInput.safeParse({ date, startTime, endTime, breakHours, note });
+        return { i, parsed: clockEntryInput.safeParse({ date, startTime, endTime, breakHours, note }) };
       }
       const hours = String(form.get(`hours-${i}`) ?? '').trim();
       if (!hours) return null; // empty row
-      return entryInput.safeParse({ date, hours, breakHours, note });
-    }).filter((p) => p !== null);
+      return { i, parsed: entryInput.safeParse({ date, hours, breakHours, note }) };
+    });
 
-    if (parsed.length === 0) return fail(400, { weekError: 'Fill in at least one day' });
+    const filled = rows.filter((r): r is NonNullable<RowResult> => r !== null);
+    if (filled.length === 0) return fail(400, { weekError: 'Fill in at least one day' });
 
-    const bad = parsed.find((p) => !p.success);
-    if (bad && !bad.success) return fail(400, { weekError: flattenError(bad.error) });
-
-    for (const p of parsed) {
-      if (p.success) await addEntry(p.data);
+    const weekFieldErrors: Record<string, string> = {};
+    for (const { i, parsed } of filled) {
+      if (parsed.success) continue;
+      for (const issue of parsed.error.issues) {
+        const schemaField = String(issue.path[0] ?? '_');
+        const inputName = FIELD_TO_INPUT[schemaField] ?? schemaField;
+        const key = `${inputName}-${i}`;
+        if (!weekFieldErrors[key]) weekFieldErrors[key] = issue.message;
+      }
     }
-    return { weekAdded: parsed.length };
+    if (Object.keys(weekFieldErrors).length > 0) {
+      return fail(400, { weekFieldErrors, weekError: 'Fix the highlighted fields' });
+    }
+
+    for (const { parsed } of filled) {
+      if (parsed.success) await addEntry(parsed.data);
+    }
+    return { weekAdded: filled.length };
   },
 
   // Import arbitrarily many rows from a CSV file. Header columns are matched by

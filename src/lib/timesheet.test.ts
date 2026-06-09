@@ -70,7 +70,7 @@ describe('addDays', () => {
 describe('weekDates', () => {
   it('returns the 7 Mon–Sun dates for the week containing a mid-week day', () => {
     // 2026-01-01 is a Thursday; its week starts Mon 2025-12-29.
-    expect(weekDates('2026-01-01')).toEqual([
+    expect(weekDates('2026-01-01', 1)).toEqual([
       '2025-12-29',
       '2025-12-30',
       '2025-12-31',
@@ -82,7 +82,7 @@ describe('weekDates', () => {
   });
 
   it('starts on Monday when given a Monday', () => {
-    const dates = weekDates('2026-01-05');
+    const dates = weekDates('2026-01-05', 1);
     expect(dates).toHaveLength(7);
     expect(dates[0]).toBe('2026-01-05');
     expect(dates[6]).toBe('2026-01-11');
@@ -277,6 +277,7 @@ describe('weeklyBreakdown', () => {
       yearStart: '2026-01-01',
       asOf: '2026-01-11',
       settings,
+      weekStartsOn: 1,
       entries: [
         { date: '2026-01-02', hours: 8 }, // week 1 (Fri)
         { date: '2026-01-05', hours: 8 }, // week 2 (Mon)
@@ -316,6 +317,7 @@ describe('weeklyBreakdown', () => {
       yearStart: '2026-01-05',
       asOf: '2026-01-07', // Wednesday
       settings,
+      weekStartsOn: 1,
       entries: [],
     });
     expect(weeks).toHaveLength(1);
