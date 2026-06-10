@@ -47,6 +47,7 @@
   // svelte-ignore state_referenced_locally
   let epochValue = $state(data.epoch);
   const orderedWeekdays = $derived(weekStartsOnValue === '7' ? [WEEKDAYS[6], ...WEEKDAYS.slice(0, 6)] : WEEKDAYS);
+  const timeZones = Intl.supportedValuesOf('timeZone');
 
   // Every change saves on its own: the form-level onchange (and the
   // DateField's explicit one) schedules a debounced submit, so checkbox
@@ -76,6 +77,8 @@
     epochValue = DEFAULT_SETTINGS.epoch;
     set('timeFormat', DEFAULT_SETTINGS.timeFormat);
     set('ledgerPeriod', DEFAULT_SETTINGS.ledgerPeriod);
+    set('timeZone', DEFAULT_SETTINGS.timeZone);
+    set('clockBreakMode', DEFAULT_SETTINGS.clockBreakMode);
     for (const box of formEl.querySelectorAll<HTMLInputElement>('input[name="workdays"]')) {
       box.checked = DEFAULT_WORKDAYS.has(Number(box.value));
     }
@@ -83,6 +86,7 @@
       ['hideWeekendsEntries', DEFAULT_SETTINGS.hideWeekendsEntries],
       ['hideWeekendsGrid', DEFAULT_SETTINGS.hideWeekendsGrid],
       ['expandNotes', DEFAULT_SETTINGS.expandNotes],
+      ['observeDst', DEFAULT_SETTINGS.observeDst],
     ];
     for (const [name, value] of flags) {
       const el = formEl.elements.namedItem(name);
@@ -375,7 +379,43 @@
                 </select>
                 <p class="text-xs text-muted-foreground">How clock in/out times display.</p>
               </div>
+              <div class="flex flex-col gap-1.5">
+                <Label for="timeZone">Timezone</Label>
+                <select
+                  id="timeZone"
+                  name="timeZone"
+                  class="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                >
+                  {#each timeZones as tz (tz)}
+                    <option value={tz} selected={data.timeZone === tz}>{tz.replaceAll('_', ' ')}</option>
+                  {/each}
+                </select>
+                <p class="text-xs text-muted-foreground">Defines "today" everywhere and stamps the clock.</p>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <Label for="clockBreakMode">Clock breaks</Label>
+                <select
+                  id="clockBreakMode"
+                  name="clockBreakMode"
+                  class="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                >
+                  <option value="accrue" selected={data.clockBreakMode === 'accrue'}>Accrue into the shift</option>
+                  <option value="split" selected={data.clockBreakMode === 'split'}>Split shifts at breaks</option>
+                </select>
+                <p class="text-xs text-muted-foreground">How punch-clock breaks land in the ledger.</p>
+              </div>
             </div>
+            <label
+              class="flex cursor-pointer items-start gap-2 rounded-md border border-input px-3 py-2 text-sm transition-colors has-checked:border-primary has-checked:bg-accent"
+            >
+              <input type="checkbox" name="observeDst" checked={data.observeDst} class="mt-0.5 accent-primary" />
+              <span>
+                <span class="font-medium">Observe daylight saving time</span>
+                <span class="block text-xs text-muted-foreground">
+                  Off pins the timezone to its standard offset year-round (e.g. Central stays UTC−6).
+                </span>
+              </span>
+            </label>
           </section>
         </Card.Content>
       </Card.Root>
