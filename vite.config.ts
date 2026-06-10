@@ -1,7 +1,11 @@
+import { readFileSync } from 'node:fs';
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import type { Plugin } from 'vite';
 import { defineConfig } from 'vite';
+
+// The footer's version string always reflects package.json — no manual sync.
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string };
 
 /**
  * Workaround for bits-ui v2 + Tailwind v4 vite plugin incompatibility.
@@ -29,6 +33,9 @@ function excludeNodeModulesSvelteStyles(): Plugin {
 }
 
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   plugins: [excludeNodeModulesSvelteStyles(), sveltekit(), tailwindcss()],
   optimizeDeps: {
     include: ['bits-ui', '@lucide/svelte'],

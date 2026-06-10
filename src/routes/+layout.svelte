@@ -258,6 +258,7 @@
       >
         🄯 {year} Jordan Mynes
       </a>
+      <span class="ml-auto mr-1 font-mono text-xs" title="App version">v{__APP_VERSION__}</span>
       <a
         href="https://github.com/jmynes/clopen"
         target="_blank"
