@@ -21,6 +21,9 @@
     <clipPath id="clopen-right-door">
       <!-- top band + right panel top: cut at the left panel's right edge -->
       <rect x="101.5" y="0" width="160.5" height="58" />
+      <!-- the band's left jamb (x≈91–101) hangs down to meet the left door's
+           top corner at y≈90.5 — red until it touches blue -->
+      <rect x="90" y="0" width="12" height="90.5" />
       <!-- right panel: right of the upper strip's tip (x≈149) -->
       <rect x="152" y="58" width="110" height="197" />
       <!-- lower strip (tip at x≈112) + the panel's bottom-edge sweep -->
