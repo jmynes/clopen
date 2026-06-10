@@ -3,11 +3,13 @@
   import { onMount, tick } from 'svelte';
   import { enhance } from '$app/forms';
   import { invalidateAll } from '$app/navigation';
+  import DateField from '$lib/components/DateField.svelte';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import { saveSettingsAction } from '$lib/core/settings-page';
+  import { todayISO } from '$lib/date';
   import { isDemo } from '$lib/demo/flag';
   import type { ActionData, PageData } from './$types';
 
@@ -39,6 +41,8 @@
   let otMultiplierValue = $state(data.otMultiplier);
   // svelte-ignore state_referenced_locally
   let weekStartsOnValue = $state(String(data.weekStartsOn));
+  // svelte-ignore state_referenced_locally
+  let epochValue = $state(data.epoch);
   const orderedWeekdays = $derived(weekStartsOnValue === '7' ? [WEEKDAYS[6], ...WEEKDAYS.slice(0, 6)] : WEEKDAYS);
 
   // Dirty tracking for the Cancel button: snapshot the serialized form on
@@ -71,7 +75,7 @@
     };
     set('hourlyRate', String(data.settings.hourlyRate));
     set('dailyHours', String(data.settings.dailyHours));
-    set('epoch', data.epoch);
+    epochValue = data.epoch;
     set('timeFormat', data.timeFormat);
     for (const box of formEl.querySelectorAll<HTMLInputElement>('input[name="workdays"]')) {
       box.checked = selected.has(Number(box.value));
@@ -237,7 +241,14 @@
               </div>
               <div class="flex flex-col gap-1.5">
                 <Label for="epoch">Tracking since</Label>
-                <Input id="epoch" type="date" name="epoch" value={data.epoch} required class="w-full" />
+                <DateField
+                  id="epoch"
+                  name="epoch"
+                  bind:value={epochValue}
+                  min="{Number(todayISO().slice(0, 4)) - 10}-01-01"
+                  max={todayISO()}
+                  onchange={refreshDirty}
+                />
                 <p class="text-xs text-muted-foreground">Earliest date that accrues the make-whole baseline.</p>
               </div>
             </div>

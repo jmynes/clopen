@@ -18,6 +18,7 @@
   import { slide } from 'svelte/transition';
   import { enhance } from '$app/forms';
   import { invalidateAll } from '$app/navigation';
+  import DateField from '$lib/components/DateField.svelte';
   import DateJump from '$lib/components/DateJump.svelte';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
@@ -112,11 +113,13 @@
     if (!h) return null;
     return Math.max(0, h - brk);
   });
+  let addDate = $state(todayISO());
   function resetAddFields() {
     addStart = '';
     addEnd = '';
     addHours = '';
     addBreak = '';
+    addDate = todayISO();
   }
   let addModeInput: HTMLInputElement | null = $state(null);
   let addKindInput: HTMLInputElement | null = $state(null);
@@ -864,15 +867,14 @@
         <input type="hidden" name="mode" value={addMode} bind:this={addModeInput} />
         <div class="flex flex-col gap-1.5">
           <Label for="date">Date</Label>
-          <Input
+          <DateField
             id="date"
-            type="date"
             name="date"
-            value={todayISO()}
+            bind:value={addDate}
+            min={data.epoch}
             max={todayISO()}
-            required
-            aria-invalid={addErrors.date ? 'true' : undefined}
-            aria-describedby={addErrors.date ? 'date-error' : undefined}
+            ariaInvalid={addErrors.date ? 'true' : undefined}
+            ariaDescribedby={addErrors.date ? 'date-error' : undefined}
             class="md:w-44"
           />
           {#if addErrors.date}<p id="date-error" class="text-xs text-destructive">{addErrors.date}</p>{/if}
@@ -1938,14 +1940,13 @@
         {/if}
         <div class="flex flex-col gap-1.5">
           <Label for="edit-date">Date</Label>
-          <Input
+          <DateField
             id="edit-date"
-            type="date"
             name="date"
             value={editing?.date ?? creatingDate ?? ''}
+            min={data.epoch}
             max={todayISO()}
-            required
-            aria-invalid={dialogErrors.date ? 'true' : undefined}
+            ariaInvalid={dialogErrors.date ? 'true' : undefined}
           />
           {#if dialogErrors.date}<p class="text-xs text-destructive">{dialogErrors.date}</p>{/if}
         </div>
