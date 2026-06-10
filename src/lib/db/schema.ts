@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { ENTRY_KINDS } from '$lib/leave-kinds';
-import { LEDGER_PERIODS } from '$lib/schemas/settings';
+import { CLOCK_BREAK_MODES, LEDGER_PERIODS } from '$lib/schemas/settings';
 
 /**
  * One logged chunk of work. Multiple entries per calendar day are allowed
@@ -26,6 +26,8 @@ export const timeEntries = sqliteTable('time_entries', {
    */
   entryKind: text('entry_kind', { enum: ENTRY_KINDS }).notNull().default('work'),
   createdAt: integer('created_at').notNull().default(sql`(unixepoch())`),
+  /** Epoch seconds of the last edit; null = never edited since creation. */
+  updatedAt: integer('updated_at'),
 });
 
 /**
@@ -47,6 +49,12 @@ export const settings = sqliteTable('settings', {
   timeFormat: text('time_format').notNull().default('12h'),
   /** Period the Ledger opens to (its selector still changes it per visit). */
   ledgerPeriod: text('ledger_period', { enum: LEDGER_PERIODS }).notNull().default('month'),
+  /** IANA zone that defines "today" app-wide and stamps the clock. */
+  timeZone: text('time_zone').notNull().default('America/Chicago'),
+  /** Off pins the zone to its fixed standard-time offset (no DST shifts). */
+  observeDst: integer('observe_dst', { mode: 'boolean' }).notNull().default(true),
+  /** Clock-page breaks: accrue into one shift entry, or split shifts at breaks. */
+  clockBreakMode: text('clock_break_mode', { enum: CLOCK_BREAK_MODES }).notNull().default('accrue'),
   /** Hide blank Sat/Sun rows in the Entries list (weekends with entries still show). */
   hideWeekendsEntries: integer('hide_weekends_entries', { mode: 'boolean' }).notNull().default(false),
   /**
@@ -64,3 +72,19 @@ export const settings = sqliteTable('settings', {
 export type TimeEntry = typeof timeEntries.$inferSelect;
 export type NewTimeEntry = typeof timeEntries.$inferInsert;
 export type Settings = typeof settings.$inferSelect;
+
+/**
+ * The running punch-clock shift — at most one row (`id = 'current'`). Punches
+ * mutate it; clock-out composes normal time_entries and clears it, so the
+ * ledger stays the only canonical record. Instants are epoch *ms*.
+ * `startedAt` is null while on break in split mode (that segment was already
+ * written as an entry); `breakStartedAt` is set while on break in either mode.
+ */
+export const openShift = sqliteTable('open_shift', {
+  id: text('id').primaryKey().default('current'),
+  startedAt: integer('started_at'),
+  breakStartedAt: integer('break_started_at'),
+  breakSeconds: integer('break_seconds').notNull().default(0),
+  breakMode: text('break_mode', { enum: CLOCK_BREAK_MODES }).notNull().default('accrue'),
+});
+export type OpenShift = typeof openShift.$inferSelect;

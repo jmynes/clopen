@@ -8,6 +8,7 @@ import {
   listEntriesByDates,
   updateEntry,
 } from '$lib/server/entries';
+import { clearOpenShift, getOpenShift, saveOpenShift } from '$lib/server/open-shift';
 import { getSettings, updateSettings } from '$lib/server/settings';
 
 /** The Drizzle/libSQL implementation of the Repo storage contract. */
@@ -21,4 +22,7 @@ export const serverRepo: Repo = {
   deleteEntriesByDates,
   getSettings,
   updateSettings,
+  getOpenShift,
+  saveOpenShift,
+  clearOpenShift,
 };

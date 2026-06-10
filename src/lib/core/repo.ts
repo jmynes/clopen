@@ -1,4 +1,4 @@
-import type { Settings, TimeEntry } from '$lib/db/schema';
+import type { OpenShift, Settings, TimeEntry } from '$lib/db/schema';
 import type { EntryInput } from '$lib/schemas/entry';
 import { type SettingsInput, workdaysJson } from '$lib/schemas/settings';
 import type { WorkSettings } from '$lib/timesheet';
@@ -18,6 +18,9 @@ export type Repo = {
   deleteEntriesByDates(dates: string[]): Promise<void>;
   getSettings(): Promise<Settings>;
   updateSettings(input: SettingsInput): Promise<void>;
+  getOpenShift(): Promise<OpenShift | null>;
+  saveOpenShift(row: OpenShift): Promise<void>;
+  clearOpenShift(): Promise<void>;
 };
 
 export const DEFAULT_SETTINGS = {
@@ -29,6 +32,9 @@ export const DEFAULT_SETTINGS = {
   epoch: '2025-03-16',
   timeFormat: '12h',
   ledgerPeriod: 'month',
+  timeZone: 'America/Chicago',
+  observeDst: true,
+  clockBreakMode: 'accrue',
   hideWeekendsEntries: false,
   hideWeekendsGrid: false,
   expandNotes: false,
@@ -58,4 +64,7 @@ export const emptyRepo: Repo = {
   deleteEntriesByDates: async () => {},
   getSettings: async () => DEFAULT_SETTINGS,
   updateSettings: async () => {},
+  getOpenShift: async () => null,
+  saveOpenShift: async () => {},
+  clearOpenShift: async () => {},
 };

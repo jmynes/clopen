@@ -29,6 +29,9 @@ export const SAMPLE_SETTINGS: Settings = {
   expandNotes: false,
   otMultiplierEnabled: false,
   otMultiplier: 1.5,
+  timeZone: 'America/Chicago',
+  observeDst: true,
+  clockBreakMode: 'accrue',
 };
 
 // Fixed leave days within the range (US-ish holidays plus a little PTO/sick/
@@ -102,6 +105,7 @@ function workEntry(date: string): TimeEntry {
     note,
     entryKind: 'work',
     createdAt: Math.floor(Date.parse(date) / 1000),
+    updatedAt: null,
   };
 }
 
@@ -116,6 +120,7 @@ function leaveEntry(date: string, kind: EntryKind, paid: boolean): TimeEntry {
     note: null,
     entryKind: kind,
     createdAt: Math.floor(Date.parse(date) / 1000),
+    updatedAt: null,
   };
 }
 

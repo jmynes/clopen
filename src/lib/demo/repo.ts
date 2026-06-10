@@ -12,15 +12,19 @@
  * other and toggling flips cleanly between them.
  */
 import { DEFAULT_SETTINGS, type Repo } from '$lib/core/repo';
-import type { Settings, TimeEntry } from '$lib/db/schema';
+import type { OpenShift, Settings, TimeEntry } from '$lib/db/schema';
 import type { EntryInput } from '$lib/schemas/entry';
 import type { SettingsInput } from '$lib/schemas/settings';
 import { SAMPLE_SETTINGS, sampleEntries } from './sample';
 
 const SAMPLE_FLAG_KEY = 'clopen:demo-sample';
 const KEYS = {
-  sample: { entries: 'clopen:sample-entries', settings: 'clopen:sample-settings' },
-  yours: { entries: 'clopen:entries', settings: 'clopen:settings' },
+  sample: {
+    entries: 'clopen:sample-entries',
+    settings: 'clopen:sample-settings',
+    openShift: 'clopen:sample-open-shift',
+  },
+  yours: { entries: 'clopen:entries', settings: 'clopen:settings', openShift: 'clopen:open-shift' },
 } as const;
 
 /**
@@ -89,7 +93,7 @@ function sorted(entries: TimeEntry[]): TimeEntry[] {
   });
 }
 
-function rowFromInput(input: EntryInput, id: string, createdAt: number): TimeEntry {
+function rowFromInput(input: EntryInput, id: string, createdAt: number, updatedAt: number | null = null): TimeEntry {
   return {
     id,
     date: input.date,
@@ -100,6 +104,7 @@ function rowFromInput(input: EntryInput, id: string, createdAt: number): TimeEnt
     note: input.note ?? null,
     entryKind: input.entryKind,
     createdAt,
+    updatedAt,
   };
 }
 
@@ -179,6 +184,9 @@ export const demoRepo: Repo = {
       epoch: input.epoch,
       timeFormat: input.timeFormat,
       ledgerPeriod: input.ledgerPeriod,
+      timeZone: input.timeZone,
+      observeDst: input.observeDst,
+      clockBreakMode: input.clockBreakMode,
       hideWeekendsEntries: input.hideWeekendsEntries,
       hideWeekendsGrid: input.hideWeekendsGrid,
       expandNotes: input.expandNotes,
@@ -186,5 +194,20 @@ export const demoRepo: Repo = {
       otMultiplier: input.otMultiplier,
     };
     localStorage.setItem(activeKeys().settings, JSON.stringify(row));
+  },
+
+  async getOpenShift() {
+    try {
+      const raw = localStorage.getItem(activeKeys().openShift);
+      return raw ? (JSON.parse(raw) as OpenShift) : null;
+    } catch {
+      return null;
+    }
+  },
+  async saveOpenShift(row) {
+    localStorage.setItem(activeKeys().openShift, JSON.stringify(row));
+  },
+  async clearOpenShift() {
+    localStorage.removeItem(activeKeys().openShift);
   },
 };

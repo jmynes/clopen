@@ -6,6 +6,11 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 export const LEDGER_PERIODS = ['week', 'biweek', 'month', 'quarter', 'year'] as const;
 export type LedgerPeriod = (typeof LEDGER_PERIODS)[number];
 
+export const CLOCK_BREAK_MODES = ['accrue', 'split'] as const;
+export type ClockBreakMode = (typeof CLOCK_BREAK_MODES)[number];
+
+const KNOWN_ZONES = new Set<string>(Intl.supportedValuesOf('timeZone'));
+
 /** Validated shape for the single settings row (form-friendly: numbers coerced). */
 export const settingsInput = z.object({
   hourlyRate: z.coerce.number().min(0, 'Rate cannot be negative').max(100_000),
@@ -18,6 +23,12 @@ export const settingsInput = z.object({
   epoch: z.string().regex(ISO_DATE, 'Epoch must be a date like 2025-03-16'),
   timeFormat: z.enum(['12h', '24h']).default('12h'),
   ledgerPeriod: z.enum(LEDGER_PERIODS).default('month'),
+  timeZone: z
+    .string()
+    .refine((v) => v === 'UTC' || KNOWN_ZONES.has(v), 'Unknown timezone')
+    .default('America/Chicago'),
+  observeDst: z.boolean().default(true),
+  clockBreakMode: z.enum(CLOCK_BREAK_MODES).default('accrue'),
   hideWeekendsEntries: z.boolean().default(false),
   hideWeekendsGrid: z.boolean().default(false),
   expandNotes: z.boolean().default(false),
