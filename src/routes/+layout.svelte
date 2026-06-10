@@ -1,7 +1,9 @@
 <script lang="ts">
+  import FlaskConical from '@lucide/svelte/icons/flask-conical';
   import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
   import Moon from '@lucide/svelte/icons/moon';
   import NotebookPen from '@lucide/svelte/icons/notebook-pen';
+  import PenLine from '@lucide/svelte/icons/pen-line';
   import Settings from '@lucide/svelte/icons/settings';
   import Sun from '@lucide/svelte/icons/sun';
   import { onMount } from 'svelte';
@@ -32,11 +34,20 @@
   // Theme is applied by an inline script in app.html before paint. Sync the
   // local state from the resulting class on mount so the toggle reflects truth.
   let dark = $state(false);
-  onMount(() => {
+
+  // Demo data source: the sample timesheet (pre-seeded, in-use) vs. the
+  // visitor's own blank-slate sandbox. Only surfaced on the demo build.
+  let sampleData = $state(true);
+
+  onMount(async () => {
     dark = document.documentElement.classList.contains('dark');
     // Demo mode SSRs a defaults stub; rerun the universal loads now that
     // localStorage is reachable.
-    if (isDemo) invalidate('demo:data');
+    if (isDemo) {
+      const { isSampleData } = await import('$lib/demo/repo');
+      sampleData = isSampleData();
+      invalidate('demo:data');
+    }
   });
   function setTheme(next: boolean) {
     if (next === dark) return;
@@ -45,6 +56,13 @@
     try {
       localStorage.setItem('theme', dark ? 'dark' : 'light');
     } catch (_) {}
+  }
+  async function setSample(next: boolean) {
+    if (next === sampleData) return;
+    sampleData = next;
+    const { setSampleData } = await import('$lib/demo/repo');
+    setSampleData(next);
+    invalidate('demo:data');
   }
 </script>
 
@@ -93,6 +111,50 @@
             </a>
           {/each}
         </div>
+        {#if isDemo}
+          <div
+            role="radiogroup"
+            aria-label="Demo data"
+            class="relative ml-2 inline-flex h-8 items-center rounded-full border border-input bg-muted/40 p-1"
+          >
+            <span
+              aria-hidden="true"
+              class="absolute top-1 bottom-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-background shadow-sm ring-1 ring-border transition-transform duration-300 ease-out {sampleData
+                ? ''
+                : 'translate-x-full'}"
+            ></span>
+            <Tooltip.Root>
+              <Tooltip.Trigger
+                type="button"
+                role="radio"
+                aria-checked={sampleData}
+                aria-label="Sample timesheet"
+                onclick={() => setSample(true)}
+                class="relative z-10 inline-flex h-6 w-9 items-center justify-center rounded-full transition-colors {sampleData
+                  ? 'text-primary'
+                  : 'text-muted-foreground hover:text-foreground'}"
+              >
+                <FlaskConical class="size-4" />
+              </Tooltip.Trigger>
+              <Tooltip.Content>Sample timesheet — a populated demo</Tooltip.Content>
+            </Tooltip.Root>
+            <Tooltip.Root>
+              <Tooltip.Trigger
+                type="button"
+                role="radio"
+                aria-checked={!sampleData}
+                aria-label="Your own data"
+                onclick={() => setSample(false)}
+                class="relative z-10 inline-flex h-6 w-9 items-center justify-center rounded-full transition-colors {!sampleData
+                  ? 'text-primary'
+                  : 'text-muted-foreground hover:text-foreground'}"
+              >
+                <PenLine class="size-4" />
+              </Tooltip.Trigger>
+              <Tooltip.Content>Your own data — a blank sandbox</Tooltip.Content>
+            </Tooltip.Root>
+          </div>
+        {/if}
         <div
           role="radiogroup"
           aria-label="Theme"
