@@ -1,4 +1,4 @@
-import type { OpenShift, Settings, TimeEntry } from '$lib/db/schema';
+import type { EntryEvent, OpenShift, Settings, TimeEntry } from '$lib/db/schema';
 import type { EntryInput } from '$lib/schemas/entry';
 import { type SettingsInput, workdaysJson } from '$lib/schemas/settings';
 import type { WorkSettings } from '$lib/timesheet';
@@ -21,6 +21,8 @@ export type Repo = {
   getOpenShift(): Promise<OpenShift | null>;
   saveOpenShift(row: OpenShift): Promise<void>;
   clearOpenShift(): Promise<void>;
+  /** Audit log of ledger mutations, newest first. */
+  listEntryEvents(): Promise<EntryEvent[]>;
 };
 
 export const DEFAULT_SETTINGS = {
@@ -67,4 +69,5 @@ export const emptyRepo: Repo = {
   getOpenShift: async () => null,
   saveOpenShift: async () => {},
   clearOpenShift: async () => {},
+  listEntryEvents: async () => [],
 };

@@ -6,6 +6,7 @@ import {
   findExistingDates,
   listEntries,
   listEntriesByDates,
+  listEntryEvents,
   updateEntry,
 } from '$lib/server/entries';
 import { clearOpenShift, getOpenShift, saveOpenShift } from '$lib/server/open-shift';
@@ -25,4 +26,5 @@ export const serverRepo: Repo = {
   getOpenShift,
   saveOpenShift,
   clearOpenShift,
+  listEntryEvents,
 };

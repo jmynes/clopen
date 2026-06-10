@@ -102,6 +102,14 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
     shift — `startedAt` / `breakStartedAt` (epoch **ms**), `breakSeconds`,
     `breakMode` snapshot. Clock-out composes normal `time_entries` and clears
     it; the ledger stays the only canonical record.
+  - `entry_events`: append-only audit log of ledger mutations — `entryId`,
+    `action` (`add | edit | delete`), `at` (epoch ms), `snapshot` (the entry
+    JSON after an add/edit, or as it was at deletion). Written inside the repo
+    implementations' CRUD (server + demo, demo capped at 500/bucket), so every
+    mutation path logs without per-caller wiring. Viewed at `/settings/audit`
+    (an on-demand page with its own server load — deliberately not part of the
+    zero-network tab set), reached via the Audit log button in the Settings
+    footer. `Repo` exposes `listEntryEvents()` (newest first, server cap 1000).
 - `src/lib/db/index.ts` — Drizzle/libSQL client, **lazy-constructed via Proxy**
   so module load doesn't open a connection during SvelteKit's build analyse pass.
   Local default `file:./local.db`.

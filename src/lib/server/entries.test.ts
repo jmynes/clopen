@@ -4,7 +4,15 @@ import { migrate } from 'drizzle-orm/libsql/migrator';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as schema from '$lib/db/schema';
 import type { EntryInput } from '$lib/schemas/entry';
-import { addEntry, deleteEntry, listEntries, listEntriesInRange, updateEntry } from './entries';
+import {
+  addEntry,
+  deleteEntriesByDates,
+  deleteEntry,
+  listEntries,
+  listEntriesInRange,
+  listEntryEvents,
+  updateEntry,
+} from './entries';
 
 type Db = ReturnType<typeof drizzle<typeof schema>>;
 
@@ -72,6 +80,31 @@ describe('entries CRUD', () => {
     const created = await addEntry(mk({ date: '2026-01-05', hours: 8 }), db);
     await deleteEntry(created.id, db);
     expect(await listEntries(db)).toHaveLength(0);
+  });
+
+  it('audit log: add/edit/delete each record an event with a snapshot', async () => {
+    const row = await addEntry(mk({ date: '2026-06-10', hours: 8 }), db);
+    await updateEntry(row.id, mk({ date: '2026-06-10', hours: 7 }), db);
+    await deleteEntry(row.id, db);
+
+    const events = await listEntryEvents(db);
+    expect(events.map((e) => e.action).sort()).toEqual(['add', 'delete', 'edit']);
+    expect(events.every((e) => e.entryId === row.id)).toBe(true);
+    // The edit snapshot is the row AFTER the edit; the delete snapshot is the
+    // row as it was removed — both carry the revised hours.
+    const edited = events.find((e) => e.action === 'edit');
+    expect(JSON.parse(edited?.snapshot ?? '{}')).toMatchObject({ hours: 7 });
+    const deleted = events.find((e) => e.action === 'delete');
+    expect(JSON.parse(deleted?.snapshot ?? '{}')).toMatchObject({ hours: 7, date: '2026-06-10' });
+  });
+
+  it('audit log: bulk overwrite deletion records one event per removed entry', async () => {
+    await addEntry(mk({ date: '2026-06-01', hours: 4 }), db);
+    await addEntry(mk({ date: '2026-06-01', hours: 5 }), db);
+    await deleteEntriesByDates(['2026-06-01'], db);
+
+    const deletes = (await listEntryEvents(db)).filter((e) => e.action === 'delete');
+    expect(deletes).toHaveLength(2);
   });
 
   it('updateEntry stamps updatedAt; addEntry leaves it null', async () => {

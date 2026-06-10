@@ -12,7 +12,7 @@
  * other and toggling flips cleanly between them.
  */
 import { DEFAULT_SETTINGS, type Repo } from '$lib/core/repo';
-import type { OpenShift, Settings, TimeEntry } from '$lib/db/schema';
+import type { EntryEvent, OpenShift, Settings, TimeEntry } from '$lib/db/schema';
 import type { EntryInput } from '$lib/schemas/entry';
 import type { SettingsInput } from '$lib/schemas/settings';
 import { SAMPLE_SETTINGS, sampleEntries } from './sample';
@@ -23,9 +23,39 @@ const KEYS = {
     entries: 'clopen:sample-entries',
     settings: 'clopen:sample-settings',
     openShift: 'clopen:sample-open-shift',
+    events: 'clopen:sample-entry-events',
   },
-  yours: { entries: 'clopen:entries', settings: 'clopen:settings', openShift: 'clopen:open-shift' },
+  yours: {
+    entries: 'clopen:entries',
+    settings: 'clopen:settings',
+    openShift: 'clopen:open-shift',
+    events: 'clopen:entry-events',
+  },
 } as const;
+
+// Audit log cap per bucket: localStorage is finite, and the latest few
+// hundred mutations are the useful part of a demo's history.
+const EVENTS_CAP = 500;
+
+function readEvents(): EntryEvent[] {
+  try {
+    const raw = localStorage.getItem(activeKeys().events);
+    return raw ? (JSON.parse(raw) as EntryEvent[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Best-effort append — a logging failure never blocks the mutation itself. */
+function logEvent(action: EntryEvent['action'], row: TimeEntry): void {
+  try {
+    const events = readEvents();
+    events.push({ id: crypto.randomUUID(), entryId: row.id, action, at: Date.now(), snapshot: JSON.stringify(row) });
+    localStorage.setItem(activeKeys().events, JSON.stringify(events.slice(-EVENTS_CAP)));
+  } catch {
+    // storage unavailable or full — the ledger write still stands
+  }
+}
 
 /**
  * Whether the sample timesheet is the active bucket. Defaults to on (an unset
@@ -120,6 +150,7 @@ export const demoRepo: Repo = {
     const row = rowFromInput(input, crypto.randomUUID(), Date.now() / 1000);
     entries.push(row);
     writeEntries(entries);
+    logEvent('add', row);
     return row;
   },
 
@@ -130,11 +161,15 @@ export const demoRepo: Repo = {
     if (idx === -1) return;
     entries[idx] = rowFromInput(input, id, entries[idx].createdAt, Math.floor(Date.now() / 1000));
     writeEntries(entries);
+    logEvent('edit', entries[idx]);
   },
 
   async deleteEntry(id) {
     ensureSeeded();
-    writeEntries(readEntries().filter((e) => e.id !== id));
+    const entries = readEntries();
+    const removed = entries.find((e) => e.id === id);
+    writeEntries(entries.filter((e) => e.id !== id));
+    if (removed) logEvent('delete', removed);
   },
 
   async findExistingDates(dates) {
@@ -159,7 +194,14 @@ export const demoRepo: Repo = {
   async deleteEntriesByDates(dates) {
     ensureSeeded();
     const drop = new Set(dates);
-    writeEntries(readEntries().filter((e) => !drop.has(e.date)));
+    const entries = readEntries();
+    writeEntries(entries.filter((e) => !drop.has(e.date)));
+    for (const row of entries.filter((e) => drop.has(e.date))) logEvent('delete', row);
+  },
+
+  async listEntryEvents() {
+    ensureSeeded();
+    return [...readEvents()].sort((a, b) => b.at - a.at);
   },
 
   async getSettings() {

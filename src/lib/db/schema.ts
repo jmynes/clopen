@@ -76,6 +76,22 @@ export type NewTimeEntry = typeof timeEntries.$inferInsert;
 export type Settings = typeof settings.$inferSelect;
 
 /**
+ * Append-only audit log of ledger mutations. `snapshot` is the entry row
+ * after an add/edit, or as it was at deletion — an entry's history is the
+ * chain of its snapshots. Written inside the repo implementations so every
+ * mutation path (forms, CSV import, conflict overwrite, punch clock) logs
+ * without per-caller wiring. `at` is epoch ms so bulk operations keep order.
+ */
+export const entryEvents = sqliteTable('entry_events', {
+  id: text('id').primaryKey(),
+  entryId: text('entry_id').notNull(),
+  action: text('action', { enum: ['add', 'edit', 'delete'] }).notNull(),
+  at: integer('at').notNull(),
+  snapshot: text('snapshot').notNull(),
+});
+export type EntryEvent = typeof entryEvents.$inferSelect;
+
+/**
  * The running punch-clock shift — at most one row (`id = 'current'`). Punches
  * mutate it; clock-out composes normal time_entries and clears it, so the
  * ledger stays the only canonical record. Instants are epoch *ms*.

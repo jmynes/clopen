@@ -434,6 +434,7 @@
       {:else}
         <span class="text-sm text-muted-foreground">Changes save automatically.</span>
       {/if}
+      <Button href="/settings/audit" variant="outline" class="max-md:flex-1">Audit log</Button>
       <Button type="button" variant="outline" onclick={() => (resetOpen = true)} class="max-md:flex-1">
         Reset to defaults
       </Button>
