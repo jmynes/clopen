@@ -277,7 +277,7 @@
 
       <Card.Root>
         <Card.Header class="max-md:text-center">
-          <Card.Title>Display & entries</Card.Title>
+          <Card.Title>Display & ledger</Card.Title>
         </Card.Header>
         <Card.Content class="flex flex-col divide-y divide-border/50">
           <fieldset class="flex flex-col gap-3 pb-5">
@@ -294,9 +294,9 @@
                 class="mt-0.5 accent-primary"
               />
               <span>
-                <span class="font-medium">Hide empty weekends in Entries</span>
+                <span class="font-medium">Hide empty weekends in Ledger</span>
                 <span class="block text-xs text-muted-foreground">
-                  Blank Sat/Sun rows are hidden from the entries list. Weekends with logged time still show.
+                  Blank Sat/Sun rows are hidden from the ledger. Weekends with logged time still show.
                 </span>
               </span>
             </label>
@@ -312,8 +312,8 @@
               <span>
                 <span class="font-medium">Hide weekends in Log a week</span>
                 <span class="block text-xs text-muted-foreground">
-                  The weekly grid shows only weekday rows, and empty weekends are hidden from Entries too. Toggle off
-                  temporarily to log an odd weekend shift.
+                  The weekly grid shows only weekday rows, and empty weekends are hidden from the ledger too. Toggle
+                  off temporarily to log an odd weekend shift.
                 </span>
               </span>
             </label>
@@ -330,8 +330,8 @@
               <span>
                 <span class="font-medium">Expand notes by default</span>
                 <span class="block text-xs text-muted-foreground">
-                  Entries open with every note accordion expanded. Off keeps notes tucked behind the note action on
-                  each row.
+                  The ledger opens with every note accordion expanded. Off keeps notes tucked behind the note action
+                  on each row.
                 </span>
               </span>
             </label>
