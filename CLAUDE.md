@@ -80,7 +80,9 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   day, partial weeks, year-boundary, Sunday-start weeks, overnight shifts).
 - `src/lib/db/schema.ts` — Drizzle tables:
   - `time_entries`: `id`, `date`, `hours`, `breakHours`, `startTime`, `endTime`,
-    `note`, `entryKind`, `createdAt`. Multiple entries per day are allowed.
+    `note`, `entryKind`, `createdAt`, `updatedAt` (epoch seconds, null until
+    first edit; the edit dialog shows "Added … · Edited …"). Multiple entries
+    per day are allowed.
   - `settings` (single row, `id = 'default'`): `hourlyRate` (default 38.4615 =
     80k / 2080h), `dailyHours`, `workdays` (JSON `[1..7]`, ISO weekday numbers),
     `weekStartsOn` (1 = Mon, 7 = Sun; default 7), `epoch` (ISO date, default
@@ -91,8 +93,15 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
     false — entry notes start expanded in the Ledger),
     `ledgerPeriod` (`week | biweek | month | quarter | year`, default `month` —
     the period the Ledger opens to),
+    `timeZone` (IANA, default `America/Chicago`) / `observeDst` (default true —
+    off pins the zone to its fixed standard offset) / `clockBreakMode`
+    (`accrue | split`, default `accrue` — how punch-clock breaks land),
     `otMultiplierEnabled` / `otMultiplier` (default false / 1.5 — pay day-hours
     beyond the baseline at the multiplier; dashboard earnings only).
+  - `open_shift` (at most one row, `id = 'current'`): the running punch-clock
+    shift — `startedAt` / `breakStartedAt` (epoch **ms**), `breakSeconds`,
+    `breakMode` snapshot. Clock-out composes normal `time_entries` and clears
+    it; the ledger stays the only canonical record.
 - `src/lib/db/index.ts` — Drizzle/libSQL client, **lazy-constructed via Proxy**
   so module load doesn't open a connection during SvelteKit's build analyse pass.
   Local default `file:./local.db`.
@@ -107,8 +116,24 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
 - `src/lib/core/` — transport-agnostic page logic: `repo.ts` (the `Repo`
   storage contract + `DEFAULT_SETTINGS` + `toWorkSettings` + `emptyRepo`),
   `log.ts` (`computeLog` + all five form actions returning
-  `{ ok, status, data }`), `dashboard.ts`, `settings-page.ts`. Server routes
-  wrap failures in `fail()`; demo mode calls these directly.
+  `{ ok, status, data }`), `dashboard.ts`, `settings-page.ts`, `clock.ts` (the
+  punch-clock state machine: idle / working / on_break; `clockIn`,
+  `startBreak`, `endBreak`, `clockOut`, `adjustStart`, `resolveSave`/`Discard`,
+  `composeEntry`, `computeClock`; pure — callers pass `now`, fully tested in
+  `clock.test.ts`). Accrue mode banks break punches into one entry's
+  `breakHours`; split mode writes each in→out span as its own entry at break
+  start. Clocking out while on break ends the shift at the break's start; a
+  shift started before today (app zone) is "stale" and the Clock page demands
+  an explicit resolve. Composed entries use wall-clock `hoursBetween` so they
+  agree with every other surface (DST nights follow the wall clock). Server
+  routes wrap failures in `fail()`; demo mode calls these directly.
+- **App timezone:** `src/lib/date.ts` holds a module-level app zone
+  (`setAppTimeZone`, set by the root `+layout.ts` load from settings before
+  any page compute; clock actions pin it themselves since actions run before
+  loads). `todayISO()`, `zonedParts(ms)`, `zonedToMs(date, hhmm)`, and
+  `formatTimestamp(secs, mode)` all answer in it. `effectiveZone(tz, observeDst)`
+  maps DST opt-out to the fixed `Etc/GMT±N` standard offset (sign inverted;
+  fractional-offset zones pass through).
 - `src/lib/demo/` — demo mode (`PUBLIC_DEMO=1`, the Railway copy): `flag.ts`
   reads the env; `repo.ts` is a localStorage `Repo`. Demo skips SSR
   (`export const ssr = !isDemo` in `+layout.ts`) so the first browser render
@@ -188,20 +213,34 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   a sentinel row scrolls into view (rows never scrolled to never mount, and
   `table-fixed` keeps appends cheap); and the weekly grid mounts one frame
   after the page paints behind `gridReady`.
+- `src/routes/clock/+page.*` — the punch clock (2nd nav tab). `+page.server.ts`
+  holds the seven demo-gated actions (`in`, `breakStart`, `breakEnd`, `out`,
+  `adjust`, `resolveSave`, `resolveDiscard`), each pinning the app zone before
+  composing; `+page.ts` is `computeClock` over `await parent()` (the layout
+  load also returns `openShift`, which powers a running dot on the Clock nav
+  tab). The page: one 1s interval drives a big elapsed timer (worked time,
+  frozen during accrue breaks; break time while on break), state-appropriate
+  punch buttons disabled by a page-wide `submitting` flag, an inline
+  adjust-start form, a stale-shift banner (DateField + time → `resolveSave`,
+  or a confirm-dialog discard), and a Today card of the day's shifts. Demo
+  branches run the core actions against `demoRepo` + `invalidate('demo:data')`.
 - `src/routes/settings/+page.*` — two side-by-side cards (Pay & schedule /
   Display & ledger) with uppercase section micro-headers: pay rate, daily
   hours, workdays (chips ordered by week start), week-start, tracking epoch,
   overtime multiplier (toggle + readonly-when-off field), default ledger
-  period, time format, weekend visibility toggles, expand-notes-by-default.
+  period, timezone (full IANA select) + observe-DST toggle + clock break
+  mode, time format, weekend visibility toggles, expand-notes-by-default.
   Settings auto-save: every change schedules a debounced (400ms)
   `requestSubmit` through the shared enhance path (native validation gates
   it; zod failures surface in the status bar without persisting). The footer
   bar shows save status plus a Reset-to-defaults button behind a confirm
   dialog. Tooltips: `Tooltip.Provider` wraps the
   app in `+layout.svelte`; repeated/per-row controls use native `title`.
-- `src/routes/+layout.svelte` — responsive nav: desktop header links (with
-  icons) from `md`; below that an iOS-style bottom tab bar plus a top-left
-  hamburger (bars→X morph) opening a slide-down menu over a dim overlay.
+- `src/routes/+layout.svelte` — responsive nav (Dashboard / Clock / Log /
+  Settings): desktop header links (with icons) from `md`; below that an
+  iOS-style bottom tab bar plus a top-left hamburger (bars→X morph) opening a
+  slide-down menu over a dim overlay. The Clock link shows a small `bg-success`
+  dot while a shift is running (`data.openShift`).
 
 ## CSV import format
 
