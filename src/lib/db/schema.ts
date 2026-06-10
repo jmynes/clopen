@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { ENTRY_KINDS } from '$lib/leave-kinds';
+import { LEDGER_PERIODS } from '$lib/schemas/settings';
 
 /**
  * One logged chunk of work. Multiple entries per calendar day are allowed
@@ -44,6 +45,8 @@ export const settings = sqliteTable('settings', {
   epoch: text('epoch').notNull().default('2025-03-16'),
   /** Clock display: '12h' (default, e.g. 09:00 AM) or '24h' (e.g. 09:00). */
   timeFormat: text('time_format').notNull().default('12h'),
+  /** Period the Ledger opens to (its selector still changes it per visit). */
+  ledgerPeriod: text('ledger_period', { enum: LEDGER_PERIODS }).notNull().default('month'),
   /** Hide blank Sat/Sun rows in the Entries list (weekends with entries still show). */
   hideWeekendsEntries: integer('hide_weekends_entries', { mode: 'boolean' }).notNull().default(false),
   /**

@@ -335,7 +335,9 @@
     quarter: 'Quarterly',
     year: 'Yearly',
   };
-  let entriesPeriod = $state<Period>('year');
+  // Initial-only read of data.ledgerPeriod; the selector mutates it per visit.
+  // svelte-ignore state_referenced_locally
+  let entriesPeriod = $state<Period>(data.ledgerPeriod);
   let entriesAnchor = $state(todayISO());
   // The entries table (md+) and stacked list (below md) are alternates; with
   // hundreds of rows per period, rendering both and hiding one via CSS doubles

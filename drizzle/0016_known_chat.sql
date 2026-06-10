@@ -1,0 +1,1 @@
+ALTER TABLE `settings` ADD `ledger_period` text DEFAULT 'month' NOT NULL;

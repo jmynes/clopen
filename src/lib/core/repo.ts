@@ -28,6 +28,7 @@ export const DEFAULT_SETTINGS = {
   weekStartsOn: 7,
   epoch: '2025-03-16',
   timeFormat: '12h',
+  ledgerPeriod: 'month',
   hideWeekendsEntries: false,
   hideWeekendsGrid: false,
   expandNotes: false,

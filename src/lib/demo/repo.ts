@@ -178,6 +178,7 @@ export const demoRepo: Repo = {
       weekStartsOn: input.weekStartsOn,
       epoch: input.epoch,
       timeFormat: input.timeFormat,
+      ledgerPeriod: input.ledgerPeriod,
       hideWeekendsEntries: input.hideWeekendsEntries,
       hideWeekendsGrid: input.hideWeekendsGrid,
       expandNotes: input.expandNotes,

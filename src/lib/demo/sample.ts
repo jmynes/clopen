@@ -23,6 +23,7 @@ export const SAMPLE_SETTINGS: Settings = {
   weekStartsOn: 7,
   epoch: SAMPLE_START,
   timeFormat: '12h',
+  ledgerPeriod: 'month',
   hideWeekendsEntries: false,
   hideWeekendsGrid: false,
   expandNotes: false,

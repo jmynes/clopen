@@ -77,6 +77,7 @@
     set('dailyHours', String(data.settings.dailyHours));
     epochValue = data.epoch;
     set('timeFormat', data.timeFormat);
+    set('ledgerPeriod', data.ledgerPeriod);
     for (const box of formEl.querySelectorAll<HTMLInputElement>('input[name="workdays"]')) {
       box.checked = selected.has(Number(box.value));
     }
@@ -344,6 +345,29 @@
               </span>
             </label>
           </fieldset>
+
+          <section class="flex flex-col gap-3 py-5">
+            <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">Ledger</h3>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div class="flex flex-col gap-1.5">
+                <Label for="ledgerPeriod">Default period</Label>
+                <select
+                  id="ledgerPeriod"
+                  name="ledgerPeriod"
+                  class="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                >
+                  <option value="week" selected={data.ledgerPeriod === 'week'}>Weekly</option>
+                  <option value="biweek" selected={data.ledgerPeriod === 'biweek'}>Bi-weekly</option>
+                  <option value="month" selected={data.ledgerPeriod === 'month'}>Monthly</option>
+                  <option value="quarter" selected={data.ledgerPeriod === 'quarter'}>Quarterly</option>
+                  <option value="year" selected={data.ledgerPeriod === 'year'}>Yearly</option>
+                </select>
+                <p class="text-xs text-muted-foreground">
+                  How much the Ledger shows per page when the Log opens. Its selector still changes it per visit.
+                </p>
+              </div>
+            </div>
+          </section>
 
           <section class="flex flex-col gap-3 pt-5">
             <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">Clock</h3>
