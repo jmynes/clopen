@@ -1,4 +1,5 @@
 <script lang="ts">
+  import CalendarCheck from '@lucide/svelte/icons/calendar-check';
   import Check from '@lucide/svelte/icons/check';
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
@@ -210,16 +211,18 @@
         <option value={v}>{label}</option>
       {/each}
     </select>
-    <Button variant="outline" size="icon" class="shrink-0" title="Previous period" aria-label="Previous period" onclick={() => shiftPage(-1)}>
+    <Button variant="outline" size="icon-lg" class="shrink-0" title="Previous period" aria-label="Previous period" onclick={() => shiftPage(-1)}>
       <ChevronLeft class="size-4" />
     </Button>
     <span class="flex-1 text-center font-mono text-sm font-medium uppercase tabular-nums">
       {bucket.label}
     </span>
-    <Button variant="outline" size="icon" class="shrink-0" title="Next period" aria-label="Next period" onclick={() => shiftPage(1)}>
+    <Button variant="outline" size="icon-lg" class="shrink-0" title="Next period" aria-label="Next period" onclick={() => shiftPage(1)}>
       <ChevronRight class="size-4" />
     </Button>
-    <Button variant="outline" size="sm" class="shrink-0" onclick={() => (anchor = data.today)}>Today</Button>
+    <Button variant="outline" size="lg" class="shrink-0" onclick={() => (anchor = data.today)}>
+      <CalendarCheck class="size-4" /> Today
+    </Button>
     <DateJump
       value={anchor}
       min={data.epoch}

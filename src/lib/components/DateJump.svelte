@@ -12,6 +12,7 @@
   import { Button } from '$lib/components/ui/button';
   import { Calendar } from '$lib/components/ui/calendar';
   import * as Popover from '$lib/components/ui/popover';
+  import * as Tooltip from '$lib/components/ui/tooltip';
   import { todayISO } from '$lib/date';
 
   let {
@@ -58,13 +59,20 @@
 </script>
 
 <Popover.Root bind:open>
-  <Popover.Trigger>
-    {#snippet child({ props })}
-      <Button {...props} type="button" variant="outline" size="icon" title={label} aria-label={label}>
-        <CalendarDays class="size-4" />
-      </Button>
-    {/snippet}
-  </Popover.Trigger>
+  <Tooltip.Root>
+    <Tooltip.Trigger>
+      {#snippet child({ props: tooltipProps })}
+        <Popover.Trigger>
+          {#snippet child({ props })}
+            <Button {...tooltipProps} {...props} type="button" variant="outline" size="icon-lg" aria-label={label}>
+              <CalendarDays class="size-4" />
+            </Button>
+          {/snippet}
+        </Popover.Trigger>
+      {/snippet}
+    </Tooltip.Trigger>
+    <Tooltip.Content>{label}</Tooltip.Content>
+  </Tooltip.Root>
   <Popover.Content class="w-auto p-0" align="end">
     <Calendar
       type="single"

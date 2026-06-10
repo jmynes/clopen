@@ -1,6 +1,8 @@
 <script lang="ts">
   import ArrowUpDown from '@lucide/svelte/icons/arrow-up-down';
   import Briefcase from '@lucide/svelte/icons/briefcase';
+  import CalendarCheck from '@lucide/svelte/icons/calendar-check';
+  import CalendarRange from '@lucide/svelte/icons/calendar-range';
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import Download from '@lucide/svelte/icons/download';
@@ -864,7 +866,7 @@
                 <Button
                   {...props}
                   variant="outline"
-                  size="icon"
+                  size="icon-lg"
                   class={weekAtEpoch ? 'opacity-50' : ''}
                   aria-label="Previous week"
                   aria-disabled={weekAtEpoch}
@@ -896,7 +898,7 @@
                 <Button
                   {...props}
                   variant="outline"
-                  size="icon"
+                  size="icon-lg"
                   aria-label="Next week"
                   onclick={() => (weekAnchor = addDays(weekStart, 7))}
                 >
@@ -914,8 +916,8 @@
           />
         </div>
         <div class="flex items-center gap-2 md:contents">
-          <Button variant="outline" size="sm" class="md:order-1" onclick={() => (weekAnchor = todayISO())}>
-            This week
+          <Button variant="outline" size="lg" class="md:order-1" onclick={() => (weekAnchor = todayISO())}>
+            <CalendarRange class="size-4" /> This week
           </Button>
           <select
             aria-label="Month"
@@ -1441,7 +1443,9 @@
             <option value={v}>{label}</option>
           {/each}
         </select>
-        <Button variant="outline" size="sm" class="shrink-0" onclick={() => (entriesAnchor = todayISO())}>Today</Button>
+        <Button variant="outline" size="lg" class="shrink-0" onclick={() => (entriesAnchor = todayISO())}>
+          <CalendarCheck class="size-4" /> Today
+        </Button>
         <Tooltip.Root>
           <Tooltip.Trigger>
             {#snippet child({ props })}
@@ -1450,7 +1454,7 @@
               <Button
                 {...props}
                 variant="outline"
-                size="icon"
+                size="icon-lg"
                 class="shrink-0 {entriesAtEpoch ? 'opacity-50' : ''}"
                 aria-label="Previous period"
                 aria-disabled={entriesAtEpoch}
@@ -1482,7 +1486,7 @@
               <Button
                 {...props}
                 variant="outline"
-                size="icon"
+                size="icon-lg"
                 class="shrink-0"
                 aria-label="Next period"
                 onclick={() => shiftEntriesPage(1)}
