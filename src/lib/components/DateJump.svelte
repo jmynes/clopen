@@ -9,6 +9,7 @@
 <script lang="ts">
   import { type DateValue, parseDate } from '@internationalized/date';
   import CalendarDays from '@lucide/svelte/icons/calendar-days';
+  import { mergeProps } from 'bits-ui';
   import { Button } from '$lib/components/ui/button';
   import { Calendar } from '$lib/components/ui/calendar';
   import * as Popover from '$lib/components/ui/popover';
@@ -63,8 +64,17 @@
     <Tooltip.Trigger>
       {#snippet child({ props: tooltipProps })}
         <Popover.Trigger>
-          {#snippet child({ props })}
-            <Button {...tooltipProps} {...props} type="button" variant="outline" size="icon-lg" aria-label={label}>
+          {#snippet child({ props: popoverProps })}
+            <!-- mergeProps chains the two triggers' shared event handlers; a
+                 plain double-spread lets one clobber the other's pointer
+                 tracking and the tooltip jams after the first hover. -->
+            <Button
+              {...mergeProps(tooltipProps, popoverProps)}
+              type="button"
+              variant="outline"
+              size="icon-lg"
+              aria-label={label}
+            >
               <CalendarDays class="size-4" />
             </Button>
           {/snippet}
