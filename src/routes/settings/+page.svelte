@@ -133,7 +133,7 @@
     }}
     class="flex flex-col gap-6"
   >
-    <div class="grid items-start gap-6 md:grid-cols-2">
+    <div class="grid items-start gap-6 md:grid-cols-2 lg:grid-cols-3">
       <Card.Root>
         <Card.Header class="max-md:text-center">
           <Card.Title>Pay & schedule</Card.Title>
@@ -141,7 +141,7 @@
         <Card.Content class="flex flex-col divide-y divide-border/50">
           <section class="flex flex-col gap-3 pb-5">
             <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">Compensation</h3>
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
               <div class="flex flex-col gap-1.5">
                 <Label for="hourlyRate">Hourly rate (USD)</Label>
                 <Input
@@ -221,7 +221,7 @@
           </section>
           <section class="flex flex-col gap-4 pt-5">
             <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">Schedule</h3>
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
               <div class="flex flex-col gap-1.5">
                 <Label for="weekStartsOn">Week starts on</Label>
                 <select
@@ -281,29 +281,71 @@
 
       <Card.Root>
         <Card.Header class="max-md:text-center">
-          <Card.Title>Display & ledger</Card.Title>
+          <Card.Title>Clock & time</Card.Title>
+        </Card.Header>
+        <Card.Content class="flex flex-col gap-4">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
+            <div class="flex flex-col gap-1.5">
+              <Label for="timeFormat">Time format</Label>
+              <select
+                id="timeFormat"
+                name="timeFormat"
+                class="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+              >
+                <option value="12h" selected={data.timeFormat === '12h'}>12-hour (09:00 AM)</option>
+                <option value="24h" selected={data.timeFormat === '24h'}>24-hour (09:00)</option>
+              </select>
+              <p class="text-xs text-muted-foreground">How clock in/out times display.</p>
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <Label for="timeZone">Timezone</Label>
+              <select
+                id="timeZone"
+                name="timeZone"
+                class="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+              >
+                {#each timeZones as tz (tz)}
+                  <option value={tz} selected={data.timeZone === tz}>{tz.replaceAll('_', ' ')}</option>
+                {/each}
+              </select>
+              <p class="text-xs text-muted-foreground">Defines "today" everywhere and stamps the clock.</p>
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <Label for="clockBreakMode">Clock breaks</Label>
+              <select
+                id="clockBreakMode"
+                name="clockBreakMode"
+                class="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+              >
+                <option value="accrue" selected={data.clockBreakMode === 'accrue'}>Accrue into the shift</option>
+                <option value="split" selected={data.clockBreakMode === 'split'}>Split shifts at breaks</option>
+              </select>
+              <p class="text-xs text-muted-foreground">How punch-clock breaks land in the ledger.</p>
+            </div>
+          </div>
+          <label
+            class="flex cursor-pointer items-start gap-2 rounded-md border border-input px-3 py-2 text-sm transition-colors has-checked:border-primary has-checked:bg-accent"
+          >
+            <input type="checkbox" name="observeDst" checked={data.observeDst} class="mt-0.5 accent-primary" />
+            <span>
+              <span class="font-medium">Observe daylight saving time</span>
+              <span class="block text-xs text-muted-foreground">
+                Off pins the timezone to its standard offset year-round (e.g. Central stays UTC−6).
+              </span>
+            </span>
+          </label>
+        </Card.Content>
+      </Card.Root>
+
+      <Card.Root>
+        <Card.Header class="max-md:text-center">
+          <Card.Title>Log & Ledger</Card.Title>
         </Card.Header>
         <Card.Content class="flex flex-col divide-y divide-border/50">
           <fieldset class="flex flex-col gap-3 pb-5">
             <legend class="float-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:w-full max-md:text-center">
               Weekends
             </legend>
-            <label
-              class="flex cursor-pointer items-start gap-2 rounded-md border border-input px-3 py-2 text-sm transition-colors has-checked:border-primary has-checked:bg-accent"
-            >
-              <input
-                type="checkbox"
-                name="hideWeekendsEntries"
-                checked={data.hideWeekendsEntries}
-                class="mt-0.5 accent-primary"
-              />
-              <span>
-                <span class="font-medium">Hide empty weekends in Ledger</span>
-                <span class="block text-xs text-muted-foreground">
-                  Blank Sat/Sun rows are hidden from the ledger. Weekends with logged time still show.
-                </span>
-              </span>
-            </label>
             <label
               class="flex cursor-pointer items-start gap-2 rounded-md border border-input px-3 py-2 text-sm transition-colors has-checked:border-primary has-checked:bg-accent"
             >
@@ -321,21 +363,19 @@
                 </span>
               </span>
             </label>
-          </fieldset>
-
-          <fieldset class="flex flex-col gap-3 py-5">
-            <legend class="float-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:w-full max-md:text-center">
-              Notes
-            </legend>
             <label
               class="flex cursor-pointer items-start gap-2 rounded-md border border-input px-3 py-2 text-sm transition-colors has-checked:border-primary has-checked:bg-accent"
             >
-              <input type="checkbox" name="expandNotes" checked={data.expandNotes} class="mt-0.5 accent-primary" />
+              <input
+                type="checkbox"
+                name="hideWeekendsEntries"
+                checked={data.hideWeekendsEntries}
+                class="mt-0.5 accent-primary"
+              />
               <span>
-                <span class="font-medium">Expand notes by default</span>
+                <span class="font-medium">Hide empty weekends in Ledger</span>
                 <span class="block text-xs text-muted-foreground">
-                  The ledger opens with every note accordion expanded. Off keeps notes tucked behind the note action
-                  on each row.
+                  Blank Sat/Sun rows are hidden from the ledger. Weekends with logged time still show.
                 </span>
               </span>
             </label>
@@ -343,7 +383,7 @@
 
           <section class="flex flex-col gap-3 py-5">
             <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">Ledger</h3>
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
               <div class="flex flex-col gap-1.5">
                 <Label for="ledgerPeriod">Default period</Label>
                 <select
@@ -364,64 +404,28 @@
             </div>
           </section>
 
-          <section class="flex flex-col gap-3 pt-5">
-            <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">Clock</h3>
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div class="flex flex-col gap-1.5">
-                <Label for="timeFormat">Time format</Label>
-                <select
-                  id="timeFormat"
-                  name="timeFormat"
-                  class="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
-                >
-                  <option value="12h" selected={data.timeFormat === '12h'}>12-hour (09:00 AM)</option>
-                  <option value="24h" selected={data.timeFormat === '24h'}>24-hour (09:00)</option>
-                </select>
-                <p class="text-xs text-muted-foreground">How clock in/out times display.</p>
-              </div>
-              <div class="flex flex-col gap-1.5">
-                <Label for="timeZone">Timezone</Label>
-                <select
-                  id="timeZone"
-                  name="timeZone"
-                  class="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
-                >
-                  {#each timeZones as tz (tz)}
-                    <option value={tz} selected={data.timeZone === tz}>{tz.replaceAll('_', ' ')}</option>
-                  {/each}
-                </select>
-                <p class="text-xs text-muted-foreground">Defines "today" everywhere and stamps the clock.</p>
-              </div>
-              <div class="flex flex-col gap-1.5">
-                <Label for="clockBreakMode">Clock breaks</Label>
-                <select
-                  id="clockBreakMode"
-                  name="clockBreakMode"
-                  class="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
-                >
-                  <option value="accrue" selected={data.clockBreakMode === 'accrue'}>Accrue into the shift</option>
-                  <option value="split" selected={data.clockBreakMode === 'split'}>Split shifts at breaks</option>
-                </select>
-                <p class="text-xs text-muted-foreground">How punch-clock breaks land in the ledger.</p>
-              </div>
-            </div>
+          <fieldset class="flex flex-col gap-3 pt-5">
+            <legend class="float-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:w-full max-md:text-center">
+              Notes
+            </legend>
             <label
               class="flex cursor-pointer items-start gap-2 rounded-md border border-input px-3 py-2 text-sm transition-colors has-checked:border-primary has-checked:bg-accent"
             >
-              <input type="checkbox" name="observeDst" checked={data.observeDst} class="mt-0.5 accent-primary" />
+              <input type="checkbox" name="expandNotes" checked={data.expandNotes} class="mt-0.5 accent-primary" />
               <span>
-                <span class="font-medium">Observe daylight saving time</span>
+                <span class="font-medium">Expand notes by default</span>
                 <span class="block text-xs text-muted-foreground">
-                  Off pins the timezone to its standard offset year-round (e.g. Central stays UTC−6).
+                  The ledger opens with every note accordion expanded. Off keeps notes tucked behind the note action
+                  on each row.
                 </span>
               </span>
             </label>
-          </section>
+          </fieldset>
         </Card.Content>
       </Card.Root>
     </div>
 
-    <!-- Status bar spans both cards: save feedback plus the reset escape hatch. -->
+    <!-- Status bar spans all three cards: save feedback plus the reset escape hatch. -->
     <div class="flex flex-wrap items-center justify-end gap-3 rounded-xl bg-card px-4 py-3 ring-1 ring-foreground/10">
       {#if actionData?.saved}
         <span class="flex items-center gap-1 text-sm text-success"><Check class="size-4" /> Saved</span>
