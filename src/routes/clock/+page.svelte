@@ -11,7 +11,7 @@
   import { adjustStart, clockIn, clockOut, endBreak, resolveDiscard, resolveSave, startBreak } from '$lib/core/clock';
   import type { ActionOutcome } from '$lib/core/log';
   import type { Repo } from '$lib/core/repo';
-  import { formatDay, formatTime, formatTimeRange, zonedParts, zonedToMs } from '$lib/date';
+  import { effectiveZone, formatDay, formatTime, formatTimeRange, setAppTimeZone, zonedParts, zonedToMs } from '$lib/date';
   import { isDemo } from '$lib/demo/flag';
   import { parseTimeInput } from '$lib/timesheet';
   import type { ActionData, PageData } from './$types';
@@ -81,6 +81,11 @@
         void (async () => {
           try {
             const { demoRepo } = await import('$lib/demo/repo');
+            // Pin the zone like the server actions do: composition derives its
+            // wall-clock fields from it, and a punch shouldn't depend on the
+            // layout load having run first.
+            const s = await demoRepo.getSettings();
+            setAppTimeZone(effectiveZone(s.timeZone, s.observeDst));
             const out = await run(demoRepo);
             demoForm = out.data as ActionData;
             if (out.ok) onSuccess?.();

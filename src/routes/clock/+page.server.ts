@@ -67,6 +67,9 @@ export const actions: Actions = {
   },
   resolveDiscard: async () => {
     if (isDemo) return demoFail();
+    // No composition here, but pin the zone like every sibling action so a
+    // future side-effect can't silently run against a stale zone.
+    await settingsWithZone();
     return unwrap(await resolveDiscard(serverRepo));
   },
 };
