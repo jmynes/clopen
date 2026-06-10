@@ -471,30 +471,29 @@
   });
 
   // Mounting a whole year at once (~5k DOM nodes) blocks navigation for
-  // hundreds of ms, so the ledger streams: enough rows to overfill the
-  // scroll container render with the page itself, the rest arrive in
-  // idle-time chunks that never block input.
+  // hundreds of ms — and even off-thread streaming kept browsers busy
+  // re-laying the table long after first paint. So the ledger renders two
+  // screenfuls with the page and grows only on demand: a sentinel row at the
+  // bottom of the scroll container appends the next chunk as it comes into
+  // view (the observer re-fires while it stays in view, so a yanked scrollbar
+  // chains chunks without further input). Rows never scrolled to never mount.
   const LEDGER_CHUNK = 28;
   let ledgerLimit = $state(LEDGER_CHUNK);
   const visibleRows = $derived(displayRows.slice(0, ledgerLimit));
   $effect(() => {
-    void entriesBucket; // changing page/period restarts streaming from the top
+    void entriesBucket; // changing page/period restarts from the top
     ledgerLimit = LEDGER_CHUNK;
   });
-  $effect(() => {
-    if (ledgerLimit >= displayRows.length) return;
-    const grow = () => {
-      ledgerLimit += LEDGER_CHUNK;
-    };
-    // Not on Window in Safari, hence the undefined-widening feature check.
-    const ric: typeof window.requestIdleCallback | undefined = window.requestIdleCallback;
-    if (ric) {
-      const id = ric(grow);
-      return () => window.cancelIdleCallback(id);
-    }
-    const id = window.setTimeout(grow, 50);
-    return () => window.clearTimeout(id);
-  });
+  function growWhenVisible(node: Element) {
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) ledgerLimit += LEDGER_CHUNK;
+      },
+      { rootMargin: '600px' },
+    );
+    io.observe(node);
+    return { destroy: () => io.disconnect() };
+  }
 
   // The weekly grid is ~40% of the page's mount cost (its seven rows of
   // inputs and selects), so it mounts one frame after the rest: the page
@@ -1718,7 +1717,7 @@
             ? 'min-h-0 flex-1'
             : 'max-h-[calc(14*2.75rem+2.5rem)]'}"
         >
-        <Table.Root>
+        <Table.Root class="table-fixed">
           <Table.Header class="sticky top-0 z-10 bg-background">
             <Table.Row>
               <Table.Head class="w-32">Date</Table.Head>
@@ -1840,6 +1839,11 @@
               {/if}
               {/if}
             {/each}
+            {#if ledgerLimit < displayRows.length}
+              <tr use:growWhenVisible>
+                <td colspan="8" class="p-2 text-center text-xs text-muted-foreground">…</td>
+              </tr>
+            {/if}
           </Table.Body>
         </Table.Root>
         </div>
@@ -1942,6 +1946,9 @@
               </div>
             {/if}
           {/each}
+          {#if ledgerLimit < displayRows.length}
+            <div use:growWhenVisible class="p-2 text-center text-xs text-muted-foreground">…</div>
+          {/if}
         </div>
         {/if}
       {/if}
