@@ -1,5 +1,6 @@
 <script lang="ts">
   import Check from '@lucide/svelte/icons/check';
+  import History from '@lucide/svelte/icons/history';
   import { tick } from 'svelte';
   import { enhance } from '$app/forms';
   import { invalidate } from '$app/navigation';
@@ -404,7 +405,7 @@
             </div>
           </section>
 
-          <fieldset class="flex flex-col gap-3 pt-5">
+          <fieldset class="flex flex-col gap-3 py-5">
             <legend class="float-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:w-full max-md:text-center">
               Notes
             </legend>
@@ -421,6 +422,18 @@
               </span>
             </label>
           </fieldset>
+
+          <section class="flex flex-col gap-3 pt-5">
+            <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">
+              History
+            </h3>
+            <Button href="/settings/audit" variant="outline" class="w-full">
+              <History class="size-4" /> View audit log
+            </Button>
+            <p class="text-xs text-muted-foreground">
+              Every add, edit, and delete on the ledger, timestamped, with a snapshot of the entry as it was.
+            </p>
+          </section>
         </Card.Content>
       </Card.Root>
     </div>
@@ -434,7 +447,6 @@
       {:else}
         <span class="text-sm text-muted-foreground">Changes save automatically.</span>
       {/if}
-      <Button href="/settings/audit" variant="outline" class="max-md:flex-1">Audit log</Button>
       <Button type="button" variant="outline" onclick={() => (resetOpen = true)} class="max-md:flex-1">
         Reset to defaults
       </Button>
