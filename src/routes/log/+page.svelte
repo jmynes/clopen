@@ -316,7 +316,8 @@
   let entriesExpanded = $state(false);
   function onWindowKeydown(e: KeyboardEvent) {
     if (e.key !== 'Escape') return;
-    if (entriesExpanded && !editOpen && deleting === null && conflicts.length === 0) entriesExpanded = false;
+    if (entriesExpanded && !editOpen && deleting === null && conflicts.length === 0 && fillPlan === null)
+      entriesExpanded = false;
   }
 
   function shiftMonth(anchor: string, n: number): string {
@@ -633,55 +634,86 @@
     if (m) lastTouched = { col: m[1], row: Number(m[2]), shift: m[3] ? Number(m[3]) : undefined };
   }
 
-  // Copy the last touched field to every other visible row — up and down.
-  // Falls back to the original behavior — first visible day's in/out/break
-  // (or hours/break) down the whole week — when nothing has been touched yet
-  // (or the touched cell vanished with a week/mode change, or is empty).
-  function fillWeek() {
+  // Fill = copy the last touched field to every other visible row (same
+  // shift slot for extra-shift cells, adding rows where missing; blanks
+  // propagate but never conjure rows). Fallback with nothing touched: the
+  // first visible day's time fields copy down the week. A confirmation
+  // dialog previews the exact changes before anything is written.
+  type SubKey = 'start' | 'end' | 'hours' | 'brk' | 'note';
+  const subKey = (col: string): SubKey => (col === 'break' ? 'brk' : col) as SubKey;
+  const FIELD_LABELS: Record<string, string> = { start: 'In', end: 'Out', hours: 'Hours', break: 'Break', note: 'Note' };
+  type FillChange = { i: number; date: string; field: string; shift?: number; from: string; to: string; addsShift?: boolean };
+  let fillPlan = $state<FillChange[] | null>(null);
+  let fillSourceLabel = $state('');
+
+  function planFill(): { label: string; changes: FillChange[] } | null {
     const rows = weekRows.map((r) => r.i);
+    const dateOf = (i: number) => addDays(weekStart, i);
     if (lastTouched?.shift) {
-      // Source is an extra-shift cell: fill that shift slot on every other
-      // non-leave day, adding the sub-row (+) where it doesn't exist yet.
       const { col, row, shift } = lastTouched;
-      const key = (col === 'break' ? 'brk' : col) as 'start' | 'end' | 'hours' | 'brk' | 'note';
       const source = subShifts[row]?.[shift - 1];
       if (source && rows.includes(row)) {
-        const value = source[key];
+        const value = source[subKey(col)];
+        const changes: FillChange[] = [];
         for (const r of rows) {
           if (r === row || leaveRows.has(r)) continue;
-          // A blank fills (clears) wherever the shift exists, but doesn't
-          // conjure new sub-rows just to blank them.
-          if (!value && subShifts[r].length < shift) continue;
-          while (subShifts[r].length < shift) {
-            subShifts[r].push({ start: '', end: '', hours: '', brk: '', note: '' });
-          }
-          subShifts[r][shift - 1][key] = value;
+          const exists = subShifts[r].length >= shift;
+          if (!value && !exists) continue;
+          const from = exists ? subShifts[r][shift - 1][subKey(col)] : '';
+          if (exists && from === value) continue;
+          changes.push({ i: r, date: dateOf(r), field: col, shift, from, to: value, addsShift: !exists });
         }
-        recomputeWeekTotals();
-        return;
+        return { label: `${FIELD_LABELS[col]} from ${weekdayShort(dateOf(row))}, shift ${shift + 1}`, changes };
       }
     }
     if (lastTouched) {
       const { col, row } = lastTouched;
       const src = inputByName(`${col}-${row}`);
-      // An empty source propagates too: blank a field, hit Fill, and it
-      // blanks across the week instead of falling back to the first row.
       if (src && rows.includes(row)) {
+        const changes: FillChange[] = [];
         for (const r of rows) {
-          if (r !== row) setCell(col, r, src.value);
+          if (r === row) continue;
+          const target = inputByName(`${col}-${r}`);
+          if (!target || target.value === src.value) continue;
+          changes.push({ i: r, date: dateOf(r), field: col, from: target.value, to: src.value });
         }
-        recomputeWeekTotals();
-        return;
+        return { label: `${FIELD_LABELS[col]} from ${weekdayShort(dateOf(row))}`, changes };
       }
     }
-    if (rows.length < 2) return;
+    if (rows.length < 2) return null;
+    const changes: FillChange[] = [];
     for (const col of gridCols) {
       if (col === 'note') continue;
       const first = inputByName(`${col}-${rows[0]}`);
       if (!first?.value) continue;
-      for (const row of rows.slice(1)) setCell(col, row, first.value);
+      for (const r of rows.slice(1)) {
+        const target = inputByName(`${col}-${r}`);
+        if (!target || target.value === first.value) continue;
+        changes.push({ i: r, date: dateOf(r), field: col, from: target.value, to: first.value });
+      }
+    }
+    return { label: `${weekdayShort(dateOf(rows[0]))} (first day)`, changes };
+  }
+
+  function openFill() {
+    const plan = planFill();
+    fillSourceLabel = plan?.label ?? '';
+    fillPlan = plan?.changes ?? [];
+  }
+
+  function applyFill() {
+    for (const ch of fillPlan ?? []) {
+      if (ch.shift) {
+        while (subShifts[ch.i].length < ch.shift) {
+          subShifts[ch.i].push({ start: '', end: '', hours: '', brk: '', note: '' });
+        }
+        subShifts[ch.i][ch.shift - 1][subKey(ch.field)] = ch.to;
+      } else {
+        setCell(ch.field, ch.i, ch.to);
+      }
     }
     recomputeWeekTotals();
+    fillPlan = null;
   }
 
   // Enter behaves like Tab inside the weekly grid: blurs the current cell
@@ -1393,7 +1425,7 @@
           <Tooltip.Root>
             <Tooltip.Trigger>
               {#snippet child({ props })}
-                <Button {...props} type="button" variant="outline" onclick={fillWeek}>
+                <Button {...props} type="button" variant="outline" onclick={openFill}>
                   <ArrowUpDown class="size-4" /> Fill
                 </Button>
               {/snippet}
@@ -2031,6 +2063,57 @@
       >
         Delete
       </Button>
+    </Dialog.Footer>
+  </Dialog.Content>
+</Dialog.Root>
+
+<!-- fill confirmation: preview of every cell the fill would change -->
+<Dialog.Root
+  open={fillPlan !== null}
+  onOpenChange={(o) => {
+    if (!o) fillPlan = null;
+  }}
+>
+  <Dialog.Content class="sm:max-w-lg">
+    <Dialog.Header>
+      <Dialog.Title>Fill week?</Dialog.Title>
+      <Dialog.Description>
+        {#if fillPlan && fillPlan.length > 0}
+          Copying {fillSourceLabel} — {fillPlan.length}
+          {fillPlan.length === 1 ? 'change' : 'changes'}.
+        {:else}
+          Nothing to change — every target already matches.
+        {/if}
+      </Dialog.Description>
+    </Dialog.Header>
+    {#if fillPlan && fillPlan.length > 0}
+      <div class="max-h-[50vh] divide-y divide-border/50 overflow-y-auto rounded-md border border-input font-mono text-sm">
+        {#each fillPlan as ch, k (k)}
+          <div class="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-1.5 tabular-nums">
+            <span class="uppercase text-muted-foreground">
+              {weekdayShort(ch.date)}
+              {formatDay(ch.date).replace(/^\w+,\s/, '')}
+            </span>
+            <span class="rounded bg-muted px-1 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              {FIELD_LABELS[ch.field]}{ch.shift ? ` · shift ${ch.shift + 1}` : ''}
+            </span>
+            {#if ch.addsShift}
+              <span class="rounded bg-sky-500/15 px-1 py-0.5 text-[10px] font-medium uppercase tracking-wider text-sky-700 dark:text-sky-300">
+                new
+              </span>
+            {/if}
+            <span class="ml-auto text-muted-foreground">{ch.from || '—'}</span>
+            <span class="text-muted-foreground">→</span>
+            <span>{ch.to || '—'}</span>
+          </div>
+        {/each}
+      </div>
+    {/if}
+    <Dialog.Footer class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <Button variant="outline" onclick={() => (fillPlan = null)}>Cancel</Button>
+      {#if fillPlan && fillPlan.length > 0}
+        <Button class="hover:bg-primary/75" onclick={applyFill}>Apply</Button>
+      {/if}
     </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>
