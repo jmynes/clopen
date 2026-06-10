@@ -12,6 +12,10 @@ import type { LayoutServerLoad } from './$types';
 // browser reloads from localStorage (see +layout.ts).
 export const load: LayoutServerLoad = async () => {
   const repo = isDemo ? emptyRepo : serverRepo;
-  const [entries, settings] = await Promise.all([repo.listEntries(), repo.getSettings()]);
-  return { entries, settings };
+  const [entries, settings, openShift] = await Promise.all([
+    repo.listEntries(),
+    repo.getSettings(),
+    repo.getOpenShift(),
+  ]);
+  return { entries, settings, openShift };
 };

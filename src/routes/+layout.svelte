@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Clock from '@lucide/svelte/icons/clock';
   import FlaskConical from '@lucide/svelte/icons/flask-conical';
   import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
   import Moon from '@lucide/svelte/icons/moon';
@@ -15,13 +16,16 @@
   import { isDemo } from '$lib/demo/flag';
   import '../app.css';
 
-  let { children } = $props();
+  let { children, data } = $props();
 
   const links = [
     { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/clock', label: 'Clock', icon: Clock },
     { href: '/log', label: 'Log', icon: NotebookPen },
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
+
+  const clockRunning = $derived(!!data.openShift);
 
   function isActive(href: string): boolean {
     return href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href);
@@ -98,7 +102,7 @@
             {@const Icon = link.icon}
             <a
               href={link.href}
-              class="flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors hover:bg-accent hover:text-accent-foreground {isActive(
+              class="relative flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors hover:bg-accent hover:text-accent-foreground {isActive(
                 link.href,
               )
                 ? 'bg-accent text-accent-foreground font-medium'
@@ -107,6 +111,9 @@
             >
               <Icon class="size-4 {isActive(link.href) ? 'text-primary' : ''}" />
               {link.label}
+              {#if link.href === '/clock' && clockRunning}
+                <span class="absolute top-1 right-1 size-1.5 rounded-full bg-success" aria-hidden="true"></span>
+              {/if}
             </a>
           {/each}
         </div>
@@ -216,7 +223,7 @@
           {@const Icon = link.icon}
           <a
             href={link.href}
-            class="flex min-h-12 select-none items-center justify-center gap-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground {isActive(
+            class="relative flex min-h-12 select-none items-center justify-center gap-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground {isActive(
               link.href,
             )
               ? 'font-medium'
@@ -226,6 +233,9 @@
           >
             <Icon class="size-4 {isActive(link.href) ? 'text-primary' : ''}" />
             {link.label}
+            {#if link.href === '/clock' && clockRunning}
+              <span class="absolute top-1 right-1 size-1.5 rounded-full bg-success" aria-hidden="true"></span>
+            {/if}
           </a>
         {/each}
       </div>
@@ -262,12 +272,12 @@
     aria-label="Primary"
     class="fixed inset-x-0 bottom-0 z-10 border-t border-border/70 bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
   >
-    <div class="grid grid-cols-3">
+    <div class="grid grid-cols-4">
       {#each links as link (link.href)}
         {@const Icon = link.icon}
         <a
           href={link.href}
-          class="flex flex-col items-center gap-1 pt-2 pb-1.5 text-[11px] font-medium transition-colors {isActive(
+          class="relative flex flex-col items-center gap-1 pt-2 pb-1.5 text-[11px] font-medium transition-colors {isActive(
             link.href,
           )
             ? 'text-primary hover:bg-accent/40'
@@ -276,6 +286,9 @@
         >
           <Icon class="size-5" />
           {link.label}
+          {#if link.href === '/clock' && clockRunning}
+            <span class="absolute top-1 right-1 size-1.5 rounded-full bg-success" aria-hidden="true"></span>
+          {/if}
         </a>
       {/each}
     </div>

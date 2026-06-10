@@ -1,4 +1,5 @@
 import { browser } from '$app/environment';
+import { effectiveZone, setAppTimeZone } from '$lib/date';
 import { isDemo } from '$lib/demo/flag';
 import type { LayoutLoad } from './$types';
 
@@ -11,10 +12,22 @@ export const ssr = !isDemo;
 // localStorage repo. With SSR off, the first run already happens in the
 // browser, so this is correct from the very first render.
 export const load: LayoutLoad = async ({ data, depends }) => {
-  if (!isDemo) return data;
+  if (!isDemo) {
+    // The layout load runs before every page compute, on server and client,
+    // so todayISO() is already zone-correct downstream.
+    setAppTimeZone(effectiveZone(data.settings.timeZone, data.settings.observeDst));
+    return data;
+  }
   depends('demo:data');
   if (!browser) return data;
   const { demoRepo } = await import('$lib/demo/repo');
-  const [entries, settings] = await Promise.all([demoRepo.listEntries(), demoRepo.getSettings()]);
-  return { entries, settings };
+  const [entries, settings, openShift] = await Promise.all([
+    demoRepo.listEntries(),
+    demoRepo.getSettings(),
+    demoRepo.getOpenShift(),
+  ]);
+  // The layout load runs before every page compute, on server and client,
+  // so todayISO() is already zone-correct downstream.
+  setAppTimeZone(effectiveZone(settings.timeZone, settings.observeDst));
+  return { entries, settings, openShift };
 };
