@@ -73,4 +73,20 @@ describe('entries CRUD', () => {
     await deleteEntry(created.id, db);
     expect(await listEntries(db)).toHaveLength(0);
   });
+
+  it('updateEntry stamps updatedAt; addEntry leaves it null', async () => {
+    const row = await addEntry(
+      { date: '2026-06-10', hours: 8, breakHours: 0, note: null, startTime: null, endTime: null, entryKind: 'work' },
+      db,
+    );
+    expect(row.updatedAt ?? null).toBeNull();
+    const before = Math.floor(Date.now() / 1000);
+    await updateEntry(
+      row.id,
+      { date: '2026-06-10', hours: 7, breakHours: 0, note: null, startTime: null, endTime: null, entryKind: 'work' },
+      db,
+    );
+    const after = (await listEntries(db)).find((e) => e.id === row.id);
+    expect(after?.updatedAt).toBeGreaterThanOrEqual(before);
+  });
 });

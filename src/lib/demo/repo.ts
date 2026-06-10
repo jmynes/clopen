@@ -128,7 +128,7 @@ export const demoRepo: Repo = {
     const entries = readEntries();
     const idx = entries.findIndex((e) => e.id === id);
     if (idx === -1) return;
-    entries[idx] = rowFromInput(input, id, entries[idx].createdAt);
+    entries[idx] = rowFromInput(input, id, entries[idx].createdAt, Math.floor(Date.now() / 1000));
     writeEntries(entries);
   },
 

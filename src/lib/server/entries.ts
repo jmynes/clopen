@@ -47,6 +47,7 @@ export async function updateEntry(id: string, input: EntryInput, database: Datab
       endTime: input.endTime,
       note: input.note,
       entryKind: input.entryKind,
+      updatedAt: Math.floor(Date.now() / 1000),
     })
     .where(eq(timeEntries.id, id));
 }

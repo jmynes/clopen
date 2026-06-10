@@ -30,7 +30,7 @@
   import * as Tooltip from '$lib/components/ui/tooltip';
   import { type LogActionName, runLogAction } from '$lib/core/log';
   import { toCsv } from '$lib/csv';
-  import { formatDay, formatRangeISO, formatTime, formatWeekRange, isWeekend, todayISO, weekdayShort } from '$lib/date';
+  import { formatDay, formatRangeISO, formatTime, formatTimestamp, formatWeekRange, isWeekend, todayISO, weekdayShort } from '$lib/date';
   import type { TimeEntry } from '$lib/db/schema';
   import { isDemo } from '$lib/demo/flag';
   import { LEAVE_KINDS, LEAVE_META, type LeaveKind } from '$lib/leave-kinds';
@@ -1932,6 +1932,13 @@
           />
           {#if dialogErrors.note}<p class="text-xs text-destructive">{dialogErrors.note}</p>{/if}
         </div>
+        {#if editing}
+          <p class="text-xs text-muted-foreground">
+            Added {formatTimestamp(editing.createdAt, data.timeFormat)}{editing.updatedAt
+              ? ` · Edited ${formatTimestamp(editing.updatedAt, data.timeFormat)}`
+              : ''}
+          </p>
+        {/if}
         <Dialog.Footer>
           <Button type="submit">{editing ? 'Save changes' : 'Add entry'}</Button>
         </Dialog.Footer>
