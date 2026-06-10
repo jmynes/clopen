@@ -703,7 +703,6 @@
 
   function applyFill() {
     const subShiftFill = lastTouched?.shift !== undefined;
-    const sourceRow = subShiftFill ? (lastTouched?.row ?? -1) : -1;
     for (const ch of fillPlan ?? []) {
       if (ch.shift) {
         while (subShifts[ch.i].length < ch.shift) {
@@ -715,13 +714,11 @@
       }
     }
     // When a sub-shift fill blanks a section out entirely, retract the
-    // now-empty shift rows everywhere except the row being interacted with
-    // (trailing only, so surviving shifts keep their slots).
+    // now-empty shift rows — the source row included, once it too is fully
+    // blank (trailing only, so surviving shifts keep their slots).
     if (subShiftFill) {
       const isEmpty = (sh: SubShift) => !sh.start && !sh.end && !sh.hours && !sh.brk && !sh.note;
-      for (let r = 0; r < subShifts.length; r++) {
-        if (r === sourceRow) continue;
-        const list = subShifts[r];
+      for (const list of subShifts) {
         while (list.length > 0 && isEmpty(list[list.length - 1])) list.pop();
       }
     }
