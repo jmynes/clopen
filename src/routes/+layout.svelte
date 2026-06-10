@@ -25,6 +25,8 @@
 
   let menuOpen = $state(false);
 
+  const year = new Date().getFullYear();
+
   // Theme is applied by an inline script in app.html before paint. Sync the
   // local state from the resulting class on mount so the toggle reflects truth.
   let dark = $state(false);
@@ -167,6 +169,21 @@
   <main class="mx-auto max-w-5xl px-4 py-6 pb-24 md:px-6 md:py-10 md:pb-10">
     {@render children()}
   </main>
+
+  <!-- Desktop footer; phones get the tab bar instead -->
+  <footer class="hidden border-t border-border/70 md:block">
+    <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4 text-xs text-muted-foreground">
+      <span>© {year} Jordan Mynes · MIT</span>
+      <a
+        href="https://github.com/jmynes/clopen"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="rounded-md px-2 py-1 transition-colors hover:bg-accent hover:text-accent-foreground"
+      >
+        GitHub
+      </a>
+    </div>
+  </footer>
 
   <!-- iOS-style tab bar replaces the header links on phones -->
   <nav
