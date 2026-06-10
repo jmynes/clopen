@@ -88,26 +88,37 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
     `hideWeekendsGrid` (booleans, default false — hide blank Sat/Sun rows in the
     entries views, and Sat/Sun rows in the weekly grid which implies the former;
     weekend days with entries always show), `expandNotes` (boolean, default
-    false — entry notes start expanded in the Entries views),
+    false — entry notes start expanded in the Ledger),
+    `ledgerPeriod` (`week | biweek | month | quarter | year`, default `month` —
+    the period the Ledger opens to),
     `otMultiplierEnabled` / `otMultiplier` (default false / 1.5 — pay day-hours
     beyond the baseline at the multiplier; dashboard earnings only).
 - `src/lib/db/index.ts` — Drizzle/libSQL client, **lazy-constructed via Proxy**
   so module load doesn't open a connection during SvelteKit's build analyse pass.
   Local default `file:./local.db`.
+- **Load architecture (zero-network tab switching):** entries + settings load
+  once in the root `+layout.server.ts` (which must never read `url`/`params`/
+  `cookies` — that's what keeps it from re-running on navigation) and the demo
+  branch in `+layout.ts`; each page's `+page.ts` is a pure synchronous compute
+  over `await parent()` (`computeDashboard` / `computeLog` /
+  `computeSettingsPage`). The per-route `+page.server.ts` files hold only form
+  actions. Mutations refresh via `enhance`'s `invalidateAll()` (one fetch) in
+  normal mode and `invalidate('demo:data')` (offline) in demo.
 - `src/lib/core/` — transport-agnostic page logic: `repo.ts` (the `Repo`
   storage contract + `DEFAULT_SETTINGS` + `toWorkSettings` + `emptyRepo`),
-  `log.ts` (Log load + all five form actions returning `{ ok, status, data }`),
-  `dashboard.ts`, `settings-page.ts`. Server routes wrap failures in `fail()`;
-  demo mode calls these directly.
+  `log.ts` (`computeLog` + all five form actions returning
+  `{ ok, status, data }`), `dashboard.ts`, `settings-page.ts`. Server routes
+  wrap failures in `fail()`; demo mode calls these directly.
 - `src/lib/demo/` — demo mode (`PUBLIC_DEMO=1`, the Railway copy): `flag.ts`
-  reads the env; `repo.ts` is a localStorage `Repo`. Server loads return
-  defaults stubs, the root layout fires `invalidate('demo:data')` on mount so
-  the universal `+page.ts` loads recompute in the browser, and every
-  `use:enhance` handler has a demo branch that cancels the POST and runs the
-  core action against localStorage (results stand in for the `form` prop via
-  an `actionData` derived).
+  reads the env; `repo.ts` is a localStorage `Repo`. Demo skips SSR
+  (`export const ssr = !isDemo` in `+layout.ts`) so the first browser render
+  reads localStorage directly — no stub flash — and every `use:enhance`
+  handler has a demo branch that cancels the POST and runs the core action
+  against localStorage (results stand in for the `form` prop via an
+  `actionData` derived).
 - `src/lib/server/entries.ts` / `settings.ts` — CRUD with an **injectable `db`
-  arg** so unit tests run against an in-memory libSQL (`entries.test.ts`).
+  arg** so unit tests run against an in-memory libSQL (`entries.test.ts`);
+  `repo.ts` bundles them as `serverRepo`, the Drizzle `Repo` implementation.
   Entries module also exports `findExistingDates`, `listEntriesByDates`, and
   `deleteEntriesByDates` for the conflict-resolution flow. `toWorkSettings` maps
   a settings row into the shape the math expects.
@@ -123,8 +134,9 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   - `leaveEntryInput` — date + `kind` (LeaveKind) + optional note; produces an
     `EntryInput` whose `entryKind` reflects the kind and whose `hours` is the
     daily baseline for paid kinds, 0 for unpaid.
-  - `settingsInput` — adds `epoch` (ISO regex), `timeFormat` (`12h | 24h`), and
-    the `hideWeekendsEntries` / `hideWeekendsGrid` / `expandNotes` booleans.
+  - `settingsInput` — adds `epoch` (ISO regex), `timeFormat` (`12h | 24h`),
+    `ledgerPeriod` (`LEDGER_PERIODS` enum, also exported here), and the
+    `hideWeekendsEntries` / `hideWeekendsGrid` / `expandNotes` booleans.
 - `src/lib/date.ts` — local `todayISO()` (via `@internationalized/date`) and
   display formatters: `formatTime(hhmm, mode)` (zero-padded, mode-aware),
   `formatTimeRange` (annotates overnight ranges with `(+1d)`), `formatDay`
@@ -137,15 +149,13 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   pace / On pace / Not started* based on bucket-vs-today state. Period math
   runs client-side from `data.entries`, clamped lower by epoch and upper by
   today. Year-view weekly chart sits below.
-- `src/routes/log/+page.*` — entries page. Three forms (single add, weekly
-  grid, CSV import) share a `conflictAwareEnhance` factory that surfaces
-  duplicate-date conflicts in a dialog (`overwrite | keep existing | keep both |
-  cancel` — keep both appends the new entries as additional same-day shifts,
-  and the dialog leads with "Add a second shift?" when clock spans don't
-  overlap).
-  Add-an-entry has a 4×2 grid of leave-kind shortcut buttons under the regular
-  fields and a live read-only Worked total (hours − break) computed from bound
-  inputs. The weekly grid uses a shadcn `Select` per row with icons and color
+- `src/routes/log/+page.*` — entries page. The forms (weekly grid, CSV
+  import, and the edit/create dialog) share a `conflictAwareEnhance` factory
+  that surfaces duplicate-date conflicts in a dialog (`overwrite | keep
+  existing | keep both | cancel` — keep both appends the new entries as
+  additional same-day shifts, and the dialog leads with "Add a second shift?"
+  when clock spans don't overlap).
+  The weekly grid uses a shadcn `Select` per row with icons and color
   badges so the chosen leave kind reads at a glance; selecting one hides the
   clock/break inputs and swaps the In column for a "Sick · 8.00h paid" /
   "Vacation · unpaid" chip. Each non-leave day has a + (beside its Worked
@@ -156,10 +166,12 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   weekStart — hiding weekends or adding shifts must never renumber them.
   Paste and Fill target main rows only; Fill copies the last-touched cell to
   the whole week (fallback: first row's time fields down). The edit modal
-  carries the same Type chooser and doubles as a create dialog: the pencil on
-  a blank day opens it posting to `?/add` with that date prefilled.
+  carries a Type chooser (work + leave kinds) and doubles as the
+  single-entry create path: the pencil on a blank day opens it posting to
+  `?/add` with that date prefilled.
   The entries table (titled **Ledger** in the UI) is paginated by the same
-  period set (default yearly), capped at ~14 visible rows with a sticky
+  period set (opens to the `ledgerPeriod` setting, monthly out of the box),
+  capped at ~14 visible rows with a sticky
   header, pads unlogged days with em-dashes, tints leave rows in their color
   family (and darkens on hover rather than overwriting), and renders delete
   in a confirm dialog. Zebra stripes alternate per *day* (not per row) so a
@@ -171,15 +183,21 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   Blank-day rows carry the same action cluster (note/delete disabled, pencil
   live). Perf: the table (md+) and the mobile card list are alternates — only
   the visible one renders client-side (`innerWidth` from
-  `svelte/reactivity/window`), and entry rows are component-free (plain
-  buttons + inline-SVG snippets) so a 365-row year switches instantly.
+  `svelte/reactivity/window`); entry rows are component-free (plain buttons +
+  inline-SVG snippets); the ledger renders two screenfuls and grows only when
+  a sentinel row scrolls into view (rows never scrolled to never mount, and
+  `table-fixed` keeps appends cheap); and the weekly grid mounts one frame
+  after the page paints behind `gridReady`.
 - `src/routes/settings/+page.*` — two side-by-side cards (Pay & schedule /
-  Display & entries) with uppercase section micro-headers: pay rate, daily
+  Display & ledger) with uppercase section micro-headers: pay rate, daily
   hours, workdays (chips ordered by week start), week-start, tracking epoch,
-  overtime multiplier (toggle + readonly-when-off field), time format, weekend
-  visibility toggles, expand-notes-by-default. A footer bar holds Save plus a
-  Cancel that reverts to last-saved values, enabled by comparing serialized
-  FormData snapshots on every input. Tooltips: `Tooltip.Provider` wraps the
+  overtime multiplier (toggle + readonly-when-off field), default ledger
+  period, time format, weekend visibility toggles, expand-notes-by-default.
+  Settings auto-save: every change schedules a debounced (400ms)
+  `requestSubmit` through the shared enhance path (native validation gates
+  it; zod failures surface in the status bar without persisting). The footer
+  bar shows save status plus a Reset-to-defaults button behind a confirm
+  dialog. Tooltips: `Tooltip.Provider` wraps the
   app in `+layout.svelte`; repeated/per-row controls use native `title`.
 - `src/routes/+layout.svelte` — responsive nav: desktop header links (with
   icons) from `md`; below that an iOS-style bottom tab bar plus a top-left
