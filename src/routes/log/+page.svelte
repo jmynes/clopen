@@ -496,6 +496,17 @@
     return () => window.clearTimeout(id);
   });
 
+  // The weekly grid is ~40% of the page's mount cost (its seven rows of
+  // inputs and selects), so it mounts one frame after the rest: the page
+  // paints first, the grid replaces its placeholder on the next frame.
+  let gridReady = $state(false);
+  $effect(() => {
+    const id = requestAnimationFrame(() => {
+      gridReady = true;
+    });
+    return () => cancelAnimationFrame(id);
+  });
+
   function shiftEntriesPage(dir: -1 | 1) {
     switch (entriesPeriod) {
       case 'week':
@@ -1037,6 +1048,7 @@
   </Card.Root>
 
   <!-- weekly grid -->
+  {#if gridReady}
   <Card.Root>
     <Card.Header class="flex flex-col items-stretch gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-2">
       <div class="max-md:text-center">
@@ -1532,6 +1544,17 @@
       </form>
     </Card.Content>
   </Card.Root>
+  {:else}
+    <!-- placeholder holds the title and roughly the desktop grid height so the
+         ledger below doesn't jump when the grid lands a frame later -->
+    <Card.Root>
+      <Card.Header class="max-md:text-center">
+        <Card.Title>Log a week</Card.Title>
+        <Card.Description>Fill each day, then add them all at once.</Card.Description>
+      </Card.Header>
+      <Card.Content><div class="h-96 md:h-[26rem]"></div></Card.Content>
+    </Card.Root>
+  {/if}
 
   <!-- entries -->
   {#if entriesExpanded}
