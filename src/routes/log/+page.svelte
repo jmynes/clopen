@@ -1318,26 +1318,30 @@
           {/each}
         </div>
         <div class="mt-1 flex flex-wrap items-center gap-3">
-          <Button type="submit" class="hover:bg-primary/75"><Plus class="size-4" /> Add week</Button>
+          <Button type="button" variant="destructive" onclick={clearWeek} class="w-24">
+            <X class="size-4" /> Clear
+          </Button>
+          {#if actionData?.weekAdded}
+            <span class="text-sm text-success">Added {actionData.weekAdded} {actionData.weekAdded === 1 ? 'entry' : 'entries'}.</span>
+          {:else if actionData && 'weekError' in actionData && actionData.weekError}
+            <span class="text-sm text-destructive">{actionData.weekError}</span>
+          {/if}
+          <!-- The tip carries the right-push at lg (where it's visible); below
+               lg it's hidden, so Fill takes over the ml-auto. -->
+          <span class="hidden text-xs text-muted-foreground lg:ml-auto lg:inline">
+            Tip: paste a block from a spreadsheet into any cell.
+          </span>
           <Tooltip.Root>
             <Tooltip.Trigger>
               {#snippet child({ props })}
-                <Button {...props} type="button" variant="outline" onclick={openFill}>
+                <Button {...props} type="button" variant="outline" onclick={openFill} class="ml-auto lg:ml-0">
                   <ArrowUpDown class="size-4" /> Fill
                 </Button>
               {/snippet}
             </Tooltip.Trigger>
             <Tooltip.Content side="bottom">Copy the last touched field to the whole week</Tooltip.Content>
           </Tooltip.Root>
-          <span class="hidden text-xs text-muted-foreground lg:inline">Tip: paste a block from a spreadsheet into any cell.</span>
-          {#if actionData?.weekAdded}
-            <span class="text-sm text-success">Added {actionData.weekAdded} {actionData.weekAdded === 1 ? 'entry' : 'entries'}.</span>
-          {:else if actionData && 'weekError' in actionData && actionData.weekError}
-            <span class="text-sm text-destructive">{actionData.weekError}</span>
-          {/if}
-          <Button type="button" variant="destructive" onclick={clearWeek} class="ml-auto w-24">
-            <X class="size-4" /> Clear
-          </Button>
+          <Button type="submit" class="hover:bg-primary/75"><Plus class="size-4" /> Add week</Button>
         </div>
       </form>
     </Card.Content>
