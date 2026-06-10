@@ -41,12 +41,11 @@
 
   onMount(async () => {
     dark = document.documentElement.classList.contains('dark');
-    // Demo mode SSRs a defaults stub; rerun the universal loads now that
-    // localStorage is reachable.
+    // Demo mode renders client-side only (ssr = !isDemo in +layout.ts), so the
+    // loads already saw localStorage — just sync the sample/yours toggle state.
     if (isDemo) {
       const { isSampleData } = await import('$lib/demo/repo');
       sampleData = isSampleData();
-      invalidate('demo:data');
     }
   });
   function setTheme(next: boolean) {
