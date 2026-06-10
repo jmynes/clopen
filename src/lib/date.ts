@@ -1,8 +1,64 @@
-import { getLocalTimeZone, today } from '@internationalized/date';
+import { fromAbsolute, getLocalTimeZone, parseDateTime, today } from '@internationalized/date';
 
-/** Today's date as an ISO `YYYY-MM-DD` string in the local timezone. */
+// The app-wide zone: set by the root layout load from settings before any
+// page compute runs, so "today" is stable regardless of where the browser or
+// server happens to be. Null falls back to the runtime's local zone.
+let appZone: string | null = null;
+export function setAppTimeZone(zone: string | null): void {
+  appZone = zone;
+}
+export function appTimeZone(): string {
+  return appZone ?? getLocalTimeZone();
+}
+
+/** Today's date as an ISO `YYYY-MM-DD` string in the app zone. */
 export function todayISO(): string {
-  return today(getLocalTimeZone()).toString();
+  return today(appTimeZone()).toString();
+}
+
+function utcOffsetMinutes(zone: string, atUtc: Date): number {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: zone, timeZoneName: 'longOffset' }).formatToParts(atUtc);
+  const name = parts.find((p) => p.type === 'timeZoneName')?.value ?? 'GMT';
+  const m = name.match(/GMT([+-])(\d{2}):(\d{2})/);
+  if (!m) return 0; // bare "GMT" = UTC
+  const sign = m[1] === '-' ? -1 : 1;
+  return sign * (Number(m[2]) * 60 + Number(m[3]));
+}
+
+/**
+ * The zone that actually drives day boundaries: the IANA zone itself when
+ * observing DST, else its fixed standard-time offset (DST always springs
+ * forward, so standard = the smaller of the January/July offsets). Etc/GMT
+ * names invert the sign (Chicago standard, UTC-6, is `Etc/GMT+6`); zones with
+ * fractional standard offsets have no Etc twin and pass through unchanged.
+ */
+export function effectiveZone(timeZone: string, observeDst: boolean): string {
+  if (observeDst) return timeZone;
+  const year = new Date().getUTCFullYear();
+  const jan = utcOffsetMinutes(timeZone, new Date(Date.UTC(year, 0, 15)));
+  const jul = utcOffsetMinutes(timeZone, new Date(Date.UTC(year, 6, 15)));
+  if (jan === jul) return timeZone; // no DST to opt out of
+  const standard = Math.min(jan, jul);
+  if (standard % 60 !== 0) return timeZone;
+  const hours = standard / 60;
+  if (hours === 0) return 'UTC';
+  return `Etc/GMT${hours > 0 ? '-' : '+'}${Math.abs(hours)}`;
+}
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+/** Y-M-D and HH:MM wall-clock parts of an absolute instant, in the app zone. */
+export function zonedParts(ms: number): { date: string; hhmm: string } {
+  const z = fromAbsolute(ms, appTimeZone());
+  return {
+    date: `${z.year}-${pad2(z.month)}-${pad2(z.day)}`,
+    hhmm: `${pad2(z.hour)}:${pad2(z.minute)}`,
+  };
+}
+
+/** Absolute epoch ms for a wall-clock date + HH:MM in the app zone. */
+export function zonedToMs(date: string, hhmm: string): number {
+  return parseDateTime(`${date}T${hhmm}`).toDate(appTimeZone()).getTime();
 }
 
 const WEEKDAY_FMT = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' });
@@ -80,4 +136,12 @@ function formatDateRange(start: Date, end: Date, withYear: boolean): string {
   if (!withYear) return `${startLabel} – ${endLabel}`;
   if (startYear !== endYear) return `${startLabel}, ${startYear} – ${endLabel}, ${endYear}`;
   return `${startLabel} – ${endLabel}, ${endYear}`;
+}
+
+const STAMP_FMT = new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit', timeZone: 'UTC' });
+
+/** "Jun 10, 09:14 PM" — created/edited stamps for epoch *seconds*, app zone. */
+export function formatTimestamp(epochSeconds: number, mode: TimeFormat = '12h'): string {
+  const { date, hhmm } = zonedParts(epochSeconds * 1000);
+  return `${STAMP_FMT.format(utcDate(date))}, ${formatTime(hhmm, mode)}`;
 }
