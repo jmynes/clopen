@@ -644,10 +644,14 @@
       // non-leave day, adding the sub-row (+) where it doesn't exist yet.
       const { col, row, shift } = lastTouched;
       const key = (col === 'break' ? 'brk' : col) as 'start' | 'end' | 'hours' | 'brk' | 'note';
-      const value = subShifts[row]?.[shift - 1]?.[key] ?? '';
-      if (value && rows.includes(row)) {
+      const source = subShifts[row]?.[shift - 1];
+      if (source && rows.includes(row)) {
+        const value = source[key];
         for (const r of rows) {
           if (r === row || leaveRows.has(r)) continue;
+          // A blank fills (clears) wherever the shift exists, but doesn't
+          // conjure new sub-rows just to blank them.
+          if (!value && subShifts[r].length < shift) continue;
           while (subShifts[r].length < shift) {
             subShifts[r].push({ start: '', end: '', hours: '', brk: '', note: '' });
           }
@@ -660,7 +664,9 @@
     if (lastTouched) {
       const { col, row } = lastTouched;
       const src = inputByName(`${col}-${row}`);
-      if (src?.value && rows.includes(row)) {
+      // An empty source propagates too: blank a field, hit Fill, and it
+      // blanks across the week instead of falling back to the first row.
+      if (src && rows.includes(row)) {
         for (const r of rows) {
           if (r !== row) setCell(col, r, src.value);
         }
