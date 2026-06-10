@@ -470,6 +470,32 @@
     return rows;
   });
 
+  // Mounting a whole year at once (~5k DOM nodes) blocks navigation for
+  // hundreds of ms, so the ledger streams: enough rows to overfill the
+  // scroll container render with the page itself, the rest arrive in
+  // idle-time chunks that never block input.
+  const LEDGER_CHUNK = 28;
+  let ledgerLimit = $state(LEDGER_CHUNK);
+  const visibleRows = $derived(displayRows.slice(0, ledgerLimit));
+  $effect(() => {
+    void entriesBucket; // changing page/period restarts streaming from the top
+    ledgerLimit = LEDGER_CHUNK;
+  });
+  $effect(() => {
+    if (ledgerLimit >= displayRows.length) return;
+    const grow = () => {
+      ledgerLimit += LEDGER_CHUNK;
+    };
+    // Not on Window in Safari, hence the undefined-widening feature check.
+    const ric: typeof window.requestIdleCallback | undefined = window.requestIdleCallback;
+    if (ric) {
+      const id = ric(grow);
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = window.setTimeout(grow, 50);
+    return () => window.clearTimeout(id);
+  });
+
   function shiftEntriesPage(dir: -1 | 1) {
     switch (entriesPeriod) {
       case 'week':
@@ -1683,7 +1709,7 @@
             </Table.Row>
           </Table.Header>
           <Table.Body>
-            {#each displayRows as row, idx (row.kind === 'entry' ? row.entry.id : `blank-${row.date}`)}
+            {#each visibleRows as row, idx (row.kind === 'entry' ? row.entry.id : `blank-${row.date}`)}
               {#if row.kind === 'blank'}
                 <Table.Row
                   class={`text-muted-foreground/60 ${isWeekend(row.date) ? 'bg-amber-500/10' : row.dayIdx % 2 === 1 ? 'bg-muted/70' : ''}`}
@@ -1803,7 +1829,7 @@
             ? 'min-h-0 flex-1'
             : 'max-h-[calc(14*2.75rem+2.5rem)]'}"
         >
-          {#each displayRows as row, idx (row.kind === 'entry' ? row.entry.id : `blank-${row.date}`)}
+          {#each visibleRows as row, idx (row.kind === 'entry' ? row.entry.id : `blank-${row.date}`)}
             {#if row.kind === 'blank'}
               <div
                 class="flex items-center justify-between px-3 py-2 text-muted-foreground/60 {isWeekend(row.date)
