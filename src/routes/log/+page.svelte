@@ -702,6 +702,8 @@
   }
 
   function applyFill() {
+    const subShiftFill = lastTouched?.shift !== undefined;
+    const sourceRow = subShiftFill ? (lastTouched?.row ?? -1) : -1;
     for (const ch of fillPlan ?? []) {
       if (ch.shift) {
         while (subShifts[ch.i].length < ch.shift) {
@@ -710,6 +712,17 @@
         subShifts[ch.i][ch.shift - 1][subKey(ch.field)] = ch.to;
       } else {
         setCell(ch.field, ch.i, ch.to);
+      }
+    }
+    // When a sub-shift fill blanks a section out entirely, retract the
+    // now-empty shift rows everywhere except the row being interacted with
+    // (trailing only, so surviving shifts keep their slots).
+    if (subShiftFill) {
+      const isEmpty = (sh: SubShift) => !sh.start && !sh.end && !sh.hours && !sh.brk && !sh.note;
+      for (let r = 0; r < subShifts.length; r++) {
+        if (r === sourceRow) continue;
+        const list = subShifts[r];
+        while (list.length > 0 && isEmpty(list[list.length - 1])) list.pop();
       }
     }
     recomputeWeekTotals();
