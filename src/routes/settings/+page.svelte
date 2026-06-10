@@ -2,13 +2,20 @@
   import Check from '@lucide/svelte/icons/check';
   import { onMount, tick } from 'svelte';
   import { enhance } from '$app/forms';
+  import { invalidateAll } from '$app/navigation';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
+  import { saveSettingsAction } from '$lib/core/settings-page';
+  import { isDemo } from '$lib/demo/flag';
   import type { ActionData, PageData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
+
+  // Demo mode intercepts the save client-side; results stand in for `form`.
+  let demoForm = $state<ActionData>(null);
+  const actionData = $derived(isDemo ? demoForm : form);
 
   const WEEKDAYS = [
     { n: 1, label: 'Mon' },
@@ -103,13 +110,27 @@
     bind:this={formEl}
     oninput={refreshDirty}
     onchange={refreshDirty}
-    use:enhance={() =>
-      async ({ update }) => {
+    use:enhance={({ formData, cancel }) => {
+      if (isDemo) {
+        cancel();
+        void (async () => {
+          const { demoRepo } = await import('$lib/demo/repo');
+          const out = await saveSettingsAction(demoRepo, formData);
+          demoForm = out.data as ActionData;
+          await invalidateAll();
+          await tick();
+          baseline = snapshot();
+          dirty = false;
+        })();
+        return;
+      }
+      return async ({ update }) => {
         await update({ reset: false });
         await tick();
         baseline = snapshot();
         dirty = false;
-      }}
+      };
+    }}
     class="flex flex-col gap-6"
   >
     <div class="grid items-start gap-6 md:grid-cols-2">
@@ -336,10 +357,10 @@
 
     <!-- Footer action bar spans both cards so Save reads as the form's footer. -->
     <div class="flex flex-wrap items-center justify-end gap-3 rounded-xl bg-card px-4 py-3 ring-1 ring-foreground/10">
-      {#if form?.saved}
+      {#if actionData?.saved}
         <span class="flex items-center gap-1 text-sm text-success"><Check class="size-4" /> Saved</span>
-      {:else if form && 'error' in form && form.error}
-        <span class="text-sm text-destructive">{form.error}</span>
+      {:else if actionData && 'error' in actionData && actionData.error}
+        <span class="text-sm text-destructive">{actionData.error}</span>
       {/if}
       <Button type="button" variant="outline" disabled={!dirty} onclick={cancelChanges} class="max-md:flex-1">
         Cancel

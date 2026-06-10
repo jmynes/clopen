@@ -17,6 +17,7 @@
   import { innerWidth } from 'svelte/reactivity/window';
   import { slide } from 'svelte/transition';
   import { enhance } from '$app/forms';
+  import { invalidateAll } from '$app/navigation';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
   import * as Dialog from '$lib/components/ui/dialog';
@@ -25,22 +26,37 @@
   import * as Select from '$lib/components/ui/select';
   import * as Table from '$lib/components/ui/table';
   import * as Tooltip from '$lib/components/ui/tooltip';
+  import { type LogActionName, runLogAction } from '$lib/core/log';
   import { toCsv } from '$lib/csv';
   import { formatDay, formatRangeISO, formatTime, formatWeekRange, isWeekend, todayISO, weekdayShort } from '$lib/date';
   import type { TimeEntry } from '$lib/db/schema';
+  import { isDemo } from '$lib/demo/flag';
   import { LEAVE_KINDS, LEAVE_META, type LeaveKind } from '$lib/leave-kinds';
   import { addDays, hoursBetween, parseTimeInput, weekDates } from '$lib/timesheet';
   import type { ActionData, PageData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
+  // Demo mode intercepts form posts client-side; results land here and stand
+  // in for the server's `form` prop.
+  let demoForm = $state<ActionData>(null);
+  const actionData = $derived(isDemo ? demoForm : form);
+
+  function actionNameOf(formElement: HTMLFormElement): LogActionName {
+    return (formElement.action.split('?/')[1] ?? 'add') as LogActionName;
+  }
+  async function runDemo(formElement: HTMLFormElement, formData: FormData) {
+    const { demoRepo } = await import('$lib/demo/repo');
+    return runLogAction(demoRepo, actionNameOf(formElement), formData);
+  }
+
   const hrs = (n: number) =>
     `${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}h`;
 
   // Inline field-error lookups for each form on this page.
   function errorsFrom(key: 'fieldErrors' | 'editFieldErrors' | 'weekFieldErrors'): Record<string, string> {
-    if (form && key in form) {
-      const v = (form as Record<string, unknown>)[key];
+    if (actionData && key in actionData) {
+      const v = (actionData as Record<string, unknown>)[key];
       if (v && typeof v === 'object') return v as Record<string, string>;
     }
     return {};
@@ -195,10 +211,40 @@
   // Re-runnable enhance factory: closes over a `resetOnSuccess` flag so the
   // weekly grid (which resets) and import form (which doesn't) share one path.
   function conflictAwareEnhance(opts: { resetOnSuccess?: boolean; onSuccess?: () => void } = {}) {
-    return ({ formElement, formData }: { formElement: HTMLFormElement; formData: FormData }) => {
+    return ({
+      formElement,
+      formData,
+      cancel,
+    }: {
+      formElement: HTMLFormElement;
+      formData: FormData;
+      cancel: () => void;
+    }) => {
       // If this is the user's first submit (not a retry), strip any stale
       // conflictStrategy from a previous round so the server re-detects.
       if (!formData.has('conflictStrategy')) clearConflictStrategy(formElement);
+      if (isDemo) {
+        // Demo: run the same action logic against localStorage instead of
+        // letting the POST reach the server.
+        cancel();
+        void (async () => {
+          const out = await runDemo(formElement, formData);
+          const conflictList = out.data.conflicts;
+          if (!out.ok && Array.isArray(conflictList) && conflictList.length > 0) {
+            conflictForm = formElement;
+            conflicts = conflictList as ConflictRow[];
+            return;
+          }
+          clearConflictStrategy(formElement);
+          demoForm = out.data as ActionData;
+          if (out.ok) {
+            if (opts.resetOnSuccess) formElement.reset();
+            opts.onSuccess?.();
+          }
+          await invalidateAll();
+        })();
+        return;
+      }
       return async ({ result, update }: { result: { type: string; data?: Record<string, unknown> }; update: (o?: { reset?: boolean }) => Promise<void> }) => {
         const data = result.data;
         const conflictList = data?.conflicts;
@@ -1443,10 +1489,10 @@
             <Tooltip.Content side="bottom">Copy the last touched field to the whole week</Tooltip.Content>
           </Tooltip.Root>
           <span class="hidden text-xs text-muted-foreground lg:inline">Tip: paste a block from a spreadsheet into any cell.</span>
-          {#if form?.weekAdded}
-            <span class="text-sm text-success">Added {form.weekAdded} {form.weekAdded === 1 ? 'entry' : 'entries'}.</span>
-          {:else if form && 'weekError' in form && form.weekError}
-            <span class="text-sm text-destructive">{form.weekError}</span>
+          {#if actionData?.weekAdded}
+            <span class="text-sm text-success">Added {actionData.weekAdded} {actionData.weekAdded === 1 ? 'entry' : 'entries'}.</span>
+          {:else if actionData && 'weekError' in actionData && actionData.weekError}
+            <span class="text-sm text-destructive">{actionData.weekError}</span>
           {/if}
           <Button type="button" variant="destructive" onclick={clearWeek} class="ml-auto w-24">
             <X class="size-4" /> Clear
@@ -1592,14 +1638,14 @@
           <Tooltip.Content>Next period</Tooltip.Content>
         </Tooltip.Root>
       </div>
-      {#if form?.imported}
+      {#if actionData?.imported}
         <p class="mb-3 text-sm text-success">
-          Imported {form.imported} {form.imported === 1 ? 'entry' : 'entries'}{form.skipped
-            ? ` · skipped ${form.skipped}`
+          Imported {actionData.imported} {actionData.imported === 1 ? 'entry' : 'entries'}{actionData.skipped
+            ? ` · skipped ${actionData.skipped}`
             : ''}.
         </p>
-      {:else if form && 'importError' in form && form.importError}
-        <p class="mb-3 text-sm text-destructive">{form.importError}</p>
+      {:else if actionData && 'importError' in actionData && actionData.importError}
+        <p class="mb-3 text-sm text-destructive">{actionData.importError}</p>
       {/if}
       {#if data.entries.length === 0}
         <p class="py-8 text-center text-sm text-muted-foreground">No entries yet. Add your first above.</p>
@@ -1856,7 +1902,17 @@
       <form
         method="POST"
         action={editing ? '?/update' : '?/add'}
-        use:enhance={() => {
+        use:enhance={({ formElement, formData, cancel }) => {
+          if (isDemo) {
+            cancel();
+            void (async () => {
+              const out = await runDemo(formElement, formData);
+              demoForm = out.data as ActionData;
+              if (out.ok) editOpen = false;
+              await invalidateAll();
+            })();
+            return;
+          }
           return async ({ update, result }) => {
             await update();
             if (result.type === 'success') editOpen = false;
@@ -2050,9 +2106,21 @@
         method="POST"
         action="?/delete"
         bind:this={deleteForm}
-        use:enhance={() => async ({ update }) => {
-          await update();
-          deleting = null;
+        use:enhance={({ formElement, formData, cancel }) => {
+          if (isDemo) {
+            cancel();
+            void (async () => {
+              const out = await runDemo(formElement, formData);
+              demoForm = out.data as ActionData;
+              deleting = null;
+              await invalidateAll();
+            })();
+            return;
+          }
+          return async ({ update }) => {
+            await update();
+            deleting = null;
+          };
         }}
       >
         <input type="hidden" name="id" value={deleting.id} />

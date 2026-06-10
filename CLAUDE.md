@@ -94,6 +94,18 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
 - `src/lib/db/index.ts` — Drizzle/libSQL client, **lazy-constructed via Proxy**
   so module load doesn't open a connection during SvelteKit's build analyse pass.
   Local default `file:./local.db`.
+- `src/lib/core/` — transport-agnostic page logic: `repo.ts` (the `Repo`
+  storage contract + `DEFAULT_SETTINGS` + `toWorkSettings` + `emptyRepo`),
+  `log.ts` (Log load + all five form actions returning `{ ok, status, data }`),
+  `dashboard.ts`, `settings-page.ts`. Server routes wrap failures in `fail()`;
+  demo mode calls these directly.
+- `src/lib/demo/` — demo mode (`PUBLIC_DEMO=1`, the Railway copy): `flag.ts`
+  reads the env; `repo.ts` is a localStorage `Repo`. Server loads return
+  defaults stubs, the root layout fires `invalidate('demo:data')` on mount so
+  the universal `+page.ts` loads recompute in the browser, and every
+  `use:enhance` handler has a demo branch that cancels the POST and runs the
+  core action against localStorage (results stand in for the `form` prop via
+  an `actionData` derived).
 - `src/lib/server/entries.ts` / `settings.ts` — CRUD with an **injectable `db`
   arg** so unit tests run against an in-memory libSQL (`entries.test.ts`).
   Entries module also exports `findExistingDates`, `listEntriesByDates`, and

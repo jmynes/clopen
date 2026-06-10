@@ -1,7 +1,7 @@
 {
   "name": "clopen",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "license": "MIT",
   "type": "module",
   "engines": {
@@ -12,6 +12,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "start": "bun run build/index.js",
+    "deploy:start": "if [ \"$PUBLIC_DEMO\" = \"1\" ]; then bun run start; else bun run db:migrate && bun run start; fi",
     "prepare": "svelte-kit sync || echo '' && husky",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",

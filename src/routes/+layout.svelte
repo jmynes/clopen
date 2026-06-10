@@ -5,10 +5,12 @@
   import Settings from '@lucide/svelte/icons/settings';
   import Sun from '@lucide/svelte/icons/sun';
   import { onMount } from 'svelte';
+  import { invalidate } from '$app/navigation';
   import { page } from '$app/state';
   import favicon from '$lib/assets/favicon.svg';
   import ClopenDoors from '$lib/components/ClopenDoors.svelte';
   import * as Tooltip from '$lib/components/ui/tooltip';
+  import { isDemo } from '$lib/demo/flag';
   import '../app.css';
 
   let { children } = $props();
@@ -32,6 +34,9 @@
   let dark = $state(false);
   onMount(() => {
     dark = document.documentElement.classList.contains('dark');
+    // Demo mode SSRs a defaults stub; rerun the universal loads now that
+    // localStorage is reachable.
+    if (isDemo) invalidate('demo:data');
   });
   function setTheme(next: boolean) {
     if (next === dark) return;

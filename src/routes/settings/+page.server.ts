@@ -1,44 +1,37 @@
 import { fail } from '@sveltejs/kit';
-import { settingsInput } from '$lib/schemas/settings';
-import { getSettings, toWorkSettings, updateSettings } from '$lib/server/settings';
+import { emptyRepo, type Repo } from '$lib/core/repo';
+import { loadSettingsPage, saveSettingsAction } from '$lib/core/settings-page';
+import { isDemo } from '$lib/demo/flag';
+import {
+  addEntry,
+  deleteEntriesByDates,
+  deleteEntry,
+  findExistingDates,
+  listEntries,
+  listEntriesByDates,
+  updateEntry,
+} from '$lib/server/entries';
+import { getSettings, updateSettings } from '$lib/server/settings';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async () => {
-  const row = await getSettings();
-  return {
-    settings: toWorkSettings(row),
-    weekStartsOn: row.weekStartsOn,
-    epoch: row.epoch,
-    timeFormat: row.timeFormat,
-    hideWeekendsEntries: row.hideWeekendsEntries,
-    hideWeekendsGrid: row.hideWeekendsGrid,
-    expandNotes: row.expandNotes,
-    otMultiplierEnabled: row.otMultiplierEnabled,
-    otMultiplier: row.otMultiplier,
-  };
+const repo: Repo = {
+  listEntries,
+  addEntry,
+  updateEntry,
+  deleteEntry,
+  findExistingDates,
+  listEntriesByDates,
+  deleteEntriesByDates,
+  getSettings,
+  updateSettings,
 };
+
+export const load: PageServerLoad = async () => loadSettingsPage(isDemo ? emptyRepo : repo);
 
 export const actions: Actions = {
   default: async ({ request }) => {
-    const form = await request.formData();
-    const workdays = form.getAll('workdays').map((v) => Number(v));
-    const parsed = settingsInput.safeParse({
-      hourlyRate: form.get('hourlyRate'),
-      dailyHours: form.get('dailyHours'),
-      workdays,
-      weekStartsOn: form.get('weekStartsOn'),
-      epoch: form.get('epoch'),
-      timeFormat: form.get('timeFormat'),
-      hideWeekendsEntries: form.has('hideWeekendsEntries'),
-      hideWeekendsGrid: form.has('hideWeekendsGrid'),
-      expandNotes: form.has('expandNotes'),
-      otMultiplierEnabled: form.has('otMultiplierEnabled'),
-      otMultiplier: form.get('otMultiplier'),
-    });
-    if (!parsed.success) {
-      return fail(400, { error: parsed.error.issues.map((i) => i.message).join('; ') });
-    }
-    await updateSettings(parsed.data);
-    return { saved: true };
+    if (isDemo) return fail(400, { error: 'Demo mode handles this in the browser' });
+    const out = await saveSettingsAction(repo, await request.formData());
+    return out.ok ? out.data : fail(out.status, out.data);
   },
 };

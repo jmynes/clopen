@@ -1,27 +1,17 @@
 import { eq } from 'drizzle-orm';
+import { DEFAULT_SETTINGS, toWorkSettings } from '$lib/core/repo';
 import { db as defaultDb } from '$lib/db';
 import { type Settings, settings } from '$lib/db/schema';
 import type { SettingsInput } from '$lib/schemas/settings';
-import { workdaysJson } from '$lib/schemas/settings';
-import type { WorkSettings } from '$lib/timesheet';
 
 type Database = typeof defaultDb;
 
 const DEFAULT_ID = 'default';
-const DEFAULTS = {
-  id: DEFAULT_ID,
-  hourlyRate: 38.4615,
-  dailyHours: 8,
-  workdays: '[1,2,3,4,5]',
-  weekStartsOn: 7,
-  epoch: '2025-03-16',
-  timeFormat: '12h',
-  hideWeekendsEntries: false,
-  hideWeekendsGrid: false,
-  expandNotes: false,
-  otMultiplierEnabled: false,
-  otMultiplier: 1.5,
-} satisfies Settings;
+const DEFAULTS = DEFAULT_SETTINGS;
+
+// Kept as a re-export so existing imports keep working; the implementation
+// lives in the client-safe core.
+export { toWorkSettings };
 
 /** Read the single settings row, seeding defaults on first access. */
 export async function getSettings(database: Database = defaultDb): Promise<Settings> {
@@ -65,13 +55,4 @@ export async function updateSettings(input: SettingsInput, database: Database = 
         otMultiplier: row.otMultiplier,
       },
     });
-}
-
-/** Map a stored settings row to the shape the make-whole math expects. */
-export function toWorkSettings(row: Settings): WorkSettings {
-  return {
-    hourlyRate: row.hourlyRate,
-    dailyHours: row.dailyHours,
-    workdays: workdaysJson.parse(JSON.parse(row.workdays)),
-  };
 }
