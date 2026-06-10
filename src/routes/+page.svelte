@@ -6,6 +6,7 @@
   import Sparkles from '@lucide/svelte/icons/sparkles';
   import TrendingDown from '@lucide/svelte/icons/trending-down';
   import TrendingUp from '@lucide/svelte/icons/trending-up';
+  import DateJump from '$lib/components/DateJump.svelte';
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
@@ -219,6 +220,12 @@
       <ChevronRight class="size-4" />
     </Button>
     <Button variant="outline" size="sm" class="shrink-0" onclick={() => (anchor = data.today)}>Today</Button>
+    <DateJump
+      value={anchor}
+      min={data.epoch}
+      label="Jump to date"
+      onpick={(iso) => (anchor = iso < data.epoch ? data.epoch : iso)}
+    />
   </div>
 
   <!-- hero -->

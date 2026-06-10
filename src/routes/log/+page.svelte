@@ -18,6 +18,7 @@
   import { slide } from 'svelte/transition';
   import { enhance } from '$app/forms';
   import { invalidateAll } from '$app/navigation';
+  import DateJump from '$lib/components/DateJump.svelte';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
   import * as Dialog from '$lib/components/ui/dialog';
@@ -1067,6 +1068,12 @@
             </Tooltip.Trigger>
             <Tooltip.Content>Next week</Tooltip.Content>
           </Tooltip.Root>
+          <DateJump
+            value={weekStart}
+            min={data.epoch}
+            label="Jump to week"
+            onpick={(iso) => (weekAnchor = iso < data.epoch ? data.epoch : iso)}
+          />
         </div>
         <div class="flex items-center gap-2 md:contents">
           <Button variant="outline" size="sm" class="md:order-1" onclick={() => (weekAnchor = todayISO())}>
@@ -1633,6 +1640,12 @@
           </Tooltip.Trigger>
           <Tooltip.Content>Next period</Tooltip.Content>
         </Tooltip.Root>
+        <DateJump
+          value={entriesAnchor}
+          min={data.epoch}
+          label="Jump to date"
+          onpick={(iso) => (entriesAnchor = iso < data.epoch ? data.epoch : iso)}
+        />
       </div>
       {#if actionData?.imported}
         <p class="mb-3 text-sm text-success">
