@@ -347,6 +347,11 @@
   const ROW_BTN =
     'inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-transparent transition-all outline-none select-none hover:bg-muted hover:text-foreground active:translate-y-px focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-35 dark:hover:bg-muted/50';
 
+  // Shift add/remove (+/−). Unlike ROW_BTN's icon-only ledger actions, these
+  // read as real buttons on both desktop and mobile: visible border + fill.
+  const SHIFT_BTN =
+    'inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/50 text-muted-foreground shadow-sm transition-all outline-none select-none hover:bg-muted hover:text-foreground active:translate-y-px focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-35';
+
   // Per-entry note accordion. Rows without an override follow the expandNotes
   // setting, so toggling the setting flips every untouched row at once.
   let noteOverrides = $state<Map<string, boolean>>(new Map());
@@ -974,7 +979,7 @@
             <Plus class="size-4" /> Add entry
           </Button>
           <div class="flex w-full flex-col items-start gap-2 md:ml-auto md:w-auto md:flex-row md:items-center md:gap-3">
-            <span class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Or log leave</span>
+            <span class="w-full text-center text-xs font-medium uppercase tracking-wider text-muted-foreground md:w-auto md:text-left">Or log leave</span>
             <div class="grid w-full grid-cols-2 gap-2 md:w-fit md:grid-flow-col md:grid-cols-none md:grid-rows-2">
               {#each LEAVE_KINDS as kind (kind)}
                 {@const Icon = LEAVE_ICON[kind]}
@@ -982,7 +987,7 @@
                   type="submit"
                   variant="outline"
                   size="sm"
-                  class="{KIND_CLASSES[kind].button} justify-start"
+                  class="{KIND_CLASSES[kind].button} justify-center md:justify-start"
                   onclick={(e) => {
                     if (addModeInput) addModeInput.value = 'leave';
                     if (addKindInput) addKindInput.value = kind;
@@ -1316,7 +1321,7 @@
                         <Tooltip.Root>
                           <Tooltip.Trigger
                             type="button"
-                            class={ROW_BTN}
+                            class={SHIFT_BTN}
                             aria-label="Add a shift for {weekdayShort(date)}"
                             onclick={() => addSubShift(i)}
                           >
@@ -1344,21 +1349,12 @@
                 {#each subShifts[i] as shift, j (j)}
                   {@const shiftWorked = subShiftWorked(shift)}
                   <div class="flex flex-col gap-2 px-2.5 pb-2.5 max-lg:mt-1 max-lg:border-t max-lg:border-border/40 max-lg:pt-2.5 lg:order-last lg:basis-full lg:flex-row lg:items-start lg:gap-3 lg:p-0 lg:pb-1">
-                    <div class="flex items-center justify-between lg:hidden">
+                    <div class="flex items-center lg:hidden">
                       <span
                         class="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
                       >
                         Shift {j + 2}
                       </span>
-                      <button
-                        type="button"
-                        class={ROW_BTN}
-                        title="Remove this shift"
-                        aria-label="Remove shift {j + 2} for {weekdayShort(date)}"
-                        onclick={() => removeSubShift(i, j)}
-                      >
-                        <Minus class="size-4" />
-                      </button>
                     </div>
                     <div class="grid grid-cols-6 gap-2 lg:contents">
                       <div class="hidden lg:block lg:w-24 lg:shrink-0"></div>
@@ -1447,7 +1443,7 @@
                           <Tooltip.Root>
                             <Tooltip.Trigger
                               type="button"
-                              class="{ROW_BTN} hidden lg:inline-flex"
+                              class={SHIFT_BTN}
                               aria-label="Remove shift {j + 2} for {weekdayShort(date)}"
                               onclick={() => removeSubShift(i, j)}
                             >
