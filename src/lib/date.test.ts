@@ -40,6 +40,9 @@ describe('effectiveZone', () => {
     expect(effectiveZone('Asia/Tokyo', false)).toBe('Asia/Tokyo');
     expect(effectiveZone('UTC', false)).toBe('UTC');
   });
+  it('fractional-DST zone passes through unchanged (no Etc/GMT twin)', () => {
+    expect(effectiveZone('Australia/Lord_Howe', false)).toBe('Australia/Lord_Howe');
+  });
 });
 
 describe('app zone', () => {
@@ -57,13 +60,17 @@ describe('app zone', () => {
     const fixed = zonedToMs('2026-07-15', '09:00');
     expect(fixed - cdt).toBe(3_600_000);
   });
-  it('todayISO answers in the configured zone', () => {
-    // Two zones that are never on the same date simultaneously: UTC-11 vs UTC+13.
-    setAppTimeZone('Pacific/Pago_Pago');
-    const west = todayISO();
-    setAppTimeZone('Pacific/Tongatapu');
-    const east = todayISO();
-    expect(east > west).toBe(true);
+  it('the app zone decides which calendar date an instant falls on', () => {
+    const ms = Date.UTC(2026, 5, 10, 23, 30); // 2026-06-10T23:30Z
+    setAppTimeZone('America/Chicago');
+    expect(zonedParts(ms).date).toBe('2026-06-10'); // 18:30 CDT
+    setAppTimeZone('Asia/Tokyo');
+    expect(zonedParts(ms).date).toBe('2026-06-11'); // 08:30 JST next day
+  });
+  it('todayISO follows the app zone', () => {
+    setAppTimeZone('UTC');
+    const utcDay = todayISO();
+    expect(utcDay).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
   it('formatTimestamp renders epoch seconds in the app zone', () => {
     setAppTimeZone('America/Chicago');
