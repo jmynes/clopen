@@ -1,17 +1,16 @@
-/** Dashboard load logic, shared by the server route and demo mode. */
+/** Dashboard view math, computed in the universal page load from layout data. */
 import { todayISO } from '$lib/date';
+import type { Settings, TimeEntry } from '$lib/db/schema';
 import { makeWholeStatus, weeklyBreakdown, yearStartOf } from '$lib/timesheet';
-import { type Repo, toWorkSettings } from './repo';
+import { toWorkSettings } from './repo';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-export async function loadDashboard(repo: Repo, requested: string | null) {
+export function computeDashboard(entries: TimeEntry[], settingsRow: Settings, requested: string | null) {
   const today = todayISO();
   const asOf = requested && ISO_DATE.test(requested) ? requested : today;
 
-  const settingsRow = await repo.getSettings();
   const settings = toWorkSettings(settingsRow);
-  const entries = await repo.listEntries();
 
   // Year-view stays the default; epoch only clamps the lower bound so we don't
   // accrue expected hours from before the user started tracking (year-one math).

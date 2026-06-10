@@ -7,6 +7,7 @@
 
 import type { z } from 'zod';
 import { parseCsv } from '$lib/csv';
+import type { Settings, TimeEntry } from '$lib/db/schema';
 import { isLeaveKind } from '$lib/leave-kinds';
 import { clockEntryInput, type EntryInput, entryInput, leaveEntryInput } from '$lib/schemas/entry';
 import { addDays } from '$lib/timesheet';
@@ -14,9 +15,7 @@ import { type Repo, toWorkSettings } from './repo';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-export async function loadLog(repo: Repo) {
-  const entries = await repo.listEntries();
-  const row = await repo.getSettings();
+export function computeLog(entries: TimeEntry[], row: Settings) {
   const settings = toWorkSettings(row);
   return {
     entries,

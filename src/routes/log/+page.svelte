@@ -17,7 +17,7 @@
   import { innerWidth } from 'svelte/reactivity/window';
   import { slide } from 'svelte/transition';
   import { enhance } from '$app/forms';
-  import { invalidateAll } from '$app/navigation';
+  import { invalidate } from '$app/navigation';
   import DateField from '$lib/components/DateField.svelte';
   import DateJump from '$lib/components/DateJump.svelte';
   import { Button } from '$lib/components/ui/button';
@@ -245,7 +245,7 @@
             if (opts.resetOnSuccess) formElement.reset();
             opts.onSuccess?.();
           }
-          await invalidateAll();
+          await invalidate('demo:data');
         })();
         return;
       }
@@ -1920,7 +1920,7 @@
               const out = await runDemo(formElement, formData);
               demoForm = out.data as ActionData;
               if (out.ok) editOpen = false;
-              await invalidateAll();
+              await invalidate('demo:data');
             })();
             return;
           }
@@ -2123,7 +2123,7 @@
               const out = await runDemo(formElement, formData);
               demoForm = out.data as ActionData;
               deleting = null;
-              await invalidateAll();
+              await invalidate('demo:data');
             })();
             return;
           }

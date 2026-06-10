@@ -1,10 +1,10 @@
-/** Settings page load + save logic, shared by the server route and demo mode. */
+/** Settings page view + save logic, shared by the routes and demo mode. */
+import type { Settings } from '$lib/db/schema';
 import { settingsInput } from '$lib/schemas/settings';
 import type { ActionOutcome } from './log';
 import { type Repo, toWorkSettings } from './repo';
 
-export async function loadSettingsPage(repo: Repo) {
-  const row = await repo.getSettings();
+export function computeSettingsPage(row: Settings) {
   return {
     settings: toWorkSettings(row),
     weekStartsOn: row.weekStartsOn,

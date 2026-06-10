@@ -1,6 +1,4 @@
-import { loadDashboard } from '$lib/core/dashboard';
-import { emptyRepo, type Repo } from '$lib/core/repo';
-import { isDemo } from '$lib/demo/flag';
+import type { Repo } from '$lib/core/repo';
 import {
   addEntry,
   deleteEntriesByDates,
@@ -11,9 +9,9 @@ import {
   updateEntry,
 } from '$lib/server/entries';
 import { getSettings, updateSettings } from '$lib/server/settings';
-import type { PageServerLoad } from './$types';
 
-const repo: Repo = {
+/** The Drizzle/libSQL implementation of the Repo storage contract. */
+export const serverRepo: Repo = {
   listEntries,
   addEntry,
   updateEntry,
@@ -24,6 +22,3 @@ const repo: Repo = {
   getSettings,
   updateSettings,
 };
-
-export const load: PageServerLoad = async ({ url }) =>
-  loadDashboard(isDemo ? emptyRepo : repo, url.searchParams.get('asOf'));

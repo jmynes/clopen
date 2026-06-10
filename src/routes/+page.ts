@@ -1,12 +1,10 @@
-import { browser } from '$app/environment';
-import { loadDashboard } from '$lib/core/dashboard';
-import { isDemo } from '$lib/demo/flag';
+import { computeDashboard } from '$lib/core/dashboard';
 import type { PageLoad } from './$types';
 
-export const load: PageLoad = async ({ data, url, depends }) => {
-  if (!isDemo) return data;
-  depends('demo:data');
-  if (!browser) return data;
-  const { demoRepo } = await import('$lib/demo/repo');
-  return loadDashboard(demoRepo, url.searchParams.get('asOf'));
+// Pure view computation over the layout-loaded data — switching to this tab
+// never fetches from the server. Reading `url` only re-runs this compute when
+// ?asOf changes; the layout load is untouched.
+export const load: PageLoad = async ({ parent, url }) => {
+  const { entries, settings } = await parent();
+  return computeDashboard(entries, settings, url.searchParams.get('asOf'));
 };

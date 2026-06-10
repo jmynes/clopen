@@ -2,7 +2,7 @@
   import Check from '@lucide/svelte/icons/check';
   import { onMount, tick } from 'svelte';
   import { enhance } from '$app/forms';
-  import { invalidateAll } from '$app/navigation';
+  import { invalidate } from '$app/navigation';
   import DateField from '$lib/components/DateField.svelte';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
@@ -121,7 +121,7 @@
           const { demoRepo } = await import('$lib/demo/repo');
           const out = await saveSettingsAction(demoRepo, formData);
           demoForm = out.data as ActionData;
-          await invalidateAll();
+          await invalidate('demo:data');
           await tick();
           baseline = snapshot();
           dirty = false;
