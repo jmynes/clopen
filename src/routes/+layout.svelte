@@ -173,7 +173,7 @@
   <!-- Desktop footer; phones get the tab bar instead -->
   <footer class="hidden border-t border-border/70 md:block">
     <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4 text-xs text-muted-foreground">
-      <span title="Yes, we know what license this is">(ɔ) {year} Jordan Mynes · MIT</span>
+      <span title="Yes, we know what license this is">🄯 {year} Jordan Mynes · MIT</span>
       <a
         href="https://github.com/jmynes/clopen"
         target="_blank"
