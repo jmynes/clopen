@@ -97,8 +97,8 @@
 
   // Two toggle options, clock on the left.
   const MODE_OPTIONS = [
-    { m: 'clock', label: 'Clock in/out' },
-    { m: 'hours', label: 'Hours' },
+    { m: 'clock', label: 'Clock in/out', tip: 'Log days with start and end times' },
+    { m: 'hours', label: 'Hours', tip: 'Log days as plain hour totals' },
   ] as const;
 
   let editing = $state<TimeEntry | null>(null);
@@ -916,9 +916,16 @@
           />
         </div>
         <div class="flex items-center gap-2 md:contents">
-          <Button variant="outline" size="lg" class="md:order-1" onclick={() => (weekAnchor = todayISO())}>
-            <CalendarRange class="size-4" /> This week
-          </Button>
+          <Tooltip.Root>
+            <Tooltip.Trigger>
+              {#snippet child({ props })}
+                <Button {...props} variant="outline" size="lg" class="md:order-1" onclick={() => (weekAnchor = todayISO())}>
+                  <CalendarRange class="size-4" /> This week
+                </Button>
+              {/snippet}
+            </Tooltip.Trigger>
+            <Tooltip.Content>Jump back to the current week</Tooltip.Content>
+          </Tooltip.Root>
           <select
             aria-label="Month"
             value={String(anchorMonth)}
@@ -948,15 +955,23 @@
     <Card.Content class="flex flex-col gap-4">
       <div class="flex w-full rounded-md border border-input p-0.5 text-sm md:inline-flex md:w-fit">
         {#each MODE_OPTIONS as opt (opt.m)}
-          <button
-            type="button"
-            onclick={() => (weekMode = opt.m)}
-            class="flex-1 rounded-[0.3rem] px-3 py-1.5 transition-colors md:flex-none md:py-1 {weekMode === opt.m
-              ? 'bg-primary text-primary-foreground'
-              : 'text-muted-foreground hover:text-foreground'}"
-          >
-            {opt.label}
-          </button>
+          <Tooltip.Root>
+            <Tooltip.Trigger>
+              {#snippet child({ props })}
+                <button
+                  {...props}
+                  type="button"
+                  onclick={() => (weekMode = opt.m)}
+                  class="flex-1 rounded-[0.3rem] px-3 py-1.5 transition-colors md:flex-none md:py-1 {weekMode === opt.m
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'}"
+                >
+                  {opt.label}
+                </button>
+              {/snippet}
+            </Tooltip.Trigger>
+            <Tooltip.Content>{opt.tip}</Tooltip.Content>
+          </Tooltip.Root>
         {/each}
       </div>
 
@@ -1343,7 +1358,14 @@
             </Tooltip.Trigger>
             <Tooltip.Content side="bottom">Copy the last touched field to the whole week</Tooltip.Content>
           </Tooltip.Root>
-          <Button type="submit" class="hover:bg-primary/75"><Plus class="size-4" /> Add week</Button>
+          <Tooltip.Root>
+            <Tooltip.Trigger>
+              {#snippet child({ props })}
+                <Button {...props} type="submit" class="hover:bg-primary/75"><Plus class="size-4" /> Add week</Button>
+              {/snippet}
+            </Tooltip.Trigger>
+            <Tooltip.Content side="bottom">Save every filled day as ledger entries</Tooltip.Content>
+          </Tooltip.Root>
         </div>
       </form>
     </Card.Content>
@@ -1443,9 +1465,16 @@
             <option value={v}>{label}</option>
           {/each}
         </select>
-        <Button variant="outline" size="lg" class="shrink-0" onclick={() => (entriesAnchor = todayISO())}>
-          <CalendarCheck class="size-4" /> Today
-        </Button>
+        <Tooltip.Root>
+          <Tooltip.Trigger>
+            {#snippet child({ props })}
+              <Button {...props} variant="outline" size="lg" class="shrink-0" onclick={() => (entriesAnchor = todayISO())}>
+                <CalendarCheck class="size-4" /> Today
+              </Button>
+            {/snippet}
+          </Tooltip.Trigger>
+          <Tooltip.Content>Jump back to the current period</Tooltip.Content>
+        </Tooltip.Root>
         <Tooltip.Root>
           <Tooltip.Trigger>
             {#snippet child({ props })}
@@ -1850,15 +1879,23 @@
         {#if editKind === 'work'}
           <div class="inline-flex w-fit rounded-md border border-input p-0.5 text-sm">
             {#each MODE_OPTIONS as opt (opt.m)}
-              <button
-                type="button"
-                onclick={() => (editMode = opt.m)}
-                class="rounded-[0.3rem] px-3 py-1 transition-colors {editMode === opt.m
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground'}"
-              >
-                {opt.label}
-              </button>
+              <Tooltip.Root>
+                <Tooltip.Trigger>
+                  {#snippet child({ props })}
+                    <button
+                      {...props}
+                      type="button"
+                      onclick={() => (editMode = opt.m)}
+                      class="rounded-[0.3rem] px-3 py-1 transition-colors {editMode === opt.m
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground'}"
+                    >
+                      {opt.label}
+                    </button>
+                  {/snippet}
+                </Tooltip.Trigger>
+                <Tooltip.Content>{opt.tip}</Tooltip.Content>
+              </Tooltip.Root>
             {/each}
           </div>
           <div class="grid grid-cols-2 gap-4">

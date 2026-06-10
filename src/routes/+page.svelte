@@ -11,6 +11,7 @@
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
+  import * as Tooltip from '$lib/components/ui/tooltip';
   import WeeklyChart from '$lib/components/WeeklyChart.svelte';
   import { formatDay, formatRangeISO, formatWeekRange, todayISO } from '$lib/date';
   import { addDays, countWorkdays, loggedHours, overtimeHours, weekDates } from '$lib/timesheet';
@@ -220,9 +221,16 @@
     <Button variant="outline" size="icon-lg" class="shrink-0" title="Next period" aria-label="Next period" onclick={() => shiftPage(1)}>
       <ChevronRight class="size-4" />
     </Button>
-    <Button variant="outline" size="lg" class="shrink-0" onclick={() => (anchor = data.today)}>
-      <CalendarCheck class="size-4" /> Today
-    </Button>
+    <Tooltip.Root>
+      <Tooltip.Trigger>
+        {#snippet child({ props })}
+          <Button {...props} variant="outline" size="lg" class="shrink-0" onclick={() => (anchor = data.today)}>
+            <CalendarCheck class="size-4" /> Today
+          </Button>
+        {/snippet}
+      </Tooltip.Trigger>
+      <Tooltip.Content>Jump back to the current period</Tooltip.Content>
+    </Tooltip.Root>
     <DateJump
       value={anchor}
       min={data.epoch}
