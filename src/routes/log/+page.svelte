@@ -625,12 +625,12 @@
   };
 
   // The grid cell that last received focus — fill-down's source.
-  let lastTouched = $state<{ col: string; row: number } | null>(null);
+  let lastTouched = $state<{ col: string; row: number; shift?: number } | null>(null);
   function onGridFocusIn(e: FocusEvent) {
     const t = e.target;
     if (!(t instanceof HTMLInputElement)) return;
-    const m = t.name.match(/^(start|end|break|hours|note)-(\d)$/);
-    if (m) lastTouched = { col: m[1], row: Number(m[2]) };
+    const m = t.name.match(/^(start|end|break|hours|note)-(\d)(?:-(\d))?$/);
+    if (m) lastTouched = { col: m[1], row: Number(m[2]), shift: m[3] ? Number(m[3]) : undefined };
   }
 
   // Copy the last touched field to every other visible row — up and down.
@@ -639,6 +639,24 @@
   // (or the touched cell vanished with a week/mode change, or is empty).
   function fillWeek() {
     const rows = weekRows.map((r) => r.i);
+    if (lastTouched?.shift) {
+      // Source is an extra-shift cell: fill that shift slot on every other
+      // non-leave day, adding the sub-row (+) where it doesn't exist yet.
+      const { col, row, shift } = lastTouched;
+      const key = (col === 'break' ? 'brk' : col) as 'start' | 'end' | 'hours' | 'brk' | 'note';
+      const value = subShifts[row]?.[shift - 1]?.[key] ?? '';
+      if (value && rows.includes(row)) {
+        for (const r of rows) {
+          if (r === row || leaveRows.has(r)) continue;
+          while (subShifts[r].length < shift) {
+            subShifts[r].push({ start: '', end: '', hours: '', brk: '', note: '' });
+          }
+          subShifts[r][shift - 1][key] = value;
+        }
+        recomputeWeekTotals();
+        return;
+      }
+    }
     if (lastTouched) {
       const { col, row } = lastTouched;
       const src = inputByName(`${col}-${row}`);
