@@ -75,7 +75,7 @@
 </svelte:head>
 
 <Tooltip.Provider delayDuration={300}>
-<div class="min-h-screen bg-background text-foreground">
+<div class="flex min-h-screen flex-col bg-background text-foreground">
   <header class="border-b border-border/70 bg-background/80 backdrop-blur sticky top-0 z-20">
     <div class="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 md:h-auto md:px-6 md:py-4">
       <div class="flex items-center gap-1">
@@ -242,14 +242,22 @@
     {/if}
   </header>
 
-  <main class="mx-auto max-w-5xl px-4 py-6 pb-24 md:px-6 md:py-10 md:pb-10">
+  <main class="mx-auto w-full max-w-5xl flex-1 px-4 py-6 pb-24 md:px-6 md:py-10 md:pb-10">
     {@render children()}
   </main>
 
-  <!-- Desktop footer; phones get the tab bar instead -->
+  <!-- Desktop footer; phones get the tab bar instead. flex-1 on main keeps it
+       pinned to the viewport bottom even when a page runs short. -->
   <footer class="hidden border-t border-border/70 md:block">
-    <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4 text-xs text-muted-foreground">
-      <span>🄯 {year} Jordan Mynes</span>
+    <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-1.5 text-xs text-muted-foreground">
+      <a
+        href="https://mynes.me"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="-ml-2 rounded-md px-2 py-1 transition-colors hover:bg-accent hover:text-accent-foreground"
+      >
+        🄯 {year} Jordan Mynes
+      </a>
       <a
         href="https://github.com/jmynes/clopen"
         target="_blank"
