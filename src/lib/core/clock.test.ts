@@ -185,4 +185,17 @@ describe('guards and edges', () => {
     expect(await resolveDiscard(repo)).toMatchObject({ ok: false, status: 409 });
     expect(await resolveSave(repo, 1)).toMatchObject({ ok: false, status: 409 });
   });
+
+  it('endBreak refuses an end at or before the break start', async () => {
+    const { repo } = fakeRepo();
+    await clockIn(repo, T('2026-06-10', '09:00'), 'accrue');
+    await startBreak(repo, T('2026-06-10', '12:00'));
+    expect(await endBreak(repo, T('2026-06-10', '12:00'))).toMatchObject({ ok: false, status: 400 });
+  });
+
+  it('composeEntry clamps break so net worked is never negative', () => {
+    // 5min span, 6min break — breakHours must not exceed hours
+    const entry = composeEntry(T('2026-06-10', '09:00'), T('2026-06-10', '09:05'), 6 * 60);
+    expect(entry.breakHours).toBeLessThanOrEqual(entry.hours);
+  });
 });

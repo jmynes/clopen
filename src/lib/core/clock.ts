@@ -10,6 +10,7 @@ import { todayISO, zonedParts } from '$lib/date';
 import type { OpenShift, Settings, TimeEntry } from '$lib/db/schema';
 import type { EntryInput } from '$lib/schemas/entry';
 import type { ClockBreakMode } from '$lib/schemas/settings';
+import { hoursBetween } from '$lib/timesheet';
 import type { ActionOutcome } from './log';
 import type { Repo } from './repo';
 
@@ -24,14 +25,20 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 const err = (status: number, error: string): ActionOutcome => ({ ok: false, status, data: { error } });
 const ok = (): ActionOutcome => ({ ok: true, data: {} });
 
-/** Compose a ledger entry from an absolute span plus accrued break seconds. */
+/**
+ * Compose a ledger entry from an absolute span plus accrued break seconds.
+ * `hours` is wall-clock (hoursBetween), matching how every other surface
+ * re-derives clock entries — on a DST night the books follow the wall clock,
+ * not elapsed atomic time. Break is clamped so net worked is never negative.
+ */
 export function composeEntry(startMs: number, endMs: number, breakSeconds: number): EntryInput {
   const start = zonedParts(startMs);
   const end = zonedParts(endMs);
+  const hours = round2(hoursBetween(start.hhmm, end.hhmm));
   return {
     date: start.date,
-    hours: round2((endMs - startMs) / 3_600_000),
-    breakHours: round2(breakSeconds / 3600),
+    hours,
+    breakHours: Math.min(round2(breakSeconds / 3600), hours),
     startTime: start.hhmm,
     endTime: end.hhmm,
     note: null,
@@ -61,6 +68,7 @@ export async function startBreak(repo: Repo, now: number): Promise<ActionOutcome
 export async function endBreak(repo: Repo, now: number): Promise<ActionOutcome> {
   const row = await repo.getOpenShift();
   if (!row || row.breakStartedAt == null) return err(409, 'Not on a break');
+  if (now <= row.breakStartedAt) return err(400, 'Break end must come after break start');
   if (row.breakMode === 'split') {
     await repo.saveOpenShift({ ...row, startedAt: now, breakStartedAt: null });
   } else {
@@ -129,7 +137,7 @@ export function computeClock(entries: TimeEntry[], row: Settings, openShift: Ope
     today,
     todayEntries,
     workedToday,
-    timeFormat: row.timeFormat as '12h' | '24h',
+    timeFormat: row.timeFormat,
     breakMode: row.clockBreakMode,
   };
 }

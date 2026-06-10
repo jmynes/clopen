@@ -46,7 +46,9 @@ export const settings = sqliteTable('settings', {
   /** Earliest date that counts toward accrual; clamps year-to-date math. */
   epoch: text('epoch').notNull().default('2025-03-16'),
   /** Clock display: '12h' (default, e.g. 09:00 AM) or '24h' (e.g. 09:00). */
-  timeFormat: text('time_format').notNull().default('12h'),
+  timeFormat: text('time_format', { enum: ['12h', '24h'] })
+    .notNull()
+    .default('12h'),
   /** Period the Ledger opens to (its selector still changes it per visit). */
   ledgerPeriod: text('ledger_period', { enum: LEDGER_PERIODS }).notNull().default('month'),
   /** IANA zone that defines "today" app-wide and stamps the clock. */
