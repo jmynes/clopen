@@ -179,4 +179,10 @@ describe('guards and edges', () => {
     expect(added[0]).toMatchObject({ endTime: '12:00' });
     expect(shift()).toBeNull();
   });
+
+  it('resolve actions fail 409 when nothing is open', async () => {
+    const { repo } = fakeRepo();
+    expect(await resolveDiscard(repo)).toMatchObject({ ok: false, status: 409 });
+    expect(await resolveSave(repo, 1)).toMatchObject({ ok: false, status: 409 });
+  });
 });
