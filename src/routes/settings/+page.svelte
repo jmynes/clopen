@@ -1,16 +1,19 @@
 <script lang="ts">
   import Check from '@lucide/svelte/icons/check';
-  import { onMount, tick } from 'svelte';
+  import { tick } from 'svelte';
   import { enhance } from '$app/forms';
   import { invalidate } from '$app/navigation';
   import DateField from '$lib/components/DateField.svelte';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
+  import * as Dialog from '$lib/components/ui/dialog';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
+  import { DEFAULT_SETTINGS } from '$lib/core/repo';
   import { saveSettingsAction } from '$lib/core/settings-page';
   import { todayISO } from '$lib/date';
   import { isDemo } from '$lib/demo/flag';
+  import { workdaysJson } from '$lib/schemas/settings';
   import type { ActionData, PageData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -45,57 +48,52 @@
   let epochValue = $state(data.epoch);
   const orderedWeekdays = $derived(weekStartsOnValue === '7' ? [WEEKDAYS[6], ...WEEKDAYS.slice(0, 6)] : WEEKDAYS);
 
-  // Dirty tracking for the Cancel button: snapshot the serialized form on
-  // mount, re-snapshot after every save/cancel, and compare on each input.
+  // Every change saves on its own: the form-level onchange (and the
+  // DateField's explicit one) schedules a debounced submit, so checkbox
+  // clicks save immediately and number-spinner runs coalesce into one save.
+  // requestSubmit runs native validation first — a half-typed required field
+  // blocks the save with the browser hint instead of posting garbage.
   let formEl: HTMLFormElement | null = $state(null);
-  let baseline = '';
-  let dirty = $state(false);
-  function snapshot(): string {
-    if (!formEl) return '';
-    const parts: string[] = [];
-    for (const [k, v] of new FormData(formEl)) {
-      if (typeof v === 'string') parts.push(`${k}=${v}`);
-    }
-    return parts.join('&');
+  let saveTimer: ReturnType<typeof setTimeout> | undefined;
+  function scheduleSave() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => formEl?.requestSubmit(), 400);
   }
-  function refreshDirty() {
-    dirty = snapshot() !== baseline;
-  }
-  onMount(() => {
-    baseline = snapshot();
-  });
 
-  // Restore every field to the last-saved values (the current load data).
-  // form.reset() won't do: it reverts to first-render defaults, not last save.
-  async function cancelChanges() {
+  // Reset puts every control back to its out-of-the-box value, then saves
+  // through the same submit path (programmatic .value writes fire no change
+  // events, so the submit is explicit).
+  let resetOpen = $state(false);
+  const DEFAULT_WORKDAYS = new Set(workdaysJson.parse(JSON.parse(DEFAULT_SETTINGS.workdays)));
+  async function resetToDefaults() {
     if (!formEl) return;
     const set = (name: string, value: string) => {
       const el = formEl?.elements.namedItem(name);
       if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement) el.value = value;
     };
-    set('hourlyRate', String(data.settings.hourlyRate));
-    set('dailyHours', String(data.settings.dailyHours));
-    epochValue = data.epoch;
-    set('timeFormat', data.timeFormat);
-    set('ledgerPeriod', data.ledgerPeriod);
+    set('hourlyRate', String(DEFAULT_SETTINGS.hourlyRate));
+    set('dailyHours', String(DEFAULT_SETTINGS.dailyHours));
+    epochValue = DEFAULT_SETTINGS.epoch;
+    set('timeFormat', DEFAULT_SETTINGS.timeFormat);
+    set('ledgerPeriod', DEFAULT_SETTINGS.ledgerPeriod);
     for (const box of formEl.querySelectorAll<HTMLInputElement>('input[name="workdays"]')) {
-      box.checked = selected.has(Number(box.value));
+      box.checked = DEFAULT_WORKDAYS.has(Number(box.value));
     }
     const flags: Array<[string, boolean]> = [
-      ['hideWeekendsEntries', data.hideWeekendsEntries],
-      ['hideWeekendsGrid', data.hideWeekendsGrid],
-      ['expandNotes', data.expandNotes],
+      ['hideWeekendsEntries', DEFAULT_SETTINGS.hideWeekendsEntries],
+      ['hideWeekendsGrid', DEFAULT_SETTINGS.hideWeekendsGrid],
+      ['expandNotes', DEFAULT_SETTINGS.expandNotes],
     ];
     for (const [name, value] of flags) {
       const el = formEl.elements.namedItem(name);
       if (el instanceof HTMLInputElement) el.checked = value;
     }
-    otEnabled = data.otMultiplierEnabled;
-    otMultiplierValue = data.otMultiplier;
-    weekStartsOnValue = String(data.weekStartsOn);
+    otEnabled = DEFAULT_SETTINGS.otMultiplierEnabled;
+    otMultiplierValue = DEFAULT_SETTINGS.otMultiplier;
+    weekStartsOnValue = String(DEFAULT_SETTINGS.weekStartsOn);
+    resetOpen = false;
     await tick();
-    baseline = snapshot();
-    dirty = false;
+    formEl.requestSubmit();
   }
 </script>
 
@@ -113,8 +111,7 @@
   <form
     method="POST"
     bind:this={formEl}
-    oninput={refreshDirty}
-    onchange={refreshDirty}
+    onchange={scheduleSave}
     use:enhance={({ formData, cancel }) => {
       if (isDemo) {
         cancel();
@@ -123,17 +120,11 @@
           const out = await saveSettingsAction(demoRepo, formData);
           demoForm = out.data as ActionData;
           await invalidate('demo:data');
-          await tick();
-          baseline = snapshot();
-          dirty = false;
         })();
         return;
       }
       return async ({ update }) => {
         await update({ reset: false });
-        await tick();
-        baseline = snapshot();
-        dirty = false;
       };
     }}
     class="flex flex-col gap-6"
@@ -248,7 +239,7 @@
                   bind:value={epochValue}
                   min="{Number(todayISO().slice(0, 4)) - 10}-01-01"
                   max={todayISO()}
-                  onchange={refreshDirty}
+                  onchange={scheduleSave}
                 />
                 <p class="text-xs text-muted-foreground">Earliest date that accrues the make-whole baseline.</p>
               </div>
@@ -390,17 +381,34 @@
       </Card.Root>
     </div>
 
-    <!-- Footer action bar spans both cards so Save reads as the form's footer. -->
+    <!-- Status bar spans both cards: save feedback plus the reset escape hatch. -->
     <div class="flex flex-wrap items-center justify-end gap-3 rounded-xl bg-card px-4 py-3 ring-1 ring-foreground/10">
       {#if actionData?.saved}
         <span class="flex items-center gap-1 text-sm text-success"><Check class="size-4" /> Saved</span>
       {:else if actionData && 'error' in actionData && actionData.error}
         <span class="text-sm text-destructive">{actionData.error}</span>
+      {:else}
+        <span class="text-sm text-muted-foreground">Changes save automatically.</span>
       {/if}
-      <Button type="button" variant="outline" disabled={!dirty} onclick={cancelChanges} class="max-md:flex-1">
-        Cancel
+      <Button type="button" variant="outline" onclick={() => (resetOpen = true)} class="max-md:flex-1">
+        Reset to defaults
       </Button>
-      <Button type="submit" class="hover:bg-primary/75 max-md:flex-1">Save settings</Button>
     </div>
   </form>
 </div>
+
+<Dialog.Root bind:open={resetOpen}>
+  <Dialog.Content class="sm:max-w-md">
+    <Dialog.Header>
+      <Dialog.Title>Reset to defaults?</Dialog.Title>
+      <Dialog.Description>
+        Every setting goes back to its out-of-the-box value — pay rate, schedule, tracking epoch, and display
+        options. The reset saves immediately.
+      </Dialog.Description>
+    </Dialog.Header>
+    <Dialog.Footer>
+      <Button variant="outline" onclick={() => (resetOpen = false)}>Cancel</Button>
+      <Button variant="destructive" onclick={resetToDefaults}>Reset</Button>
+    </Dialog.Footer>
+  </Dialog.Content>
+</Dialog.Root>
