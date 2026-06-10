@@ -79,19 +79,25 @@
       if (isDemo) {
         cancel();
         void (async () => {
-          const { demoRepo } = await import('$lib/demo/repo');
-          const out = await run(demoRepo);
-          demoForm = out.data as ActionData;
-          if (out.ok) onSuccess?.();
-          await invalidate('demo:data');
-          submitting = false;
+          try {
+            const { demoRepo } = await import('$lib/demo/repo');
+            const out = await run(demoRepo);
+            demoForm = out.data as ActionData;
+            if (out.ok) onSuccess?.();
+            await invalidate('demo:data');
+          } finally {
+            submitting = false;
+          }
         })();
         return;
       }
       return async ({ result, update }) => {
-        await update();
-        if (result.type === 'success') onSuccess?.();
-        submitting = false;
+        try {
+          await update();
+          if (result.type === 'success') onSuccess?.();
+        } finally {
+          submitting = false;
+        }
       };
     };
   }
@@ -100,13 +106,10 @@
 
   let adjustOpen = $state(false);
   let adjustTime = $state('');
-  let resolveDate = $state('');
+  // Initial-only read: prefill the resolve date once; the user owns it after.
+  // svelte-ignore state_referenced_locally
+  let resolveDate = $state(startedDate);
   let resolveTime = $state('');
-  // Prefill the resolve date with the shift's start day; the field only
-  // renders while stale, so the overwrite never fights a user mid-edit.
-  $effect(() => {
-    resolveDate = startedDate;
-  });
   let discardOpen = $state(false);
 </script>
 
@@ -182,6 +185,7 @@
                 : ''}
               <button
                 type="button"
+                aria-label="Adjust clock-in time"
                 class="ml-1 underline decoration-dotted underline-offset-4 hover:text-foreground"
                 onclick={() => (adjustOpen = !adjustOpen)}
               >
@@ -190,7 +194,9 @@
             </p>
           {:else}
             <p class="text-sm text-muted-foreground">
-              On break since {breakSinceLabel} · {fmtElapsed(workedMs)} worked
+              On break since {breakSinceLabel} · {shift?.startedAt != null
+                ? `${fmtElapsed(workedMs)} worked`
+                : `${hrs(data.workedToday)} logged today`}
             </p>
           {/if}
         </div>
@@ -272,7 +278,7 @@
     <Card.Header class="max-md:text-center">
       <Card.Title>Today</Card.Title>
       <Card.Description>
-        {hrs(data.workedToday)} logged{shift && !data.stale ? ` · ${fmtElapsed(workedMs)} on the clock` : ''}
+        {hrs(data.workedToday)} logged{shift && !data.stale && shift.startedAt != null ? ` · ${fmtElapsed(workedMs)} on the clock` : ''}
       </Card.Description>
     </Card.Header>
     <Card.Content>
