@@ -427,7 +427,13 @@
             <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">
               History
             </h3>
-            <Button href="/settings/audit" variant="outline" class="w-full">
+            <!-- Indigo is the audit log's own hue — unclaimed by the leave
+                 chips (emerald/rose/violet/sky) and the amber weekend tint. -->
+            <Button
+              href="/settings/audit"
+              variant="outline"
+              class="w-full border-indigo-500/40 bg-indigo-500/10 text-indigo-700 hover:bg-indigo-500/20 hover:text-indigo-700 dark:text-indigo-300 dark:hover:text-indigo-300"
+            >
               <History class="size-4" /> View audit log
             </Button>
             <p class="text-xs text-muted-foreground">
