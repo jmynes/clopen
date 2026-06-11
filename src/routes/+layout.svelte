@@ -5,6 +5,7 @@
   import Moon from '@lucide/svelte/icons/moon';
   import NotebookPen from '@lucide/svelte/icons/notebook-pen';
   import PenLine from '@lucide/svelte/icons/pen-line';
+  import Receipt from '@lucide/svelte/icons/receipt';
   import Settings from '@lucide/svelte/icons/settings';
   import Sun from '@lucide/svelte/icons/sun';
   import { onMount } from 'svelte';
@@ -22,6 +23,7 @@
     { href: '/', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/clock', label: 'Clock', icon: Clock },
     { href: '/log', label: 'Log', icon: NotebookPen },
+    { href: '/expenses', label: 'Expenses', icon: Receipt },
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
 
@@ -281,7 +283,7 @@
     aria-label="Primary"
     class="fixed inset-x-0 bottom-0 z-10 border-t border-border/70 bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
   >
-    <div class="grid grid-cols-4">
+    <div class="grid grid-cols-5">
       {#each links as link (link.href)}
         {@const Icon = link.icon}
         <a
