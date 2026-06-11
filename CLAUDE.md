@@ -108,8 +108,9 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
     implementations' CRUD (server + demo, demo capped at 500/bucket), so every
     mutation path logs without per-caller wiring. Viewed at `/settings/audit`
     (an on-demand page with its own server load — deliberately not part of the
-    zero-network tab set), reached via the Audit log button in the Settings
-    footer. `Repo` exposes `listEntryEvents()` (newest first, server cap 1000).
+    zero-network tab set), reached via the indigo "View audit log" button in
+    Settings' Log & Ledger card. `Repo` exposes `listEntryEvents()` (newest
+    first, server cap 1000).
 - `src/lib/db/index.ts` — Drizzle/libSQL client, **lazy-constructed via Proxy**
   so module load doesn't open a connection during SvelteKit's build analyse pass.
   Local default `file:./local.db`.
@@ -177,7 +178,9 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   for bi-week labels).
 - `src/lib/csv.ts` — RFC-4180 CSV parser/serializer used by Export/Import.
 - `src/routes/+page.*` — dashboard. Period selector (default **bi-weekly**) +
-  prev/next/today nav drives a derived bucket. The hero answers
+  prev/next/today nav + a `DateJump` calendar popover (jump to any date;
+  month/year dropdowns and reachable days are floored at the epoch — the same
+  component sits in the Log page's date bars) drives a derived bucket. The hero answers
   *Beat it · overtime banked / Made it / Came up short / Ahead of pace / Behind
   pace / On pace / Not started* based on bucket-vs-today state. Period math
   runs client-side from `data.entries`, clamped lower by epoch and upper by
@@ -233,11 +236,12 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   or a confirm-dialog discard), and a Today card of the day's shifts. Demo
   branches run the core actions against `demoRepo` + `invalidate('demo:data')`.
 - `src/routes/settings/+page.*` — two side-by-side cards (Pay & schedule /
-  Display & ledger) with uppercase section micro-headers: pay rate, daily
+  Log & Ledger) with uppercase section micro-headers: pay rate, daily
   hours, workdays (chips ordered by week start), week-start, tracking epoch,
   overtime multiplier (toggle + readonly-when-off field), default ledger
   period, timezone (full IANA select) + observe-DST toggle + clock break
-  mode, time format, weekend visibility toggles, expand-notes-by-default.
+  mode, time format, weekend visibility toggles, expand-notes-by-default,
+  and the View audit log link.
   Settings auto-save: every change schedules a debounced (400ms)
   `requestSubmit` through the shared enhance path (native validation gates
   it; zod failures surface in the status bar without persisting). The footer
@@ -248,7 +252,19 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   Settings): desktop header links (with icons) from `md`; below that an
   iOS-style bottom tab bar plus a top-left hamburger (bars→X morph) opening a
   slide-down menu over a dim overlay. The Clock link shows a small `bg-success`
-  dot while a shift is running (`data.openShift`).
+  dot while a shift is running (`data.openShift`). The footer shows the app
+  version via `__APP_VERSION__`, defined in `vite.config.ts` from
+  `package.json` — no manual sync.
+- **Brand:** `src/lib/assets/clopen-doors-ampm.svg` is the pre-colored
+  two-tone doors mark (sky `#0ea5e9` + rose `#f43f5e`, exported from Serif)
+  and the single source for both the header (`ClopenDoors.svelte`) and
+  `favicon.svg` (same geometry centered on a square) — they can never drift.
+- `src/app.html` — carries the social meta statically (description, Open
+  Graph, Twitter card, light/dark theme-colors): the demo deploy is CSR-only
+  (`ssr = !isDemo`), so crawlers only ever see this head, never
+  `<svelte:head>`. `og:image` is `static/og.png`, a 1200×630 dark-mode
+  screenshot of the demo dashboard; the image/url tags are hardcoded to
+  `https://clopen-production.up.railway.app`.
 
 ## CSV import format
 
