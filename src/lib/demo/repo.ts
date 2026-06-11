@@ -234,6 +234,9 @@ export const demoRepo: Repo = {
       expandNotes: input.expandNotes,
       otMultiplierEnabled: input.otMultiplierEnabled,
       otMultiplier: input.otMultiplier,
+      goalEnabled: input.goalEnabled,
+      yearlyGoal: input.yearlyGoal,
+      countExpenses: input.countExpenses,
     };
     localStorage.setItem(activeKeys().settings, JSON.stringify(row));
   },

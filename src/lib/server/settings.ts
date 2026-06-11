@@ -39,6 +39,9 @@ export async function updateSettings(input: SettingsInput, database: Database = 
     expandNotes: input.expandNotes,
     otMultiplierEnabled: input.otMultiplierEnabled,
     otMultiplier: input.otMultiplier,
+    goalEnabled: input.goalEnabled,
+    yearlyGoal: input.yearlyGoal,
+    countExpenses: input.countExpenses,
   };
   await database
     .insert(settings)
@@ -61,6 +64,9 @@ export async function updateSettings(input: SettingsInput, database: Database = 
         expandNotes: row.expandNotes,
         otMultiplierEnabled: row.otMultiplierEnabled,
         otMultiplier: row.otMultiplier,
+        goalEnabled: row.goalEnabled,
+        yearlyGoal: row.yearlyGoal,
+        countExpenses: row.countExpenses,
       },
     });
 }

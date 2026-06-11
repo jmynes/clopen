@@ -19,6 +19,9 @@ export function computeSettingsPage(row: Settings) {
     expandNotes: row.expandNotes,
     otMultiplierEnabled: row.otMultiplierEnabled,
     otMultiplier: row.otMultiplier,
+    goalEnabled: row.goalEnabled,
+    yearlyGoal: row.yearlyGoal,
+    countExpenses: row.countExpenses,
   };
 }
 
@@ -40,6 +43,9 @@ export async function saveSettingsAction(repo: Repo, form: FormData): Promise<Ac
     expandNotes: form.has('expandNotes'),
     otMultiplierEnabled: form.has('otMultiplierEnabled'),
     otMultiplier: form.get('otMultiplier'),
+    goalEnabled: form.has('goalEnabled'),
+    yearlyGoal: form.get('yearlyGoal'),
+    countExpenses: form.has('countExpenses'),
   });
   if (!parsed.success) {
     return { ok: false, status: 400, data: { error: parsed.error.issues.map((i) => i.message).join('; ') } };

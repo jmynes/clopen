@@ -134,6 +134,13 @@
       "when": 1781132235701,
       "tag": "0018_mushy_random",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1781200991442,
+      "tag": "0019_striped_imperial_guard",
+      "breakpoints": true
     }
   ]
 }

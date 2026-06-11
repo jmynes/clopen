@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { EXPENSE_KINDS } from '$lib/expense-kinds';
 import { ENTRY_KINDS } from '$lib/leave-kinds';
 import { CLOCK_BREAK_MODES, LEDGER_PERIODS } from '$lib/schemas/settings';
 
@@ -69,6 +70,11 @@ export const settings = sqliteTable('settings', {
   /** Pay day-hours beyond the daily baseline at `otMultiplier` × rate. */
   otMultiplierEnabled: integer('ot_multiplier_enabled', { mode: 'boolean' }).notNull().default(false),
   otMultiplier: real('ot_multiplier').notNull().default(1.5),
+  /** Chase a yearly dollar target instead of straight salary math. */
+  goalEnabled: integer('goal_enabled', { mode: 'boolean' }).notNull().default(false),
+  yearlyGoal: real('yearly_goal').notNull().default(80000),
+  /** Dashboard default for folding expenses into the make-whole math. */
+  countExpenses: integer('count_expenses', { mode: 'boolean' }).notNull().default(true),
 });
 
 export type TimeEntry = typeof timeEntries.$inferSelect;
@@ -106,3 +112,34 @@ export const openShift = sqliteTable('open_shift', {
   breakMode: text('break_mode', { enum: CLOCK_BREAK_MODES }).notNull().default('accrue'),
 });
 export type OpenShift = typeof openShift.$inferSelect;
+
+/**
+ * One work-related expense (an Uber to a shift, etc.). `date` is the same
+ * ISO local-day string time entries use; `amount` is dollars. Kind comes
+ * from $lib/expense-kinds — extensible without migration (plain text).
+ */
+export const expenses = sqliteTable('expenses', {
+  id: text('id').primaryKey(),
+  date: text('date').notNull(),
+  amount: real('amount').notNull(),
+  kind: text('kind', { enum: EXPENSE_KINDS }).notNull().default('ride'),
+  note: text('note'),
+  createdAt: integer('created_at').notNull().default(sql`(unixepoch())`),
+  /** Epoch seconds of the last edit; null = never edited since creation. */
+  updatedAt: integer('updated_at'),
+});
+export type Expense = typeof expenses.$inferSelect;
+
+/**
+ * Append-only audit log of expense mutations — the exact shape of
+ * entry_events with `expenseId` in place of `entryId`. Written inside the
+ * repo implementations so every mutation path logs without per-caller wiring.
+ */
+export const expenseEvents = sqliteTable('expense_events', {
+  id: text('id').primaryKey(),
+  expenseId: text('expense_id').notNull(),
+  action: text('action', { enum: ['add', 'edit', 'delete'] }).notNull(),
+  at: integer('at').notNull(),
+  snapshot: text('snapshot').notNull(),
+});
+export type ExpenseEvent = typeof expenseEvents.$inferSelect;

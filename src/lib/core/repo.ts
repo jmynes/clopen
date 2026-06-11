@@ -42,6 +42,9 @@ export const DEFAULT_SETTINGS = {
   expandNotes: false,
   otMultiplierEnabled: false,
   otMultiplier: 1.5,
+  goalEnabled: false,
+  yearlyGoal: 80000,
+  countExpenses: true,
 } satisfies Settings;
 
 /** Map a stored settings row to the shape the make-whole math expects. */
