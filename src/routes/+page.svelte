@@ -14,7 +14,7 @@
   import * as Tooltip from '$lib/components/ui/tooltip';
   import WeeklyChart from '$lib/components/WeeklyChart.svelte';
   import { formatDay, formatRangeISO, formatWeekRange, todayISO } from '$lib/date';
-  import { addDays, countWorkdays, loggedHours, overtimeHours, weekDates } from '$lib/timesheet';
+  import { addDays, countWorkdays, goalRateOf, loggedHours, overtimeHours, weekDates } from '$lib/timesheet';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -106,9 +106,34 @@
     window ? data.entries.filter((e) => e.date >= window.start && e.date <= window.end) : [],
   );
   const logged = $derived(loggedHours(inRange));
-  const net = $derived(Math.round((logged - expectedHours) * 100) / 100);
 
-  const expectedDollars = $derived(expectedHours * data.hourlyRate);
+  // ── Goal + expenses fold into the target ─────────────────────────────────
+  // Whether expenses in the window count toward the make-whole math. Starts
+  // from the setting; flipping the hero toggle is per-visit only.
+  // svelte-ignore state_referenced_locally
+  let includeExpenses = $state(data.countExpenses);
+  const expensesInRange = $derived(
+    window ? data.expenses.filter((e) => e.date >= window.start && e.date <= window.end) : [],
+  );
+  const expensesTotal = $derived(Math.round(expensesInRange.reduce((s, e) => s + e.amount, 0) * 100) / 100);
+  const includedExpenses = $derived(includeExpenses ? expensesTotal : 0);
+
+  // A yearly goal swaps the salary rate for the rate the goal implies given
+  // the bucket's year, so every period's dollar target prorates the stretch.
+  const targetRate = $derived(
+    data.goalEnabled
+      ? goalRateOf(data.yearlyGoal, Number(bucket.start.slice(0, 4)), data.dailyHours, data.workdays)
+      : data.hourlyRate,
+  );
+  const expectedDollars = $derived(expectedHours * targetRate + includedExpenses);
+
+  // Hours owed are money-driven: the goal stretch and included expenses both
+  // convert to hours at the straight rate. With goal off and no expenses this
+  // reduces exactly to the schedule's expected hours.
+  const targetHours = $derived(
+    data.hourlyRate > 0 ? Math.round((expectedDollars / data.hourlyRate) * 100) / 100 : expectedHours,
+  );
+  const net = $derived(Math.round((logged - targetHours) * 100) / 100);
   // Day-hours beyond the baseline earn at the multiplier when enabled;
   // otherwise everything is straight time (overtime still banks either way).
   const otHours = $derived(data.otMultiplierEnabled ? overtimeHours(inRange, data.dailyHours) : 0);
@@ -171,17 +196,17 @@
   );
 
   const subtitle = $derived.by(() => {
-    if (periodState === 'future') return `This period hasn't started yet. ${hrs(expectedHours)} expected when it does.`;
+    if (periodState === 'future') return `This period hasn't started yet. ${hrs(targetHours)} expected when it does.`;
     if (periodState === 'done') {
-      if (beat) return `Logged ${hrs(logged)} against the ${hrs(expectedHours)} target — +${hrs(net)} overtime banked.`;
-      if (made) return `Logged ${hrs(logged)} against the ${hrs(expectedHours)} target.`;
-      return `Short by ${hrs(Math.abs(net))}. Logged ${hrs(logged)} of ${hrs(expectedHours)} target.`;
+      if (beat) return `Logged ${hrs(logged)} against the ${hrs(targetHours)} target — +${hrs(net)} overtime banked.`;
+      if (made) return `Logged ${hrs(logged)} against the ${hrs(targetHours)} target.`;
+      return `Short by ${hrs(Math.abs(net))}. Logged ${hrs(logged)} of ${hrs(targetHours)} target.`;
     }
-    return `${hrs(logged)} logged, ${hrs(expectedHours)} expected so far. ${workdaysElapsed} of ${totalWorkdaysInPeriod} workdays elapsed.`;
+    return `${hrs(logged)} logged, ${hrs(targetHours)} expected so far. ${workdaysElapsed} of ${totalWorkdaysInPeriod} workdays elapsed.`;
   });
 
   const stats = $derived([
-    { label: 'Expected', value: hrs(expectedHours) },
+    { label: 'Expected', value: hrs(targetHours) },
     { label: 'Logged', value: hrs(logged) },
     { label: 'Net', value: `${net >= 0 ? '+' : ''}${hrs(net)}` },
     {
@@ -293,6 +318,14 @@
             </span>
           {/if}
         </p>
+        {#if expensesTotal > 0}
+          <label
+            class="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-md border border-input px-2.5 py-1.5 text-xs transition-colors has-checked:border-amber-500/60 has-checked:bg-amber-500/10"
+          >
+            <input type="checkbox" bind:checked={includeExpenses} class="accent-amber-500" />
+            <span>Include {money.format(expensesTotal)} expenses</span>
+          </label>
+        {/if}
       </div>
     </Card.Content>
   </Card.Root>
