@@ -83,6 +83,18 @@ export function expectedHours(asOf: string, yearStart: string, dailyHours: numbe
   return round2(countWorkdays(yearStart, asOf, workdays) * dailyHours);
 }
 
+/**
+ * The hourly rate a yearly dollar goal implies, given that year's actual
+ * workday count (260–262 for Mon–Fri years). The dashboard swaps this in for
+ * `hourlyRate` when a goal is enabled, so every period's dollar target — and
+ * the extra hours it implies — prorates toward the goal. Unrounded: this is
+ * an intermediate rate, like the 38.4615 default.
+ */
+export function goalRateOf(yearlyGoal: number, year: number, dailyHours: number, workdays: number[]): number {
+  const yearlyHours = countWorkdays(`${year}-01-01`, `${year}-12-31`, workdays) * dailyHours;
+  return yearlyHours > 0 ? yearlyGoal / yearlyHours : 0;
+}
+
 /** Hours that count toward the baseline: worked hours minus break/lunch. */
 /**
  * Parse a loosely-typed clock time into canonical `HH:MM` (24-hour), or null.

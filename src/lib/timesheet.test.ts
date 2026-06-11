@@ -3,6 +3,7 @@ import {
   addDays,
   countWorkdays,
   expectedHours,
+  goalRateOf,
   hoursBetween,
   loggedHours,
   makeWholeStatus,
@@ -370,5 +371,25 @@ describe('weeklyBreakdown', () => {
     // Mon,Tue,Wed = 3 workdays → 24h target.
     expect(weeks[0].weekStart).toBe('2026-01-05');
     expect(weeks[0].target).toBe(24);
+  });
+});
+
+describe('goalRateOf', () => {
+  it("divides the goal by the year's actual expected hours", () => {
+    // 2026: Jan 1 and Dec 31 are both Thursdays → 261 weekdays → 2088h at 8h/day.
+    expect(goalRateOf(82_000, 2026, 8, MON_FRI)).toBeCloseTo(82_000 / 2088, 10);
+  });
+
+  it('reduces to the salary rate when the goal equals that salary', () => {
+    expect(goalRateOf(40 * 2088, 2026, 8, MON_FRI)).toBeCloseTo(40, 10);
+  });
+
+  it('handles a leap year whose extra days fall on the weekend', () => {
+    // 2028: Jan 1 Sat, Dec 31 Sun → exactly 260 weekdays → 2080h at 8h/day.
+    expect(goalRateOf(83_200, 2028, 8, MON_FRI)).toBeCloseTo(40, 10);
+  });
+
+  it('returns 0 when no workdays are configured', () => {
+    expect(goalRateOf(82_000, 2026, 8, [])).toBe(0);
   });
 });
