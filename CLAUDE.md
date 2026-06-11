@@ -18,7 +18,13 @@ entry-kind taxonomy (8 kinds in paid/unpaid pairs: PTO/UPTO, Sick, Holiday,
 Vacation). Paid kinds credit the daily baseline (default 8h, no clock times);
 unpaid kinds record 0h with the same badge but a dashed outline. **No excused days** — any unlogged workday is a deficit.
 The accrual lower bound is the **tracking epoch** in settings (defaults to the
-job start date) rather than Jan 1, so year-one isn't backfilled. Runs locally;
+job start date) rather than Jan 1, so year-one isn't backfilled.
+**Expenses** (Uber/Lyft rides, extensible kinds) are tracked on their own tab
+and can optionally fold into the make-whole math: included expense dollars
+convert to hours owed at the straight rate. An optional **yearly goal**
+(`goalEnabled`/`yearlyGoal`) replaces the salary rate with `goal ÷ year's
+expected hours`, prorating a stretch target into every dashboard period.
+**Bonus tracking is deferred** — noted in the UI, not built. Runs locally;
 no auth, no deploy.
 
 The math lives in `src/lib/timesheet.ts` (pure, fully unit-tested) — the heart
@@ -72,7 +78,7 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
 ## Architecture
 
 - `src/lib/timesheet.ts` — pure make-whole math: `countWorkdays`,
-  `expectedHours`, `loggedHours`, `overtimeHours`, `makeWholeStatus`, `weeklyBreakdown`,
+  `expectedHours`, `goalRateOf`, `loggedHours`, `overtimeHours`, `makeWholeStatus`, `weeklyBreakdown`,
   `weekDates`, `yearStartOf`, `parseTimeInput`, `hoursBetween`. Timezone-safe
   (UTC arithmetic on explicit dates). `hoursBetween` wraps past midnight when
   the end time precedes the start. `makeWholeStatus` takes an optional `epoch`
@@ -97,7 +103,10 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
     off pins the zone to its fixed standard offset) / `clockBreakMode`
     (`accrue | split`, default `accrue` — how punch-clock breaks land),
     `otMultiplierEnabled` / `otMultiplier` (default false / 1.5 — pay day-hours
-    beyond the baseline at the multiplier; dashboard earnings only).
+    beyond the baseline at the multiplier; dashboard earnings only),
+    `goalEnabled` / `yearlyGoal` (default false / 80000 — chase a yearly dollar
+    target instead of straight salary math), `countExpenses` (default true —
+    the dashboard's include-expenses toggle starts here).
   - `open_shift` (at most one row, `id = 'current'`): the running punch-clock
     shift — `startedAt` / `breakStartedAt` (epoch **ms**), `breakSeconds`,
     `breakMode` snapshot. Clock-out composes normal `time_entries` and clears
@@ -110,22 +119,32 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
     (an on-demand page with its own server load — deliberately not part of the
     zero-network tab set), reached via the indigo "View audit log" button in
     Settings' Log & Ledger card. `Repo` exposes `listEntryEvents()` (newest
-    first, server cap 1000).
+    first, server cap 1000). The audit page merges `entry_events` and
+    `expense_events` into one timeline with Entry/Expense source badges.
+  - `expenses`: `id`, `date` (ISO local-day), `amount` (dollars), `kind`
+    (from `$lib/expense-kinds`), `note`, `createdAt`, `updatedAt` — same
+    timestamp semantics as entries.
+  - `expense_events`: mirror of `entry_events` with `expenseId`; written
+    inside the repo implementations' CRUD (server + demo, demo capped at
+    500/bucket). `Repo` exposes `listExpenseEvents()` plus `listExpenses` /
+    `addExpense` / `updateExpense` / `deleteExpense`.
 - `src/lib/db/index.ts` — Drizzle/libSQL client, **lazy-constructed via Proxy**
   so module load doesn't open a connection during SvelteKit's build analyse pass.
   Local default `file:./local.db`.
-- **Load architecture (zero-network tab switching):** entries + settings load
-  once in the root `+layout.server.ts` (which must never read `url`/`params`/
+- **Load architecture (zero-network tab switching):** entries + expenses +
+  settings load once in the root `+layout.server.ts` (which must never read `url`/`params`/
   `cookies` — that's what keeps it from re-running on navigation) and the demo
   branch in `+layout.ts`; each page's `+page.ts` is a pure synchronous compute
   over `await parent()` (`computeDashboard` / `computeLog` /
-  `computeSettingsPage`). The per-route `+page.server.ts` files hold only form
+  `computeExpenses` / `computeSettingsPage`). The per-route `+page.server.ts` files hold only form
   actions. Mutations refresh via `enhance`'s `invalidateAll()` (one fetch) in
   normal mode and `invalidate('demo:data')` (offline) in demo.
 - `src/lib/core/` — transport-agnostic page logic: `repo.ts` (the `Repo`
   storage contract + `DEFAULT_SETTINGS` + `toWorkSettings` + `emptyRepo`),
   `log.ts` (`computeLog` + all five form actions returning
-  `{ ok, status, data }`), `dashboard.ts`, `settings-page.ts`, `clock.ts` (the
+  `{ ok, status, data }`), `expenses.ts` (`computeExpenses` + add/update/delete
+  actions, same outcome shape, tested in `expenses.test.ts`), `dashboard.ts`,
+  `settings-page.ts`, `clock.ts` (the
   punch-clock state machine: idle / working / on_break; `clockIn`,
   `startBreak`, `endBreak`, `clockOut`, `adjustStart`, `resolveSave`/`Discard`,
   `composeEntry`, `computeClock`; pure — callers pass `now`, fully tested in
@@ -150,8 +169,9 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   handler has a demo branch that cancels the POST and runs the core action
   against localStorage (results stand in for the `form` prop via an
   `actionData` derived).
-- `src/lib/server/entries.ts` / `settings.ts` — CRUD with an **injectable `db`
-  arg** so unit tests run against an in-memory libSQL (`entries.test.ts`);
+- `src/lib/server/entries.ts` / `expenses.ts` / `settings.ts` — CRUD with an
+  **injectable `db` arg** so unit tests run against an in-memory libSQL
+  (`entries.test.ts`, `expenses.test.ts`);
   `repo.ts` bundles them as `serverRepo`, the Drizzle `Repo` implementation.
   Entries module also exports `findExistingDates`, `listEntriesByDates`, and
   `deleteEntriesByDates` for the conflict-resolution flow. `toWorkSettings` maps
@@ -160,6 +180,9 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   `ENTRY_KINDS` (`'work' | 'pto' | 'pto_unpaid' | …`), `LEAVE_KINDS` (the same
   set minus 'work'), `LEAVE_META` (label / short / paid / color family), and
   `leaveHours(kind, dailyHours)`.
+- `src/lib/expense-kinds.ts` — expense taxonomy: `EXPENSE_KINDS`
+  (`'ride' | 'other'`), `EXPENSE_META` (label / badge classes). Append a kind
+  to extend; the DB column is plain text so no migration is needed.
 - `src/lib/schemas/*` — Zod schemas:
   - `entryInput` — plain hours-mode (positive hours, optional break/note).
   - `clockEntryInput` — start + end times; computed hours via `hoursBetween`
@@ -168,9 +191,12 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   - `leaveEntryInput` — date + `kind` (LeaveKind) + optional note; produces an
     `EntryInput` whose `entryKind` reflects the kind and whose `hours` is the
     daily baseline for paid kinds, 0 for unpaid.
+  - `expenseInput` — ISO date + positive dollar amount (≤ 100k) + kind +
+    optional note (blank → null).
   - `settingsInput` — adds `epoch` (ISO regex), `timeFormat` (`12h | 24h`),
-    `ledgerPeriod` (`LEDGER_PERIODS` enum, also exported here), and the
-    `hideWeekendsEntries` / `hideWeekendsGrid` / `expandNotes` booleans.
+    `ledgerPeriod` (`LEDGER_PERIODS` enum, also exported here), the
+    `hideWeekendsEntries` / `hideWeekendsGrid` / `expandNotes` booleans, and
+    `goalEnabled` / `yearlyGoal` / `countExpenses`.
 - `src/lib/date.ts` — local `todayISO()` (via `@internationalized/date`) and
   display formatters: `formatTime(hhmm, mode)` (zero-padded, mode-aware),
   `formatTimeRange` (annotates overnight ranges with `(+1d)`), `formatDay`
@@ -184,7 +210,13 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   *Beat it · overtime banked / Made it / Came up short / Ahead of pace / Behind
   pace / On pace / Not started* based on bucket-vs-today state. Period math
   runs client-side from `data.entries`, clamped lower by epoch and upper by
-  today. Year-view weekly chart sits below.
+  today. The hero's hours are money-driven: target hours =
+  `(expectedHours × targetRate + includedExpenses) ÷ hourlyRate`, where
+  `targetRate` is `goalRateOf(...)` when the goal is enabled (else the salary
+  rate) — with goal off and no expenses this reduces exactly to schedule
+  hours. When the window contains expenses, an amber "Include $X expenses"
+  toggle sits under the earnings block (default from `countExpenses`,
+  per-visit after that). Year-view weekly chart sits below.
 - `src/routes/log/+page.*` — entries page. The forms (weekly grid, CSV
   import, and the edit/create dialog) share a `conflictAwareEnhance` factory
   that surfaces duplicate-date conflicts in a dialog (`overwrite | keep
@@ -224,6 +256,15 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   a sentinel row scrolls into view (rows never scrolled to never mount, and
   `table-fixed` keeps appends cheap); and the weekly grid mounts one frame
   after the page paints behind `gridReady`.
+- `src/routes/expenses/+page.*` — expenses tab (4th): an add form (DateField
+  date / kind select / amount / note), a period-paginated list using the
+  dashboard's bucket math (opens to `ledgerPeriod`, prev disabled at the
+  epoch, DateJump floored there) with a period total in the header, kind
+  badges from `EXPENSE_META`, and edit/delete dialogs. A shared
+  `expenseEnhance(action, after?)` factory branches demo mutations to
+  `demoRepo` + `invalidate('demo:data')`. Validation errors surface as a
+  single `expenseError` line under the add form. Footer note links the audit
+  log and flags that bonus tracking is planned.
 - `src/routes/clock/+page.*` — the punch clock (2nd nav tab). `+page.server.ts`
   holds the seven demo-gated actions (`in`, `breakStart`, `breakEnd`, `out`,
   `adjust`, `resolveSave`, `resolveDiscard`), each pinning the app zone before
@@ -235,13 +276,16 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   adjust-start form, a stale-shift banner (DateField + time → `resolveSave`,
   or a confirm-dialog discard), and a Today card of the day's shifts. Demo
   branches run the core actions against `demoRepo` + `invalidate('demo:data')`.
-- `src/routes/settings/+page.*` — two side-by-side cards (Pay & schedule /
-  Log & Ledger) with uppercase section micro-headers: pay rate, daily
-  hours, workdays (chips ordered by week start), week-start, tracking epoch,
-  overtime multiplier (toggle + readonly-when-off field), default ledger
-  period, timezone (full IANA select) + observe-DST toggle + clock break
-  mode, time format, weekend visibility toggles, expand-notes-by-default,
-  and the View audit log link.
+- `src/routes/settings/+page.*` — cards (Pay & schedule / Clock & time /
+  Log & Ledger / Dashboard) with uppercase section micro-headers: pay rate,
+  daily hours, workdays (chips ordered by week start), week-start, tracking
+  epoch, overtime multiplier (toggle + readonly-when-off field), default
+  ledger period, timezone (full IANA select) + observe-DST toggle + clock
+  break mode, time format, weekend visibility toggles,
+  expand-notes-by-default, and the View audit log link. The Dashboard card
+  holds the yearly goal (toggle + readonly-when-off dollar field, same
+  hidden-input idiom as the OT multiplier), the count-expenses default, and a
+  "bonus tracking is planned" footnote.
   Settings auto-save: every change schedules a debounced (400ms)
   `requestSubmit` through the shared enhance path (native validation gates
   it; zod failures surface in the status bar without persisting). The footer
@@ -249,7 +293,7 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   dialog. Tooltips: `Tooltip.Provider` wraps the
   app in `+layout.svelte`; repeated/per-row controls use native `title`.
 - `src/routes/+layout.svelte` — responsive nav (Dashboard / Clock / Log /
-  Settings): desktop header links (with icons) from `md`; below that an
+  Expenses / Settings): desktop header links (with icons) from `md`; below that an
   iOS-style bottom tab bar plus a top-left hamburger (bars→X morph) opening a
   slide-down menu over a dim overlay. The Clock link shows a small `bg-success`
   dot while a shift is running (`data.openShift`). The footer shows the app
