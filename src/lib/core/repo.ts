@@ -1,5 +1,6 @@
-import type { EntryEvent, OpenShift, Settings, TimeEntry } from '$lib/db/schema';
+import type { EntryEvent, Expense, ExpenseEvent, OpenShift, Settings, TimeEntry } from '$lib/db/schema';
 import type { EntryInput } from '$lib/schemas/entry';
+import type { ExpenseInput } from '$lib/schemas/expense';
 import { type SettingsInput, workdaysJson } from '$lib/schemas/settings';
 import type { WorkSettings } from '$lib/timesheet';
 
@@ -23,6 +24,12 @@ export type Repo = {
   clearOpenShift(): Promise<void>;
   /** Audit log of ledger mutations, newest first. */
   listEntryEvents(): Promise<EntryEvent[]>;
+  listExpenses(): Promise<Expense[]>;
+  addExpense(input: ExpenseInput): Promise<Expense>;
+  updateExpense(id: string, input: ExpenseInput): Promise<void>;
+  deleteExpense(id: string): Promise<void>;
+  /** Audit log of expense mutations, newest first. */
+  listExpenseEvents(): Promise<ExpenseEvent[]>;
 };
 
 export const DEFAULT_SETTINGS = {
@@ -73,4 +80,11 @@ export const emptyRepo: Repo = {
   saveOpenShift: async () => {},
   clearOpenShift: async () => {},
   listEntryEvents: async () => [],
+  listExpenses: async () => [],
+  addExpense: async () => {
+    throw new Error('emptyRepo is read-only');
+  },
+  updateExpense: async () => {},
+  deleteExpense: async () => {},
+  listExpenseEvents: async () => [],
 };

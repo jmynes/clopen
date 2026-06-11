@@ -9,6 +9,7 @@ import {
   listEntryEvents,
   updateEntry,
 } from '$lib/server/entries';
+import { addExpense, deleteExpense, listExpenseEvents, listExpenses, updateExpense } from '$lib/server/expenses';
 import { clearOpenShift, getOpenShift, saveOpenShift } from '$lib/server/open-shift';
 import { getSettings, updateSettings } from '$lib/server/settings';
 
@@ -27,4 +28,9 @@ export const serverRepo: Repo = {
   saveOpenShift,
   clearOpenShift,
   listEntryEvents,
+  listExpenses,
+  addExpense,
+  updateExpense,
+  deleteExpense,
+  listExpenseEvents,
 };

@@ -12,8 +12,9 @@
  * other and toggling flips cleanly between them.
  */
 import { DEFAULT_SETTINGS, type Repo } from '$lib/core/repo';
-import type { EntryEvent, OpenShift, Settings, TimeEntry } from '$lib/db/schema';
+import type { EntryEvent, Expense, ExpenseEvent, OpenShift, Settings, TimeEntry } from '$lib/db/schema';
 import type { EntryInput } from '$lib/schemas/entry';
+import type { ExpenseInput } from '$lib/schemas/expense';
 import type { SettingsInput } from '$lib/schemas/settings';
 import { SAMPLE_SETTINGS, sampleEntries } from './sample';
 
@@ -24,12 +25,16 @@ const KEYS = {
     settings: 'clopen:sample-settings',
     openShift: 'clopen:sample-open-shift',
     events: 'clopen:sample-entry-events',
+    expenses: 'clopen:sample-expenses',
+    expenseEvents: 'clopen:sample-expense-events',
   },
   yours: {
     entries: 'clopen:entries',
     settings: 'clopen:settings',
     openShift: 'clopen:open-shift',
     events: 'clopen:entry-events',
+    expenses: 'clopen:expenses',
+    expenseEvents: 'clopen:expense-events',
   },
 } as const;
 
@@ -116,8 +121,8 @@ function writeEntries(entries: TimeEntry[]): void {
   localStorage.setItem(activeKeys().entries, JSON.stringify(entries));
 }
 
-function sorted(entries: TimeEntry[]): TimeEntry[] {
-  return [...entries].sort((a, b) => {
+function sorted<T extends { date: string; createdAt: number }>(rows: T[]): T[] {
+  return [...rows].sort((a, b) => {
     if (a.date !== b.date) return a.date < b.date ? 1 : -1; // date desc
     return a.createdAt - b.createdAt; // createdAt asc
   });
@@ -136,6 +141,54 @@ function rowFromInput(input: EntryInput, id: string, createdAt: number, updatedA
     createdAt,
     updatedAt,
   };
+}
+
+function readExpenses(): Expense[] {
+  try {
+    const raw = localStorage.getItem(activeKeys().expenses);
+    return raw ? (JSON.parse(raw) as Expense[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeExpenses(rows: Expense[]): void {
+  localStorage.setItem(activeKeys().expenses, JSON.stringify(rows));
+}
+
+function readExpenseEvents(): ExpenseEvent[] {
+  try {
+    const raw = localStorage.getItem(activeKeys().expenseEvents);
+    return raw ? (JSON.parse(raw) as ExpenseEvent[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Best-effort append — a logging failure never blocks the mutation itself. */
+function logExpenseEvent(action: ExpenseEvent['action'], row: Expense): void {
+  try {
+    const events = readExpenseEvents();
+    events.push({
+      id: crypto.randomUUID(),
+      expenseId: row.id,
+      action,
+      at: Date.now(),
+      snapshot: JSON.stringify(row),
+    });
+    localStorage.setItem(activeKeys().expenseEvents, JSON.stringify(events.slice(-EVENTS_CAP)));
+  } catch {
+    // storage unavailable or full — the expense write still stands
+  }
+}
+
+function expenseFromInput(
+  input: ExpenseInput,
+  id: string,
+  createdAt: number,
+  updatedAt: number | null = null,
+): Expense {
+  return { id, date: input.date, amount: input.amount, kind: input.kind, note: input.note, createdAt, updatedAt };
 }
 
 export const demoRepo: Repo = {
@@ -202,6 +255,44 @@ export const demoRepo: Repo = {
   async listEntryEvents() {
     ensureSeeded();
     return [...readEvents()].sort((a, b) => b.at - a.at);
+  },
+
+  async listExpenses() {
+    ensureSeeded();
+    return sorted(readExpenses());
+  },
+
+  async addExpense(input) {
+    ensureSeeded();
+    const rows = readExpenses();
+    const row = expenseFromInput(input, crypto.randomUUID(), Date.now() / 1000);
+    rows.push(row);
+    writeExpenses(rows);
+    logExpenseEvent('add', row);
+    return row;
+  },
+
+  async updateExpense(id, input) {
+    ensureSeeded();
+    const rows = readExpenses();
+    const idx = rows.findIndex((e) => e.id === id);
+    if (idx === -1) return;
+    rows[idx] = expenseFromInput(input, id, rows[idx].createdAt, Math.floor(Date.now() / 1000));
+    writeExpenses(rows);
+    logExpenseEvent('edit', rows[idx]);
+  },
+
+  async deleteExpense(id) {
+    ensureSeeded();
+    const rows = readExpenses();
+    const removed = rows.find((e) => e.id === id);
+    writeExpenses(rows.filter((e) => e.id !== id));
+    if (removed) logExpenseEvent('delete', removed);
+  },
+
+  async listExpenseEvents() {
+    ensureSeeded();
+    return [...readExpenseEvents()].sort((a, b) => b.at - a.at);
   },
 
   async getSettings() {
