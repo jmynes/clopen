@@ -34,10 +34,10 @@ export const RIDE_VENDORS = ['uber', 'lyft', 'other'] as const;
 export type RideVendor = (typeof RIDE_VENDORS)[number];
 export const RIDE_VENDOR_LABELS: Record<RideVendor, string> = { uber: 'Uber', lyft: 'Lyft', other: 'Other' };
 
-export const RIDE_DIRECTIONS = ['to_work', 'from_work', 'other'] as const;
+export const RIDE_DIRECTIONS = ['to_work', 'to_home', 'other'] as const;
 export type RideDirection = (typeof RIDE_DIRECTIONS)[number];
 export const RIDE_DIRECTION_LABELS: Record<RideDirection, string> = {
   to_work: 'To work',
-  from_work: 'From work',
+  to_home: 'To home',
   other: 'Other',
 };

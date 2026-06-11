@@ -17,9 +17,9 @@ describe('expenseInput', () => {
   });
 
   it('keeps vendor and direction on a ride', () => {
-    const out = expenseInput.parse({ ...valid, vendor: 'lyft', direction: 'from_work' });
+    const out = expenseInput.parse({ ...valid, vendor: 'lyft', direction: 'to_home' });
     expect(out.vendor).toBe('lyft');
-    expect(out.direction).toBe('from_work');
+    expect(out.direction).toBe('to_home');
   });
 
   it('forces vendor and direction to null on non-ride kinds', () => {

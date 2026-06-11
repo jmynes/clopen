@@ -122,8 +122,9 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
     first, server cap 1000). The audit page merges `entry_events` and
     `expense_events` into one timeline with Entry/Expense source badges.
   - `expenses`: `id`, `date` (ISO local-day), `amount` (dollars), `kind`
-    (from `$lib/expense-kinds`), `note`, `createdAt`, `updatedAt` — same
-    timestamp semantics as entries.
+    (from `$lib/expense-kinds`), `vendor` / `direction` (ride-only detail
+    axes, null elsewhere and on legacy rows), `note`, `createdAt`,
+    `updatedAt` — same timestamp semantics as entries.
   - `expense_events`: mirror of `entry_events` with `expenseId`; written
     inside the repo implementations' CRUD (server + demo, demo capped at
     500/bucket). `Repo` exposes `listExpenseEvents()` plus `listExpenses` /
@@ -181,8 +182,14 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   set minus 'work'), `LEAVE_META` (label / short / paid / color family), and
   `leaveHours(kind, dailyHours)`.
 - `src/lib/expense-kinds.ts` — expense taxonomy: `EXPENSE_KINDS`
-  (`'ride' | 'other'`), `EXPENSE_META` (label / badge classes). Append a kind
-  to extend; the DB column is plain text so no migration is needed.
+  (`'ride' | 'other'`), `EXPENSE_META` (label / badge classes), plus the
+  ride-only detail axes: `RIDE_VENDORS` (`uber | lyft | other`) and
+  `RIDE_DIRECTIONS` (`to_work | to_home | other`) with label maps. Append to
+  extend; the DB columns are plain text so no migration is needed.
+  Uber/Lyft brand wordmarks live in `$lib/components/brand/*Icon.svelte`
+  (Simple Icons paths, CC0 — same inline-SVG precedent as the footer's
+  GitHub mark) and render alone with sr-only text instead of doubling a
+  text label.
 - `src/lib/schemas/*` — Zod schemas:
   - `entryInput` — plain hours-mode (positive hours, optional break/note).
   - `clockEntryInput` — start + end times; computed hours via `hoursBetween`
@@ -192,6 +199,7 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
     `EntryInput` whose `entryKind` reflects the kind and whose `hours` is the
     daily baseline for paid kinds, 0 for unpaid.
   - `expenseInput` — ISO date + positive dollar amount (≤ 100k) + kind +
+    optional vendor/direction (scrubbed to null on non-ride kinds) +
     optional note (blank → null).
   - `settingsInput` — adds `epoch` (ISO regex), `timeFormat` (`12h | 24h`),
     `ledgerPeriod` (`LEDGER_PERIODS` enum, also exported here), the
@@ -257,14 +265,20 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   `table-fixed` keeps appends cheap); and the weekly grid mounts one frame
   after the page paints behind `gridReady`.
 - `src/routes/expenses/+page.*` — expenses tab (4th): an add form (DateField
-  date / kind select / amount / note), a period-paginated list using the
-  dashboard's bucket math (opens to `ledgerPeriod`, prev disabled at the
-  epoch, DateJump floored there) with a period total in the header, kind
-  badges from `EXPENSE_META`, and edit/delete dialogs. A shared
-  `expenseEnhance(action, after?)` factory branches demo mutations to
-  `demoRepo` + `invalidate('demo:data')`. Validation errors surface as a
-  single `expenseError` line under the add form. Footer note links the audit
-  log and flags that bonus tracking is planned.
+  date / kind / amount / note, plus Service and Direction selects that appear
+  only while kind = ride), a period-paginated list using the dashboard's
+  bucket math (opens to `ledgerPeriod`, prev disabled at the epoch, DateJump
+  floored there) with a period total in the header, and edit/delete dialogs.
+  The three dropdowns are icon-bearing shadcn `Select`s defined once as
+  snippets (`kindSelect` / `vendorSelect` / `directionSelect`) shared by the
+  add form and edit dialog — display-only, with hidden inputs carrying the
+  values into the POST (the log grid's Select idiom). List rows badge a
+  known vendor's wordmark in place of the generic "Ride" label and echo the
+  direction as icon + text. A shared `expenseEnhance(action, after?)`
+  factory branches demo mutations to `demoRepo` + `invalidate('demo:data')`.
+  Validation errors surface as a single `expenseError` line under the add
+  form. Footer note links the audit log and flags that bonus tracking is
+  planned.
 - `src/routes/clock/+page.*` — the punch clock (2nd nav tab). `+page.server.ts`
   holds the seven demo-gated actions (`in`, `breakStart`, `breakEnd`, `out`,
   `adjust`, `resolveSave`, `resolveDiscard`), each pinning the app zone before

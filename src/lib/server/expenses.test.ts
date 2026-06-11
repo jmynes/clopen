@@ -49,9 +49,9 @@ describe('expenses CRUD', () => {
   });
 
   it('persists ride vendor and direction', async () => {
-    await addExpense(mk({ date: '2026-06-10', amount: 18.5, vendor: 'lyft', direction: 'from_work' }), db);
+    await addExpense(mk({ date: '2026-06-10', amount: 18.5, vendor: 'lyft', direction: 'to_home' }), db);
     const all = await listExpenses(db);
-    expect(all[0]).toMatchObject({ vendor: 'lyft', direction: 'from_work' });
+    expect(all[0]).toMatchObject({ vendor: 'lyft', direction: 'to_home' });
   });
 
   it('deletes an expense', async () => {

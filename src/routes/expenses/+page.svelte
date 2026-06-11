@@ -1,13 +1,20 @@
 <script lang="ts">
+  import Briefcase from '@lucide/svelte/icons/briefcase';
   import CalendarCheck from '@lucide/svelte/icons/calendar-check';
+  import CarTaxiFront from '@lucide/svelte/icons/car-taxi-front';
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
+  import House from '@lucide/svelte/icons/house';
   import Pencil from '@lucide/svelte/icons/pencil';
   import Plus from '@lucide/svelte/icons/plus';
+  import Receipt from '@lucide/svelte/icons/receipt';
+  import Route from '@lucide/svelte/icons/route';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import type { SubmitFunction } from '@sveltejs/kit';
   import { enhance } from '$app/forms';
   import { invalidate } from '$app/navigation';
+  import LyftIcon from '$lib/components/brand/LyftIcon.svelte';
+  import UberIcon from '$lib/components/brand/UberIcon.svelte';
   import DateField from '$lib/components/DateField.svelte';
   import DateJump from '$lib/components/DateJump.svelte';
   import { Button } from '$lib/components/ui/button';
@@ -15,12 +22,23 @@
   import * as Dialog from '$lib/components/ui/dialog';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
+  import * as Select from '$lib/components/ui/select';
   import * as Tooltip from '$lib/components/ui/tooltip';
   import { type ExpenseActionName, runExpenseAction } from '$lib/core/expenses';
   import { formatDay, formatRangeISO, formatWeekRange, todayISO } from '$lib/date';
   import type { Expense } from '$lib/db/schema';
   import { isDemo } from '$lib/demo/flag';
-  import { EXPENSE_KINDS, EXPENSE_META } from '$lib/expense-kinds';
+  import {
+    EXPENSE_KINDS,
+    EXPENSE_META,
+    type ExpenseKind,
+    RIDE_DIRECTION_LABELS,
+    RIDE_DIRECTIONS,
+    RIDE_VENDOR_LABELS,
+    RIDE_VENDORS,
+    type RideDirection,
+    type RideVendor,
+  } from '$lib/expense-kinds';
   import type { LedgerPeriod } from '$lib/schemas/settings';
   import { addDays, weekDates } from '$lib/timesheet';
   import type { ActionData, PageData } from './$types';
@@ -120,10 +138,31 @@
   const total = $derived(Math.round(inBucket.reduce((s, e) => s + e.amount, 0) * 100) / 100);
 
   // ── Forms ────────────────────────────────────────────────────────────────
+  // The shadcn Selects are display-only (icons in the trigger and menu);
+  // hidden inputs alongside them carry the values into the POST, and the
+  // ride-only vendor/direction fields appear as the kind flips to ride.
   let addDate = $state(todayISO());
+  let addKind = $state<ExpenseKind>('ride');
+  let addVendor = $state<RideVendor>('uber');
+  let addDirection = $state<RideDirection>('to_work');
+  let editKind = $state<ExpenseKind>('ride');
+  let editVendor = $state<RideVendor>('other');
+  let editDirection = $state<RideDirection>('other');
   let editing = $state<Expense | null>(null);
   let deleting = $state<Expense | null>(null);
   let submitting = $state(false);
+
+  // The Uber/Lyft marks are wordmarks, so they render alone (with sr-only
+  // text); everything else pairs a lucide glyph with its label.
+  const KIND_ICON = { ride: CarTaxiFront, other: Receipt } as const;
+  const VENDOR_ICON = { uber: UberIcon, lyft: LyftIcon, other: CarTaxiFront } as const;
+  const DIRECTION_ICON = { to_work: Briefcase, to_home: House, other: Route } as const;
+  const WORDMARKS = new Set<RideVendor>(['uber', 'lyft']);
+
+  /** Row display: a known vendor replaces the generic "Ride" badge label. */
+  function badgeLabel(e: Expense): string {
+    return e.kind === 'ride' && e.vendor ? RIDE_VENDOR_LABELS[e.vendor] : EXPENSE_META[e.kind].label;
+  }
 
   // Shared enhance: demo cancels the POST and runs the core action against
   // localStorage; normal mode submits and invalidateAll() refreshes the layout.
@@ -151,6 +190,102 @@
   }
 </script>
 
+<!-- The three dropdowns, shared by the add form and the edit dialog. Each is
+     a display-only shadcn Select (icons in trigger + menu) with a hidden
+     input carrying the value into the POST. -->
+{#snippet kindSelect(id: string, value: ExpenseKind, set: (v: ExpenseKind) => void)}
+  {@const KindIcon = KIND_ICON[value]}
+  <div class="flex flex-col gap-1.5">
+    <Label for={id}>Kind</Label>
+    <Select.Root type="single" {value} onValueChange={(v) => set(v as ExpenseKind)}>
+      <Select.Trigger {id} aria-label="Kind" class="w-full">
+        <span class="inline-flex min-w-0 items-center gap-1.5">
+          <KindIcon class="size-3.5 shrink-0" />
+          <span class="min-w-0 truncate text-xs">{EXPENSE_META[value].label}</span>
+        </span>
+      </Select.Trigger>
+      <Select.Content>
+        {#each EXPENSE_KINDS as kind (kind)}
+          {@const ItemIcon = KIND_ICON[kind]}
+          <Select.Item value={kind} label={EXPENSE_META[kind].label}>
+            <span class="inline-flex items-center gap-2">
+              <ItemIcon class="size-3.5" />
+              {EXPENSE_META[kind].label}
+            </span>
+          </Select.Item>
+        {/each}
+      </Select.Content>
+    </Select.Root>
+    <input type="hidden" name="kind" {value} />
+  </div>
+{/snippet}
+
+{#snippet vendorSelect(id: string, value: RideVendor, set: (v: RideVendor) => void)}
+  {@const Mark = VENDOR_ICON[value]}
+  <div class="flex flex-col gap-1.5">
+    <Label for={id}>Service</Label>
+    <Select.Root type="single" {value} onValueChange={(v) => set(v as RideVendor)}>
+      <Select.Trigger {id} aria-label="Service" class="w-full">
+        {#if WORDMARKS.has(value)}
+          <span class="inline-flex min-w-0 items-center">
+            <Mark class="h-3 w-auto" />
+            <span class="sr-only">{RIDE_VENDOR_LABELS[value]}</span>
+          </span>
+        {:else}
+          <span class="inline-flex min-w-0 items-center gap-1.5">
+            <Mark class="size-3.5 shrink-0" />
+            <span class="min-w-0 truncate text-xs">{RIDE_VENDOR_LABELS[value]}</span>
+          </span>
+        {/if}
+      </Select.Trigger>
+      <Select.Content>
+        {#each RIDE_VENDORS as vendor (vendor)}
+          {@const ItemIcon = VENDOR_ICON[vendor]}
+          <Select.Item value={vendor} label={RIDE_VENDOR_LABELS[vendor]}>
+            {#if WORDMARKS.has(vendor)}
+              <ItemIcon class="h-3.5 w-auto" />
+              <span class="sr-only">{RIDE_VENDOR_LABELS[vendor]}</span>
+            {:else}
+              <span class="inline-flex items-center gap-2">
+                <ItemIcon class="size-3.5" />
+                {RIDE_VENDOR_LABELS[vendor]}
+              </span>
+            {/if}
+          </Select.Item>
+        {/each}
+      </Select.Content>
+    </Select.Root>
+    <input type="hidden" name="vendor" {value} />
+  </div>
+{/snippet}
+
+{#snippet directionSelect(id: string, value: RideDirection, set: (v: RideDirection) => void)}
+  {@const DirIcon = DIRECTION_ICON[value]}
+  <div class="flex flex-col gap-1.5">
+    <Label for={id}>Direction</Label>
+    <Select.Root type="single" {value} onValueChange={(v) => set(v as RideDirection)}>
+      <Select.Trigger {id} aria-label="Direction" class="w-full">
+        <span class="inline-flex min-w-0 items-center gap-1.5">
+          <DirIcon class="size-3.5 shrink-0" />
+          <span class="min-w-0 truncate text-xs">{RIDE_DIRECTION_LABELS[value]}</span>
+        </span>
+      </Select.Trigger>
+      <Select.Content>
+        {#each RIDE_DIRECTIONS as direction (direction)}
+          {@const ItemIcon = DIRECTION_ICON[direction]}
+          <Select.Item value={direction} label={RIDE_DIRECTION_LABELS[direction]}>
+            <span class="inline-flex items-center gap-2">
+              <ItemIcon class="size-3.5" />
+              {RIDE_DIRECTION_LABELS[direction]}
+            </span>
+          </Select.Item>
+        {/each}
+      </Select.Content>
+    </Select.Root>
+    <input type="hidden" name="direction" {value} />
+  </div>
+{/snippet}
+
 <div class="flex flex-col gap-8">
   <div class="max-md:text-center">
     <h1 class="text-2xl font-semibold tracking-tight">Expenses</h1>
@@ -169,24 +304,19 @@
         method="POST"
         action="?/add"
         use:enhance={expenseEnhance('add', () => (addDate = todayISO()))}
-        class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[10rem_8rem_8rem_1fr_auto] lg:items-end"
+        class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:items-end {addKind === 'ride'
+          ? 'lg:grid-cols-[9rem_6.5rem_6.5rem_7.5rem_6.5rem_1fr_auto]'
+          : 'lg:grid-cols-[10rem_8rem_8rem_1fr_auto]'}"
       >
         <div class="flex flex-col gap-1.5">
           <Label for="expense-date">Date</Label>
           <DateField id="expense-date" name="date" bind:value={addDate} min={data.epoch} />
         </div>
-        <div class="flex flex-col gap-1.5">
-          <Label for="expense-kind">Kind</Label>
-          <select
-            id="expense-kind"
-            name="kind"
-            class="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
-          >
-            {#each EXPENSE_KINDS as kind (kind)}
-              <option value={kind}>{EXPENSE_META[kind].label}</option>
-            {/each}
-          </select>
-        </div>
+        {@render kindSelect('expense-kind', addKind, (v) => (addKind = v))}
+        {#if addKind === 'ride'}
+          {@render vendorSelect('expense-vendor', addVendor, (v) => (addVendor = v))}
+          {@render directionSelect('expense-direction', addDirection, (v) => (addDirection = v))}
+        {/if}
         <div class="flex flex-col gap-1.5">
           <Label for="expense-amount">Amount (USD)</Label>
           <Input id="expense-amount" type="number" name="amount" step="0.01" min="0.01" placeholder="18.50" required />
@@ -271,11 +401,30 @@
       {:else}
         <ul class="divide-y divide-border/50">
           {#each inBucket as e (e.id)}
+            {@const isWordmark = e.kind === 'ride' && e.vendor !== null && WORDMARKS.has(e.vendor)}
+            {@const BadgeIcon = e.kind === 'ride' && e.vendor ? VENDOR_ICON[e.vendor] : KIND_ICON[e.kind]}
             <li class="flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5 text-sm">
               <span class="w-14 font-mono text-xs uppercase tabular-nums">{formatDay(e.date)}</span>
-              <span class="rounded px-1.5 py-0.5 text-xs font-medium ring-1 {EXPENSE_META[e.kind].badgeClass}">
-                {EXPENSE_META[e.kind].label}
+              <span
+                class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium ring-1 {EXPENSE_META[
+                  e.kind
+                ].badgeClass}"
+              >
+                {#if isWordmark}
+                  <BadgeIcon class="h-3 w-auto" />
+                  <span class="sr-only">{badgeLabel(e)}</span>
+                {:else}
+                  <BadgeIcon class="size-3" />
+                  {badgeLabel(e)}
+                {/if}
               </span>
+              {#if e.kind === 'ride' && e.direction && e.direction !== 'other'}
+                {@const DirIcon = DIRECTION_ICON[e.direction]}
+                <span class="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <DirIcon class="size-3.5" />
+                  {RIDE_DIRECTION_LABELS[e.direction].toLowerCase()}
+                </span>
+              {/if}
               {#if e.note}<span class="max-w-56 truncate text-xs text-muted-foreground">{e.note}</span>{/if}
               <span class="ml-auto font-mono tabular-nums">{money.format(e.amount)}</span>
               <span class="flex items-center">
@@ -284,7 +433,12 @@
                   size="sm"
                   title="Edit expense"
                   aria-label="Edit expense"
-                  onclick={() => (editing = e)}
+                  onclick={() => {
+                    editKind = e.kind;
+                    editVendor = e.vendor ?? 'other';
+                    editDirection = e.direction ?? 'other';
+                    editing = e;
+                  }}
                 >
                   <Pencil class="size-4" />
                 </Button>
@@ -336,18 +490,11 @@
           <Label for="edit-expense-date">Date</Label>
           <DateField id="edit-expense-date" name="date" value={editing.date} min={data.epoch} />
         </div>
-        <div class="flex flex-col gap-1.5">
-          <Label for="edit-expense-kind">Kind</Label>
-          <select
-            id="edit-expense-kind"
-            name="kind"
-            class="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
-          >
-            {#each EXPENSE_KINDS as kind (kind)}
-              <option value={kind} selected={editing.kind === kind}>{EXPENSE_META[kind].label}</option>
-            {/each}
-          </select>
-        </div>
+        {@render kindSelect('edit-expense-kind', editKind, (v) => (editKind = v))}
+        {#if editKind === 'ride'}
+          {@render vendorSelect('edit-expense-vendor', editVendor, (v) => (editVendor = v))}
+          {@render directionSelect('edit-expense-direction', editDirection, (v) => (editDirection = v))}
+        {/if}
         <div class="flex flex-col gap-1.5">
           <Label for="edit-expense-amount">Amount (USD)</Label>
           <Input
@@ -385,7 +532,7 @@
       <Dialog.Header>
         <Dialog.Title>Delete this expense?</Dialog.Title>
         <Dialog.Description>
-          {formatDay(deleting.date)} · {EXPENSE_META[deleting.kind].label} · {money.format(deleting.amount)}
+          {formatDay(deleting.date)} · {badgeLabel(deleting)} · {money.format(deleting.amount)}
           {#if deleting.note}
             · {deleting.note}
           {/if}

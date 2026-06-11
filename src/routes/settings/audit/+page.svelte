@@ -4,7 +4,7 @@
   import * as Card from '$lib/components/ui/card';
   import { formatDay, formatTimeRange, formatTimestamp } from '$lib/date';
   import type { EntryEvent, Expense, ExpenseEvent, TimeEntry } from '$lib/db/schema';
-  import { EXPENSE_META } from '$lib/expense-kinds';
+  import { EXPENSE_META, RIDE_DIRECTION_LABELS, RIDE_VENDOR_LABELS } from '$lib/expense-kinds';
   import { LEAVE_META } from '$lib/leave-kinds';
   import type { PageData } from './$types';
 
@@ -66,6 +66,16 @@
     }
   }
 
+  // E.g. "Uber · to work · $18.50"; vendor falls back to the kind label.
+  function expenseDetail(s: Expense): string {
+    const bits = [s.kind === 'ride' && s.vendor ? RIDE_VENDOR_LABELS[s.vendor] : EXPENSE_META[s.kind].label];
+    if (s.kind === 'ride' && s.direction && s.direction !== 'other') {
+      bits.push(RIDE_DIRECTION_LABELS[s.direction].toLowerCase());
+    }
+    bits.push(money.format(s.amount));
+    return bits.join(' · ');
+  }
+
   function expenseItem(e: ExpenseEvent): AuditItem {
     const s = expenseSnapshotOf(e);
     return {
@@ -74,7 +84,7 @@
       at: e.at,
       source: 'Expense',
       date: s?.date ?? null,
-      detail: s ? `${EXPENSE_META[s.kind].label} · ${money.format(s.amount)}` : '—',
+      detail: s ? expenseDetail(s) : '—',
       note: s?.note ?? null,
     };
   }
