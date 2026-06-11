@@ -186,10 +186,12 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   ride-only detail axes: `RIDE_VENDORS` (`uber | lyft | other`) and
   `RIDE_DIRECTIONS` (`to_work | to_home | other`) with label maps. Append to
   extend; the DB columns are plain text so no migration is needed.
-  Uber/Lyft brand wordmarks live in `$lib/components/brand/*Icon.svelte`
-  (Simple Icons paths, CC0 — same inline-SVG precedent as the footer's
-  GitHub mark) and render alone with sr-only text instead of doubling a
-  text label.
+  Uber/Lyft brand glyphs come from `@fortawesome/free-brands-svg-icons`
+  (data-only pack, icons CC BY 4.0 — lucide dropped brand icons), rendered
+  by `$lib/components/brand/BrandIcon.svelte` (a 15-line IconDefinition →
+  inline-SVG renderer; no svelte-fa dependency) behind thin `UberIcon` /
+  `LyftIcon` wrappers so icon maps stay uniform with lucide components.
+  Lyft renders in its brand pink.
 - `src/lib/schemas/*` — Zod schemas:
   - `entryInput` — plain hours-mode (positive hours, optional break/note).
   - `clockEntryInput` — start + end times; computed hours via `hoursBetween`

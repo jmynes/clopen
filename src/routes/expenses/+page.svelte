@@ -157,11 +157,10 @@
   const KIND_ICON = { ride: CarTaxiFront, other: Receipt } as const;
   const VENDOR_ICON = { uber: UberIcon, lyft: LyftIcon, other: CarTaxiFront } as const;
   const DIRECTION_ICON = { to_work: Briefcase, to_home: House, other: Route } as const;
-  const WORDMARKS = new Set<RideVendor>(['uber', 'lyft']);
-  // Brand colors keep the thin wordmark strokes legible on any background —
-  // Uber's mark especially washes out when it inherits a tinted text color.
+  // Lyft's glyph carries its brand pink; Uber's solid badge reads fine in
+  // whatever text color surrounds it.
   const MARK_CLASS: Record<RideVendor, string> = {
-    uber: 'text-foreground',
+    uber: '',
     lyft: 'text-[#ff00bf]',
     other: '',
   };
@@ -233,24 +232,17 @@
     <Label for={id}>Service</Label>
     <Select.Root type="single" {value} onValueChange={(v) => set(v as RideVendor)}>
       <Select.Trigger {id} aria-label="Service" class="w-full">
-        {#if WORDMARKS.has(value)}
-          <span class="inline-flex min-w-0 items-center">
-            <Mark class="h-3.5 w-auto {MARK_CLASS[value]}" />
-            <span class="sr-only">{RIDE_VENDOR_LABELS[value]}</span>
-          </span>
-        {:else}
-          <span class="inline-flex min-w-0 items-center gap-1.5">
-            <Mark class="size-3.5 shrink-0" />
-            <span class="min-w-0 truncate text-xs">{RIDE_VENDOR_LABELS[value]}</span>
-          </span>
-        {/if}
+        <span class="inline-flex min-w-0 items-center gap-1.5">
+          <Mark class="size-3.5 shrink-0 {MARK_CLASS[value]}" />
+          <span class="min-w-0 truncate text-xs">{RIDE_VENDOR_LABELS[value]}</span>
+        </span>
       </Select.Trigger>
       <Select.Content>
         {#each RIDE_VENDORS as vendor (vendor)}
           {@const ItemIcon = VENDOR_ICON[vendor]}
           <Select.Item value={vendor} label={RIDE_VENDOR_LABELS[vendor]}>
             <span class="inline-flex items-center gap-2">
-              <ItemIcon class={WORDMARKS.has(vendor) ? `h-4 w-auto ${MARK_CLASS[vendor]}` : 'size-3.5'} />
+              <ItemIcon class="size-3.5 {MARK_CLASS[vendor]}" />
               {RIDE_VENDOR_LABELS[vendor]}
             </span>
           </Select.Item>
@@ -403,7 +395,6 @@
       {:else}
         <ul class="divide-y divide-border/50">
           {#each inBucket as e (e.id)}
-            {@const isWordmark = e.kind === 'ride' && e.vendor !== null && WORDMARKS.has(e.vendor)}
             {@const BadgeIcon = e.kind === 'ride' && e.vendor ? VENDOR_ICON[e.vendor] : KIND_ICON[e.kind]}
             <li class="flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5 text-sm">
               <span class="w-14 font-mono text-xs uppercase tabular-nums">{formatDay(e.date)}</span>
@@ -412,13 +403,8 @@
                   e.kind
                 ].badgeClass}"
               >
-                {#if isWordmark && e.vendor}
-                  <BadgeIcon class="h-3.5 w-auto {MARK_CLASS[e.vendor]}" />
-                  <span class="sr-only">{badgeLabel(e)}</span>
-                {:else}
-                  <BadgeIcon class="size-3" />
-                  {badgeLabel(e)}
-                {/if}
+                <BadgeIcon class="size-3 {e.kind === 'ride' && e.vendor ? MARK_CLASS[e.vendor] : ''}" />
+                {badgeLabel(e)}
               </span>
               {#if e.kind === 'ride' && e.direction && e.direction !== 'other'}
                 {@const DirIcon = DIRECTION_ICON[e.direction]}
