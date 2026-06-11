@@ -44,6 +44,10 @@
   // svelte-ignore state_referenced_locally
   let otMultiplierValue = $state(data.otMultiplier);
   // svelte-ignore state_referenced_locally
+  let goalEnabled = $state(data.goalEnabled);
+  // svelte-ignore state_referenced_locally
+  let yearlyGoalValue = $state(data.yearlyGoal);
+  // svelte-ignore state_referenced_locally
   let weekStartsOnValue = $state(String(data.weekStartsOn));
   // svelte-ignore state_referenced_locally
   let epochValue = $state(data.epoch);
@@ -88,6 +92,7 @@
       ['hideWeekendsGrid', DEFAULT_SETTINGS.hideWeekendsGrid],
       ['expandNotes', DEFAULT_SETTINGS.expandNotes],
       ['observeDst', DEFAULT_SETTINGS.observeDst],
+      ['countExpenses', DEFAULT_SETTINGS.countExpenses],
     ];
     for (const [name, value] of flags) {
       const el = formEl.elements.namedItem(name);
@@ -95,6 +100,8 @@
     }
     otEnabled = DEFAULT_SETTINGS.otMultiplierEnabled;
     otMultiplierValue = DEFAULT_SETTINGS.otMultiplier;
+    goalEnabled = DEFAULT_SETTINGS.goalEnabled;
+    yearlyGoalValue = DEFAULT_SETTINGS.yearlyGoal;
     weekStartsOnValue = String(DEFAULT_SETTINGS.weekStartsOn);
     resetOpen = false;
     await tick();
@@ -439,6 +446,81 @@
             <p class="text-xs text-muted-foreground">
               Every add, edit, and delete on the ledger, timestamped, with a snapshot of the entry as it was.
             </p>
+          </section>
+        </Card.Content>
+      </Card.Root>
+
+      <Card.Root>
+        <Card.Header class="max-md:text-center">
+          <Card.Title>Dashboard</Card.Title>
+        </Card.Header>
+        <Card.Content class="flex flex-col divide-y divide-border/50">
+          <section class="flex flex-col gap-3 pb-5">
+            <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">Goal</h3>
+            <div class="rounded-md border border-input text-sm transition-colors has-checked:border-primary has-checked:bg-accent">
+              <label class="flex cursor-pointer items-start gap-2 px-3 py-2">
+                <input type="checkbox" name="goalEnabled" bind:checked={goalEnabled} class="mt-0.5 accent-primary" />
+                <span>
+                  <span class="font-medium">Chase a yearly goal</span>
+                  <span class="block text-xs text-muted-foreground">
+                    Target take-home for the year — e.g. stretching for $82k on an $80k salary via overtime. Off keeps
+                    the target at straight salary math.
+                  </span>
+                </span>
+              </label>
+              <!-- Disabled while toggled off so it's fully inert; a disabled input
+                   doesn't submit, so a hidden input carries the bound value and a
+                   custom goal isn't silently reset on save. -->
+              <div
+                class="flex items-center justify-between gap-3 border-t border-border/50 px-3 py-2 transition-opacity {goalEnabled
+                  ? ''
+                  : 'opacity-50'}"
+              >
+                <Label for="yearlyGoal">Yearly goal (USD)</Label>
+                {#if !goalEnabled}
+                  <input type="hidden" name="yearlyGoal" value={yearlyGoalValue} />
+                {/if}
+                <div class="relative w-32 shrink-0">
+                  <span
+                    aria-hidden="true"
+                    class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground"
+                  >
+                    $
+                  </span>
+                  <Input
+                    id="yearlyGoal"
+                    type="number"
+                    name="yearlyGoal"
+                    step="500"
+                    min="0"
+                    max="10000000"
+                    bind:value={yearlyGoalValue}
+                    required
+                    disabled={!goalEnabled}
+                    class="pl-7 text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="flex flex-col gap-3 pt-5">
+            <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">
+              Expenses
+            </h3>
+            <label
+              class="flex cursor-pointer items-start gap-2 rounded-md border border-input px-3 py-2 text-sm transition-colors has-checked:border-primary has-checked:bg-accent"
+            >
+              <input type="checkbox" name="countExpenses" checked={data.countExpenses} class="mt-0.5 accent-primary" />
+              <span>
+                <span class="font-medium">Count expenses by default</span>
+                <span class="block text-xs text-muted-foreground">
+                  The dashboard opens with logged expenses folded into the hours to make up. Its per-period toggle
+                  still flips it per visit.
+                </span>
+              </span>
+            </label>
+            <p class="text-xs text-muted-foreground">Bonus tracking is planned and will live here.</p>
           </section>
         </Card.Content>
       </Card.Root>
