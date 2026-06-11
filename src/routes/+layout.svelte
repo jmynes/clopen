@@ -102,10 +102,10 @@
             {@const Icon = link.icon}
             <a
               href={link.href}
-              class="relative flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors hover:bg-accent hover:text-accent-foreground {isActive(
+              class="nav-link relative flex items-center gap-1.5 px-3 py-1.5 transition-colors hover:text-foreground {isActive(
                 link.href,
               )
-                ? 'bg-accent text-accent-foreground font-medium'
+                ? 'nav-link--active text-foreground font-medium'
                 : 'text-muted-foreground'}"
               aria-current={isActive(link.href) ? 'page' : undefined}
             >
@@ -306,6 +306,29 @@
 </Tooltip.Provider>
 
 <style>
+  /* Desktop nav underline: sweeps in from the left on hover, retracts to
+     the right on leave; the active link keeps it drawn. Same idiom as
+     hexhive's header nav. */
+  .nav-link::after {
+    content: '';
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 0;
+    height: 2px;
+    background: var(--primary);
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform 0.25s ease;
+  }
+  .nav-link--active::after {
+    transform: scaleX(1);
+  }
+  .nav-link:hover::after {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+
   /* Same animated hamburger as hexhive/punt: three bars that morph into an X. */
   .hamburger-bar {
     width: 1.25rem;
