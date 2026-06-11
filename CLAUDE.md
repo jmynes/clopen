@@ -122,9 +122,11 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
     first, server cap 1000). The audit page merges `entry_events` and
     `expense_events` into one timeline with Entry/Expense source badges.
   - `expenses`: `id`, `date` (ISO local-day), `amount` (dollars), `kind`
-    (from `$lib/expense-kinds`), `vendor` / `direction` (ride-only detail
-    axes, null elsewhere and on legacy rows), `note`, `createdAt`,
-    `updatedAt` — same timestamp semantics as entries.
+    (from `$lib/expense-kinds`), `vendor` (shared column, values scoped per
+    kind by `KIND_VENDORS`), `direction` (ride-only commute leg) / `method`
+    (meal-only delivery-vs-pickup) — detail axes are null on other kinds and
+    legacy rows — `note`, `createdAt`, `updatedAt` (same timestamp semantics
+    as entries).
   - `expense_events`: mirror of `entry_events` with `expenseId`; written
     inside the repo implementations' CRUD (server + demo, demo capped at
     500/bucket). `Repo` exposes `listExpenseEvents()` plus `listExpenses` /
@@ -182,10 +184,13 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   set minus 'work'), `LEAVE_META` (label / short / paid / color family), and
   `leaveHours(kind, dailyHours)`.
 - `src/lib/expense-kinds.ts` — expense taxonomy: `EXPENSE_KINDS`
-  (`'ride' | 'other'`), `EXPENSE_META` (label / badge classes), plus the
-  ride-only detail axes: `RIDE_VENDORS` (`uber | lyft | other`) and
-  `RIDE_DIRECTIONS` (`to_work | to_home | other`) with label maps. Append to
-  extend; the DB columns are plain text so no migration is needed.
+  (`'ride' | 'meal' | 'other'`), `EXPENSE_META` (label / badge classes —
+  ride amber, meal teal), `EXPENSE_VENDORS` + `KIND_VENDORS` (per-kind
+  vendor lists: ride → uber/lyft/other, meal → uber_eats/grubhub/restaurant)
+  with `VENDOR_LABELS`, plus the per-kind second axes `RIDE_DIRECTIONS`
+  (`to_work | to_home | other`) and `MEAL_METHODS` (`delivery | pickup`)
+  with label maps. Append to extend; the DB columns are plain text so no
+  migration is needed.
   Uber/Lyft brand glyphs come from `@fortawesome/free-brands-svg-icons`
   (data-only pack, icons CC BY 4.0 — lucide dropped brand icons), rendered
   by `$lib/components/brand/BrandIcon.svelte` (a 15-line IconDefinition →
@@ -201,8 +206,8 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
     `EntryInput` whose `entryKind` reflects the kind and whose `hours` is the
     daily baseline for paid kinds, 0 for unpaid.
   - `expenseInput` — ISO date + positive dollar amount (≤ 100k) + kind +
-    optional vendor/direction (scrubbed to null on non-ride kinds) +
-    optional note (blank → null).
+    optional vendor/direction/method (each scrubbed to null when it doesn't
+    belong to the kind) + optional note (blank → null).
   - `settingsInput` — adds `epoch` (ISO regex), `timeFormat` (`12h | 24h`),
     `ledgerPeriod` (`LEDGER_PERIODS` enum, also exported here), the
     `hideWeekendsEntries` / `hideWeekendsGrid` / `expandNotes` booleans, and
@@ -267,16 +272,18 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   `table-fixed` keeps appends cheap); and the weekly grid mounts one frame
   after the page paints behind `gridReady`.
 - `src/routes/expenses/+page.*` — expenses tab (4th): an add form (DateField
-  date / kind / amount / note, plus Service and Direction selects that appear
-  only while kind = ride), a period-paginated list using the dashboard's
-  bucket math (opens to `ledgerPeriod`, prev disabled at the epoch, DateJump
-  floored there) with a period total in the header, and edit/delete dialogs.
-  The three dropdowns are icon-bearing shadcn `Select`s defined once as
-  snippets (`kindSelect` / `vendorSelect` / `directionSelect`) shared by the
-  add form and edit dialog — display-only, with hidden inputs carrying the
-  values into the POST (the log grid's Select idiom). List rows badge a
-  known vendor's wordmark in place of the generic "Ride" label and echo the
-  direction as icon + text. A shared `expenseEnhance(action, after?)`
+  date / kind / amount / note, plus a kind-scoped Service select and a
+  second axis — Direction for rides, Method for meals — that swap with the
+  kind), a period-paginated list using the dashboard's bucket math (opens to
+  `ledgerPeriod`, prev disabled at the epoch, DateJump floored there) with a
+  period total in the header, and edit/delete dialogs. The dropdowns are
+  icon-bearing shadcn `Select`s defined once as snippets (`kindSelect` /
+  `vendorSelect` / `directionSelect` / `methodSelect`) shared by the add
+  form and edit dialog — display-only, with hidden inputs carrying the
+  values into the POST (the log grid's Select idiom); `detailDefaults(kind)`
+  resets the axes when the kind flips. List rows badge a known vendor's
+  glyph + label in place of the generic kind label and echo the
+  direction/method as icon + text. A shared `expenseEnhance(action, after?)`
   factory branches demo mutations to `demoRepo` + `invalidate('demo:data')`.
   Validation errors surface as a single `expenseError` line under the add
   form. Footer note links the audit log and flags that bonus tracking is

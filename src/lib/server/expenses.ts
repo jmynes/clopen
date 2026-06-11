@@ -37,6 +37,7 @@ export async function addExpense(input: ExpenseInput, database: Database = defau
       kind: input.kind,
       vendor: input.vendor,
       direction: input.direction,
+      method: input.method,
       note: input.note,
     })
     .returning();
@@ -53,6 +54,7 @@ export async function updateExpense(id: string, input: ExpenseInput, database: D
       kind: input.kind,
       vendor: input.vendor,
       direction: input.direction,
+      method: input.method,
       note: input.note,
       updatedAt: Math.floor(Date.now() / 1000),
     })

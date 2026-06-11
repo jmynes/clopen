@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
-import { EXPENSE_KINDS, RIDE_DIRECTIONS, RIDE_VENDORS } from '$lib/expense-kinds';
+import { EXPENSE_KINDS, EXPENSE_VENDORS, MEAL_METHODS, RIDE_DIRECTIONS } from '$lib/expense-kinds';
 import { ENTRY_KINDS } from '$lib/leave-kinds';
 import { CLOCK_BREAK_MODES, LEDGER_PERIODS } from '$lib/schemas/settings';
 
@@ -123,9 +123,11 @@ export const expenses = sqliteTable('expenses', {
   date: text('date').notNull(),
   amount: real('amount').notNull(),
   kind: text('kind', { enum: EXPENSE_KINDS }).notNull().default('ride'),
-  /** Ride-only: who drove and which commute leg. Null on other kinds. */
-  vendor: text('vendor', { enum: RIDE_VENDORS }),
+  /** Who the money went to; values are scoped per kind (KIND_VENDORS). */
+  vendor: text('vendor', { enum: EXPENSE_VENDORS }),
+  /** Ride-only commute leg / meal-only delivery-vs-pickup. Null elsewhere. */
   direction: text('direction', { enum: RIDE_DIRECTIONS }),
+  method: text('method', { enum: MEAL_METHODS }),
   note: text('note'),
   createdAt: integer('created_at').notNull().default(sql`(unixepoch())`),
   /** Epoch seconds of the last edit; null = never edited since creation. */

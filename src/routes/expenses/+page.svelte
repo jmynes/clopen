@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Bike from '@lucide/svelte/icons/bike';
   import Briefcase from '@lucide/svelte/icons/briefcase';
   import CalendarCheck from '@lucide/svelte/icons/calendar-check';
   import CarTaxiFront from '@lucide/svelte/icons/car-taxi-front';
@@ -9,7 +10,11 @@
   import Plus from '@lucide/svelte/icons/plus';
   import Receipt from '@lucide/svelte/icons/receipt';
   import Route from '@lucide/svelte/icons/route';
+  import ShoppingBag from '@lucide/svelte/icons/shopping-bag';
+  import Soup from '@lucide/svelte/icons/soup';
   import Trash2 from '@lucide/svelte/icons/trash-2';
+  import Utensils from '@lucide/svelte/icons/utensils';
+  import UtensilsCrossed from '@lucide/svelte/icons/utensils-crossed';
   import type { SubmitFunction } from '@sveltejs/kit';
   import { enhance } from '$app/forms';
   import { invalidate } from '$app/navigation';
@@ -32,12 +37,15 @@
     EXPENSE_KINDS,
     EXPENSE_META,
     type ExpenseKind,
+    type ExpenseVendor,
+    KIND_VENDORS,
+    MEAL_METHOD_LABELS,
+    MEAL_METHODS,
+    type MealMethod,
     RIDE_DIRECTION_LABELS,
     RIDE_DIRECTIONS,
-    RIDE_VENDOR_LABELS,
-    RIDE_VENDORS,
     type RideDirection,
-    type RideVendor,
+    VENDOR_LABELS,
   } from '$lib/expense-kinds';
   import type { LedgerPeriod } from '$lib/schemas/settings';
   import { addDays, weekDates } from '$lib/timesheet';
@@ -143,31 +151,51 @@
   // ride-only vendor/direction fields appear as the kind flips to ride.
   let addDate = $state(todayISO());
   let addKind = $state<ExpenseKind>('ride');
-  let addVendor = $state<RideVendor>('uber');
+  let addVendor = $state<ExpenseVendor>('uber');
   let addDirection = $state<RideDirection>('to_work');
+  let addMethod = $state<MealMethod>('delivery');
   let editKind = $state<ExpenseKind>('ride');
-  let editVendor = $state<RideVendor>('other');
+  let editVendor = $state<ExpenseVendor>('other');
   let editDirection = $state<RideDirection>('other');
+  let editMethod = $state<MealMethod>('delivery');
   let editing = $state<Expense | null>(null);
   let deleting = $state<Expense | null>(null);
   let submitting = $state(false);
 
-  // The Uber/Lyft marks are wordmarks, so they render alone (with sr-only
-  // text); everything else pairs a lucide glyph with its label.
-  const KIND_ICON = { ride: CarTaxiFront, other: Receipt } as const;
-  const VENDOR_ICON = { uber: UberIcon, lyft: LyftIcon, other: CarTaxiFront } as const;
+  const KIND_ICON = { ride: CarTaxiFront, meal: UtensilsCrossed, other: Receipt } as const;
+  // No FA brand glyph exists for Uber Eats (reuses Uber's badge in the brand
+  // green) or Grubhub (lucide soup in its orange).
+  const VENDOR_ICON = {
+    uber: UberIcon,
+    lyft: LyftIcon,
+    uber_eats: UberIcon,
+    grubhub: Soup,
+    restaurant: Utensils,
+    other: CarTaxiFront,
+  } as const;
   const DIRECTION_ICON = { to_work: Briefcase, to_home: House, other: Route } as const;
-  // Lyft's glyph carries its brand pink; Uber's solid badge reads fine in
-  // whatever text color surrounds it.
-  const MARK_CLASS: Record<RideVendor, string> = {
+  const METHOD_ICON = { delivery: Bike, pickup: ShoppingBag } as const;
+  const MARK_CLASS: Record<ExpenseVendor, string> = {
     uber: '',
     lyft: 'text-[#ff00bf]',
+    uber_eats: 'text-[#06c167]',
+    grubhub: 'text-orange-500',
+    restaurant: '',
     other: '',
   };
 
-  /** Row display: a known vendor replaces the generic "Ride" badge label. */
+  /** Row display: a known vendor replaces the generic kind badge label. */
   function badgeLabel(e: Expense): string {
-    return e.kind === 'ride' && e.vendor ? RIDE_VENDOR_LABELS[e.vendor] : EXPENSE_META[e.kind].label;
+    return e.vendor ? VENDOR_LABELS[e.vendor] : EXPENSE_META[e.kind].label;
+  }
+
+  /** Reset the detail axes to kind-appropriate defaults when kind changes. */
+  function detailDefaults(kind: ExpenseKind): { vendor: ExpenseVendor; direction: RideDirection; method: MealMethod } {
+    return {
+      vendor: KIND_VENDORS[kind][0] ?? 'other',
+      direction: 'to_work',
+      method: 'delivery',
+    };
   }
 
   // Shared enhance: demo cancels the POST and runs the core action against
@@ -226,30 +254,57 @@
   </div>
 {/snippet}
 
-{#snippet vendorSelect(id: string, value: RideVendor, set: (v: RideVendor) => void)}
+{#snippet vendorSelect(id: string, kind: ExpenseKind, value: ExpenseVendor, set: (v: ExpenseVendor) => void)}
   {@const Mark = VENDOR_ICON[value]}
   <div class="flex flex-col gap-1.5">
     <Label for={id}>Service</Label>
-    <Select.Root type="single" {value} onValueChange={(v) => set(v as RideVendor)}>
+    <Select.Root type="single" {value} onValueChange={(v) => set(v as ExpenseVendor)}>
       <Select.Trigger {id} aria-label="Service" class="w-full">
         <span class="inline-flex min-w-0 items-center gap-1.5">
           <Mark class="size-3.5 shrink-0 {MARK_CLASS[value]}" />
-          <span class="min-w-0 truncate text-xs">{RIDE_VENDOR_LABELS[value]}</span>
+          <span class="min-w-0 truncate text-xs">{VENDOR_LABELS[value]}</span>
         </span>
       </Select.Trigger>
       <Select.Content>
-        {#each RIDE_VENDORS as vendor (vendor)}
+        {#each KIND_VENDORS[kind] as vendor (vendor)}
           {@const ItemIcon = VENDOR_ICON[vendor]}
-          <Select.Item value={vendor} label={RIDE_VENDOR_LABELS[vendor]}>
+          <Select.Item value={vendor} label={VENDOR_LABELS[vendor]}>
             <span class="inline-flex items-center gap-2">
               <ItemIcon class="size-3.5 {MARK_CLASS[vendor]}" />
-              {RIDE_VENDOR_LABELS[vendor]}
+              {VENDOR_LABELS[vendor]}
             </span>
           </Select.Item>
         {/each}
       </Select.Content>
     </Select.Root>
     <input type="hidden" name="vendor" {value} />
+  </div>
+{/snippet}
+
+{#snippet methodSelect(id: string, value: MealMethod, set: (v: MealMethod) => void)}
+  {@const MethodIcon = METHOD_ICON[value]}
+  <div class="flex flex-col gap-1.5">
+    <Label for={id}>Method</Label>
+    <Select.Root type="single" {value} onValueChange={(v) => set(v as MealMethod)}>
+      <Select.Trigger {id} aria-label="Method" class="w-full">
+        <span class="inline-flex min-w-0 items-center gap-1.5">
+          <MethodIcon class="size-3.5 shrink-0" />
+          <span class="min-w-0 truncate text-xs">{MEAL_METHOD_LABELS[value]}</span>
+        </span>
+      </Select.Trigger>
+      <Select.Content>
+        {#each MEAL_METHODS as method (method)}
+          {@const ItemIcon = METHOD_ICON[method]}
+          <Select.Item value={method} label={MEAL_METHOD_LABELS[method]}>
+            <span class="inline-flex items-center gap-2">
+              <ItemIcon class="size-3.5" />
+              {MEAL_METHOD_LABELS[method]}
+            </span>
+          </Select.Item>
+        {/each}
+      </Select.Content>
+    </Select.Root>
+    <input type="hidden" name="method" {value} />
   </div>
 {/snippet}
 
@@ -284,7 +339,7 @@
   <div class="max-md:text-center">
     <h1 class="text-2xl font-semibold tracking-tight">Expenses</h1>
     <p class="mt-1 text-sm text-muted-foreground">
-      Work-related costs — rides to and from shifts, for now. The dashboard can fold these into the hours to make up.
+      Work-related costs — rides and meals, for now. The dashboard can fold these into the hours to make up.
     </p>
   </div>
 
@@ -298,18 +353,24 @@
         method="POST"
         action="?/add"
         use:enhance={expenseEnhance('add', () => (addDate = todayISO()))}
-        class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:items-end {addKind === 'ride'
-          ? 'lg:grid-cols-[9rem_6.5rem_6.5rem_7.5rem_6.5rem_1fr_auto]'
-          : 'lg:grid-cols-[10rem_8rem_8rem_1fr_auto]'}"
+        class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:items-end {addKind === 'other'
+          ? 'lg:grid-cols-[10rem_8rem_8rem_1fr_auto]'
+          : 'lg:grid-cols-[9rem_6.5rem_7.5rem_7.5rem_6.5rem_1fr_auto]'}"
       >
         <div class="flex flex-col gap-1.5">
           <Label for="expense-date">Date</Label>
           <DateField id="expense-date" name="date" bind:value={addDate} min={data.epoch} />
         </div>
-        {@render kindSelect('expense-kind', addKind, (v) => (addKind = v))}
+        {@render kindSelect('expense-kind', addKind, (v) => {
+          addKind = v;
+          ({ vendor: addVendor, direction: addDirection, method: addMethod } = detailDefaults(v));
+        })}
         {#if addKind === 'ride'}
-          {@render vendorSelect('expense-vendor', addVendor, (v) => (addVendor = v))}
+          {@render vendorSelect('expense-vendor', 'ride', addVendor, (v) => (addVendor = v))}
           {@render directionSelect('expense-direction', addDirection, (v) => (addDirection = v))}
+        {:else if addKind === 'meal'}
+          {@render vendorSelect('expense-vendor', 'meal', addVendor, (v) => (addVendor = v))}
+          {@render methodSelect('expense-method', addMethod, (v) => (addMethod = v))}
         {/if}
         <div class="flex flex-col gap-1.5">
           <Label for="expense-amount">Amount (USD)</Label>
@@ -395,7 +456,7 @@
       {:else}
         <ul class="divide-y divide-border/50">
           {#each inBucket as e (e.id)}
-            {@const BadgeIcon = e.kind === 'ride' && e.vendor ? VENDOR_ICON[e.vendor] : KIND_ICON[e.kind]}
+            {@const BadgeIcon = e.vendor ? VENDOR_ICON[e.vendor] : KIND_ICON[e.kind]}
             <li class="flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5 text-sm">
               <span class="w-14 font-mono text-xs uppercase tabular-nums">{formatDay(e.date)}</span>
               <span
@@ -403,14 +464,21 @@
                   e.kind
                 ].badgeClass}"
               >
-                <BadgeIcon class="size-3 {e.kind === 'ride' && e.vendor ? MARK_CLASS[e.vendor] : ''}" />
+                <BadgeIcon class="size-3 {e.vendor ? MARK_CLASS[e.vendor] : ''}" />
                 {badgeLabel(e)}
               </span>
-              {#if e.kind === 'ride' && e.direction && e.direction !== 'other'}
+              {#if e.direction && e.direction !== 'other'}
                 {@const DirIcon = DIRECTION_ICON[e.direction]}
                 <span class="inline-flex items-center gap-1 text-xs text-muted-foreground">
                   <DirIcon class="size-3.5" />
                   {RIDE_DIRECTION_LABELS[e.direction].toLowerCase()}
+                </span>
+              {/if}
+              {#if e.method}
+                {@const MethodIcon = METHOD_ICON[e.method]}
+                <span class="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <MethodIcon class="size-3.5" />
+                  {MEAL_METHOD_LABELS[e.method].toLowerCase()}
                 </span>
               {/if}
               {#if e.note}<span class="max-w-56 truncate text-xs text-muted-foreground">{e.note}</span>{/if}
@@ -422,9 +490,11 @@
                   title="Edit expense"
                   aria-label="Edit expense"
                   onclick={() => {
+                    const defaults = detailDefaults(e.kind);
                     editKind = e.kind;
-                    editVendor = e.vendor ?? 'other';
-                    editDirection = e.direction ?? 'other';
+                    editVendor = e.vendor ?? defaults.vendor;
+                    editDirection = e.direction ?? defaults.direction;
+                    editMethod = e.method ?? defaults.method;
                     editing = e;
                   }}
                 >
@@ -478,10 +548,16 @@
           <Label for="edit-expense-date">Date</Label>
           <DateField id="edit-expense-date" name="date" value={editing.date} min={data.epoch} />
         </div>
-        {@render kindSelect('edit-expense-kind', editKind, (v) => (editKind = v))}
+        {@render kindSelect('edit-expense-kind', editKind, (v) => {
+          editKind = v;
+          ({ vendor: editVendor, direction: editDirection, method: editMethod } = detailDefaults(v));
+        })}
         {#if editKind === 'ride'}
-          {@render vendorSelect('edit-expense-vendor', editVendor, (v) => (editVendor = v))}
+          {@render vendorSelect('edit-expense-vendor', 'ride', editVendor, (v) => (editVendor = v))}
           {@render directionSelect('edit-expense-direction', editDirection, (v) => (editDirection = v))}
+        {:else if editKind === 'meal'}
+          {@render vendorSelect('edit-expense-vendor', 'meal', editVendor, (v) => (editVendor = v))}
+          {@render methodSelect('edit-expense-method', editMethod, (v) => (editMethod = v))}
         {/if}
         <div class="flex flex-col gap-1.5">
           <Label for="edit-expense-amount">Amount (USD)</Label>

@@ -195,6 +195,7 @@ function expenseFromInput(
     kind: input.kind,
     vendor: input.vendor,
     direction: input.direction,
+    method: input.method,
     note: input.note,
     createdAt,
     updatedAt,

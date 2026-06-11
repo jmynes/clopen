@@ -29,6 +29,7 @@ function parseExpense(form: FormData) {
     kind: form.get('kind'),
     vendor: form.get('vendor') ?? undefined,
     direction: form.get('direction') ?? undefined,
+    method: form.get('method') ?? undefined,
     note: form.get('note') ?? undefined,
   });
 }

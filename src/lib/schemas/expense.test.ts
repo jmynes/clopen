@@ -12,6 +12,7 @@ describe('expenseInput', () => {
       kind: 'ride',
       vendor: null,
       direction: null,
+      method: null,
       note: 'Uber to the office',
     });
   });
@@ -22,15 +23,33 @@ describe('expenseInput', () => {
     expect(out.direction).toBe('to_home');
   });
 
-  it('forces vendor and direction to null on non-ride kinds', () => {
-    const out = expenseInput.parse({ ...valid, kind: 'other', vendor: 'uber', direction: 'to_work' });
-    expect(out.vendor).toBeNull();
-    expect(out.direction).toBeNull();
+  it('keeps vendor and method on a meal', () => {
+    const out = expenseInput.parse({ ...valid, kind: 'meal', vendor: 'uber_eats', method: 'pickup' });
+    expect(out.vendor).toBe('uber_eats');
+    expect(out.method).toBe('pickup');
   });
 
-  it('rejects an unknown vendor or direction', () => {
+  it('scrubs detail axes that do not belong to the kind', () => {
+    // A meal vendor on a ride, a direction on a meal, a method on a ride.
+    expect(expenseInput.parse({ ...valid, vendor: 'grubhub' }).vendor).toBeNull();
+    expect(
+      expenseInput.parse({ ...valid, kind: 'meal', vendor: 'restaurant', direction: 'to_work' }).direction,
+    ).toBeNull();
+    expect(expenseInput.parse({ ...valid, vendor: 'uber', method: 'delivery' }).method).toBeNull();
+    const other = expenseInput.parse({
+      ...valid,
+      kind: 'other',
+      vendor: 'uber',
+      direction: 'to_work',
+      method: 'pickup',
+    });
+    expect([other.vendor, other.direction, other.method]).toEqual([null, null, null]);
+  });
+
+  it('rejects an unknown vendor, direction, or method', () => {
     expect(expenseInput.safeParse({ ...valid, vendor: 'waymo' }).success).toBe(false);
     expect(expenseInput.safeParse({ ...valid, direction: 'sideways' }).success).toBe(false);
+    expect(expenseInput.safeParse({ ...valid, kind: 'meal', method: 'teleport' }).success).toBe(false);
   });
 
   it('rejects a zero amount', () => {

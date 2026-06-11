@@ -4,7 +4,7 @@
   import * as Card from '$lib/components/ui/card';
   import { formatDay, formatTimeRange, formatTimestamp } from '$lib/date';
   import type { EntryEvent, Expense, ExpenseEvent, TimeEntry } from '$lib/db/schema';
-  import { EXPENSE_META, RIDE_DIRECTION_LABELS, RIDE_VENDOR_LABELS } from '$lib/expense-kinds';
+  import { EXPENSE_META, MEAL_METHOD_LABELS, RIDE_DIRECTION_LABELS, VENDOR_LABELS } from '$lib/expense-kinds';
   import { LEAVE_META } from '$lib/leave-kinds';
   import type { PageData } from './$types';
 
@@ -66,12 +66,12 @@
     }
   }
 
-  // E.g. "Uber · to work · $18.50"; vendor falls back to the kind label.
+  // E.g. "Uber · to work · $18.50" or "Grubhub · delivery · $24.00";
+  // vendor falls back to the kind label.
   function expenseDetail(s: Expense): string {
-    const bits = [s.kind === 'ride' && s.vendor ? RIDE_VENDOR_LABELS[s.vendor] : EXPENSE_META[s.kind].label];
-    if (s.kind === 'ride' && s.direction && s.direction !== 'other') {
-      bits.push(RIDE_DIRECTION_LABELS[s.direction].toLowerCase());
-    }
+    const bits = [s.vendor ? VENDOR_LABELS[s.vendor] : EXPENSE_META[s.kind].label];
+    if (s.direction && s.direction !== 'other') bits.push(RIDE_DIRECTION_LABELS[s.direction].toLowerCase());
+    if (s.method) bits.push(MEAL_METHOD_LABELS[s.method].toLowerCase());
     bits.push(money.format(s.amount));
     return bits.join(' · ');
   }
