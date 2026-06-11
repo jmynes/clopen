@@ -30,7 +30,15 @@ export function listExpenses(database: Database = defaultDb): Promise<Expense[]>
 export async function addExpense(input: ExpenseInput, database: Database = defaultDb): Promise<Expense> {
   const [created] = await database
     .insert(expenses)
-    .values({ id: nanoid(), date: input.date, amount: input.amount, kind: input.kind, note: input.note })
+    .values({
+      id: nanoid(),
+      date: input.date,
+      amount: input.amount,
+      kind: input.kind,
+      vendor: input.vendor,
+      direction: input.direction,
+      note: input.note,
+    })
     .returning();
   await logEvent(database, 'add', created);
   return created;
@@ -43,6 +51,8 @@ export async function updateExpense(id: string, input: ExpenseInput, database: D
       date: input.date,
       amount: input.amount,
       kind: input.kind,
+      vendor: input.vendor,
+      direction: input.direction,
       note: input.note,
       updatedAt: Math.floor(Date.now() / 1000),
     })

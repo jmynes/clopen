@@ -9,7 +9,7 @@ import { addExpense, deleteExpense, listExpenseEvents, listExpenses, updateExpen
 type Db = ReturnType<typeof drizzle<typeof schema>>;
 
 function mk(partial: Partial<ExpenseInput> & { date: string; amount: number }): ExpenseInput {
-  return { kind: 'ride', note: null, ...partial };
+  return { kind: 'ride', vendor: null, direction: null, note: null, ...partial };
 }
 
 let db: Db;
@@ -46,6 +46,12 @@ describe('expenses CRUD', () => {
     const all = await listExpenses(db);
     expect(all[0]).toMatchObject({ date: '2026-06-11', amount: 22, kind: 'other', note: 'revised' });
     expect(all[0].updatedAt).not.toBeNull();
+  });
+
+  it('persists ride vendor and direction', async () => {
+    await addExpense(mk({ date: '2026-06-10', amount: 18.5, vendor: 'lyft', direction: 'from_work' }), db);
+    const all = await listExpenses(db);
+    expect(all[0]).toMatchObject({ vendor: 'lyft', direction: 'from_work' });
   });
 
   it('deletes an expense', async () => {

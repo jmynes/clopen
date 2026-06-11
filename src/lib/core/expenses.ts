@@ -27,6 +27,8 @@ function parseExpense(form: FormData) {
     date: form.get('date'),
     amount: form.get('amount'),
     kind: form.get('kind'),
+    vendor: form.get('vendor') ?? undefined,
+    direction: form.get('direction') ?? undefined,
     note: form.get('note') ?? undefined,
   });
 }

@@ -188,7 +188,17 @@ function expenseFromInput(
   createdAt: number,
   updatedAt: number | null = null,
 ): Expense {
-  return { id, date: input.date, amount: input.amount, kind: input.kind, note: input.note, createdAt, updatedAt };
+  return {
+    id,
+    date: input.date,
+    amount: input.amount,
+    kind: input.kind,
+    vendor: input.vendor,
+    direction: input.direction,
+    note: input.note,
+    createdAt,
+    updatedAt,
+  };
 }
 
 export const demoRepo: Repo = {

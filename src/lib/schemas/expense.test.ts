@@ -6,7 +6,31 @@ describe('expenseInput', () => {
 
   it('parses a valid expense and coerces the amount', () => {
     const out = expenseInput.parse(valid);
-    expect(out).toEqual({ date: '2026-06-11', amount: 18.5, kind: 'ride', note: 'Uber to the office' });
+    expect(out).toEqual({
+      date: '2026-06-11',
+      amount: 18.5,
+      kind: 'ride',
+      vendor: null,
+      direction: null,
+      note: 'Uber to the office',
+    });
+  });
+
+  it('keeps vendor and direction on a ride', () => {
+    const out = expenseInput.parse({ ...valid, vendor: 'lyft', direction: 'from_work' });
+    expect(out.vendor).toBe('lyft');
+    expect(out.direction).toBe('from_work');
+  });
+
+  it('forces vendor and direction to null on non-ride kinds', () => {
+    const out = expenseInput.parse({ ...valid, kind: 'other', vendor: 'uber', direction: 'to_work' });
+    expect(out.vendor).toBeNull();
+    expect(out.direction).toBeNull();
+  });
+
+  it('rejects an unknown vendor or direction', () => {
+    expect(expenseInput.safeParse({ ...valid, vendor: 'waymo' }).success).toBe(false);
+    expect(expenseInput.safeParse({ ...valid, direction: 'sideways' }).success).toBe(false);
   });
 
   it('rejects a zero amount', () => {
