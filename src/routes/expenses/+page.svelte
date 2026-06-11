@@ -158,6 +158,13 @@
   const VENDOR_ICON = { uber: UberIcon, lyft: LyftIcon, other: CarTaxiFront } as const;
   const DIRECTION_ICON = { to_work: Briefcase, to_home: House, other: Route } as const;
   const WORDMARKS = new Set<RideVendor>(['uber', 'lyft']);
+  // Brand colors keep the thin wordmark strokes legible on any background —
+  // Uber's mark especially washes out when it inherits a tinted text color.
+  const MARK_CLASS: Record<RideVendor, string> = {
+    uber: 'text-foreground',
+    lyft: 'text-[#ff00bf]',
+    other: '',
+  };
 
   /** Row display: a known vendor replaces the generic "Ride" badge label. */
   function badgeLabel(e: Expense): string {
@@ -228,7 +235,7 @@
       <Select.Trigger {id} aria-label="Service" class="w-full">
         {#if WORDMARKS.has(value)}
           <span class="inline-flex min-w-0 items-center">
-            <Mark class="h-3 w-auto" />
+            <Mark class="h-3.5 w-auto {MARK_CLASS[value]}" />
             <span class="sr-only">{RIDE_VENDOR_LABELS[value]}</span>
           </span>
         {:else}
@@ -242,15 +249,10 @@
         {#each RIDE_VENDORS as vendor (vendor)}
           {@const ItemIcon = VENDOR_ICON[vendor]}
           <Select.Item value={vendor} label={RIDE_VENDOR_LABELS[vendor]}>
-            {#if WORDMARKS.has(vendor)}
-              <ItemIcon class="h-3.5 w-auto" />
-              <span class="sr-only">{RIDE_VENDOR_LABELS[vendor]}</span>
-            {:else}
-              <span class="inline-flex items-center gap-2">
-                <ItemIcon class="size-3.5" />
-                {RIDE_VENDOR_LABELS[vendor]}
-              </span>
-            {/if}
+            <span class="inline-flex items-center gap-2">
+              <ItemIcon class={WORDMARKS.has(vendor) ? `h-4 w-auto ${MARK_CLASS[vendor]}` : 'size-3.5'} />
+              {RIDE_VENDOR_LABELS[vendor]}
+            </span>
           </Select.Item>
         {/each}
       </Select.Content>
@@ -410,8 +412,8 @@
                   e.kind
                 ].badgeClass}"
               >
-                {#if isWordmark}
-                  <BadgeIcon class="h-3 w-auto" />
+                {#if isWordmark && e.vendor}
+                  <BadgeIcon class="h-3.5 w-auto {MARK_CLASS[e.vendor]}" />
                   <span class="sr-only">{badgeLabel(e)}</span>
                 {:else}
                   <BadgeIcon class="size-3" />
