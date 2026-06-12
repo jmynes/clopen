@@ -1,0 +1,1 @@
+ALTER TABLE `settings` ADD `pay_cycle` text DEFAULT 'biweekly' NOT NULL;

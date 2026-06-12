@@ -12,6 +12,7 @@
   import { invalidate } from '$app/navigation';
   import { page } from '$app/state';
   import favicon from '$lib/assets/favicon.svg';
+  import DiscordIcon from '$lib/components/brand/DiscordIcon.svelte';
   import ClopenDoors from '$lib/components/ClopenDoors.svelte';
   import * as Tooltip from '$lib/components/ui/tooltip';
   import { isDemo } from '$lib/demo/flag';
@@ -281,6 +282,15 @@
         🄯 {year} Jordan Mynes
       </a>
       <span class="ml-auto mr-1 font-mono text-xs" title="App version">v{__APP_VERSION__}</span>
+      <a
+        href="https://discord.gg/DAmnh27qna"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="flex items-center gap-1.5 rounded-md px-2 py-1 transition-colors hover:bg-accent hover:text-accent-foreground"
+      >
+        <DiscordIcon class="size-3.5" />
+        Discord
+      </a>
       <a
         href="https://github.com/jmynes/clopen"
         target="_blank"

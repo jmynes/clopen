@@ -29,6 +29,7 @@
     switch (granularity) {
       case 'day':
       case 'week':
+      case 'biweek':
         // "Jan 05" — the bucket's start day.
         return formatWeekRange(b.start).split('–')[0].trim();
       case 'month':

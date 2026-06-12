@@ -26,6 +26,7 @@
     ariaDescribedby = undefined,
     class: className = undefined,
     onchange = undefined,
+    shortcuts = undefined,
   }: {
     id?: string;
     name: string;
@@ -37,6 +38,8 @@
     ariaDescribedby?: string;
     class?: string;
     onchange?: (iso: string) => void;
+    /** Optional footer of one-tap picks ("Today", "This week", …); values clamp to min/max. */
+    shortcuts?: Array<{ label: string; value: string }>;
   } = $props();
 
   const df = new DateFormatter('en-US', { dateStyle: 'medium' });
@@ -67,6 +70,17 @@
   });
 
   const displayText = $derived(selected ? df.format(selected.toDate(getLocalTimeZone())) : placeholder);
+
+  function pickShortcut(iso: string) {
+    let v = iso;
+    if (min && v < min) v = min;
+    if (max && v > max) v = max;
+    value = v;
+    // Let native form dirty-tracking / FormData observers notice the change.
+    hidden?.dispatchEvent(new Event('input', { bubbles: true }));
+    onchange?.(value);
+    open = false;
+  }
 </script>
 
 <Popover.Root bind:open>
@@ -103,6 +117,21 @@
         open = false;
       }}
     />
+    {#if shortcuts?.length}
+      <div class="flex flex-wrap gap-1.5 border-t border-border/60 p-2">
+        {#each shortcuts as shortcut (shortcut.label)}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            class="h-7 flex-1 whitespace-nowrap px-2 text-xs"
+            onclick={() => pickShortcut(shortcut.value)}
+          >
+            {shortcut.label}
+          </Button>
+        {/each}
+      </div>
+    {/if}
   </Popover.Content>
 </Popover.Root>
 

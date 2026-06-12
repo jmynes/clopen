@@ -48,6 +48,7 @@ export const DEFAULT_SETTINGS = {
   epoch: '2025-03-16',
   timeFormat: '12h',
   ledgerPeriod: 'month',
+  payCycle: 'biweekly',
   timeZone: 'America/Chicago',
   observeDst: true,
   clockBreakMode: 'accrue',

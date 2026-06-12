@@ -18,6 +18,10 @@ export type LedgerPeriod = (typeof LEDGER_PERIODS)[number];
 export const CLOCK_BREAK_MODES = ['accrue', 'split'] as const;
 export type ClockBreakMode = (typeof CLOCK_BREAK_MODES)[number];
 
+/** How often pay lands — what the dashboard's period and chart open to. */
+export const PAY_CYCLES = ['daily', 'weekly', 'biweekly', 'monthly'] as const;
+export type PayCycle = (typeof PAY_CYCLES)[number];
+
 const KNOWN_ZONES = new Set<string>(Intl.supportedValuesOf('timeZone'));
 
 /** Validated shape for the single settings row (form-friendly: numbers coerced). */
@@ -32,6 +36,7 @@ export const settingsInput = z.object({
   epoch: z.string().regex(ISO_DATE, 'Epoch must be a date like 2025-03-16'),
   timeFormat: z.enum(['12h', '24h']).default('12h'),
   ledgerPeriod: z.enum(LEDGER_PERIODS).default('month'),
+  payCycle: z.enum(PAY_CYCLES).default('biweekly'),
   timeZone: z
     .string()
     .refine((v) => v === 'UTC' || KNOWN_ZONES.has(v), 'Unknown timezone')

@@ -130,6 +130,7 @@
     epochValue = DEFAULT_SETTINGS.epoch;
     set('timeFormat', DEFAULT_SETTINGS.timeFormat);
     set('ledgerPeriod', DEFAULT_SETTINGS.ledgerPeriod);
+    set('payCycle', DEFAULT_SETTINGS.payCycle);
     set('timeZone', DEFAULT_SETTINGS.timeZone);
     set('clockBreakMode', DEFAULT_SETTINGS.clockBreakMode);
     set('defaultExpenseKind', DEFAULT_SETTINGS.defaultExpenseKind);
@@ -300,6 +301,26 @@
                       class="pl-7 text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     />
                   </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="flex flex-col gap-3 py-5">
+              <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">
+                Pay cycle
+              </h3>
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div class="flex flex-col gap-1.5">
+                  <Label for="payCycle">Paid every</Label>
+                  <select id="payCycle" name="payCycle" class={SELECT_CLASS}>
+                    <option value="daily" selected={data.payCycle === 'daily'}>Day</option>
+                    <option value="weekly" selected={data.payCycle === 'weekly'}>Week</option>
+                    <option value="biweekly" selected={data.payCycle === 'biweekly'}>Two weeks</option>
+                    <option value="monthly" selected={data.payCycle === 'monthly'}>Month</option>
+                  </select>
+                  <p class="text-xs text-muted-foreground">
+                    The dashboard's period selector and hours chart open to this cadence.
+                  </p>
                 </div>
               </div>
             </section>

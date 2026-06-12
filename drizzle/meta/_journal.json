@@ -183,6 +183,13 @@
       "when": 1781296020035,
       "tag": "0025_light_warlock",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1781297264462,
+      "tag": "0026_closed_madripoor",
+      "breakpoints": true
     }
   ]
 }

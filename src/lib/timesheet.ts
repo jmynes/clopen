@@ -222,7 +222,7 @@ export function weekDates(iso: string, weekStartsOn = 7): string[] {
   return Array.from({ length: 7 }, (_, i) => toISO(start + i * DAY_MS));
 }
 
-export type BucketGranularity = 'day' | 'week' | 'month' | 'quarter' | 'year';
+export type BucketGranularity = 'day' | 'week' | 'biweek' | 'month' | 'quarter' | 'year';
 
 export type BucketSummary = {
   /** The bucket's natural calendar start (may precede rangeStart) — the label. */
@@ -243,6 +243,13 @@ function bucketBounds(ms: number, granularity: BucketGranularity, weekStartsOn: 
     case 'week': {
       const start = ms - ((isoWeekday(ms) - weekStartsOn + 7) % 7) * DAY_MS;
       return [start, start + 7 * DAY_MS];
+    }
+    case 'biweek': {
+      // 14-day tiles. The iteration always starts at rangeStart and then steps
+      // by whole buckets, so anchoring each tile at its own week start phases
+      // the whole series off rangeStart's week.
+      const start = ms - ((isoWeekday(ms) - weekStartsOn + 7) % 7) * DAY_MS;
+      return [start, start + 14 * DAY_MS];
     }
     case 'month':
       return [Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1), Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)];

@@ -34,6 +34,7 @@ export function computeDashboard(
     goalEnabled: settingsRow.goalEnabled,
     yearlyGoal: settingsRow.yearlyGoal,
     countExpenses: settingsRow.countExpenses,
+    payCycle: settingsRow.payCycle,
     entries,
     expenses,
     savingsGoals,

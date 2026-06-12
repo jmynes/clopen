@@ -404,6 +404,7 @@ export const demoRepo: Repo = {
       epoch: input.epoch,
       timeFormat: input.timeFormat,
       ledgerPeriod: input.ledgerPeriod,
+      payCycle: input.payCycle,
       timeZone: input.timeZone,
       observeDst: input.observeDst,
       clockBreakMode: input.clockBreakMode,

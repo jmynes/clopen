@@ -12,7 +12,7 @@ import {
 } from '$lib/expense-kinds';
 import { ENTRY_KINDS } from '$lib/leave-kinds';
 import { GOAL_FUNDINGS } from '$lib/savings-goals';
-import { CLOCK_BREAK_MODES, LEDGER_PERIODS } from '$lib/schemas/settings';
+import { CLOCK_BREAK_MODES, LEDGER_PERIODS, PAY_CYCLES } from '$lib/schemas/settings';
 
 /**
  * One logged chunk of work. Multiple entries per calendar day are allowed
@@ -62,6 +62,8 @@ export const settings = sqliteTable('settings', {
     .default('12h'),
   /** Period the Ledger opens to (its selector still changes it per visit). */
   ledgerPeriod: text('ledger_period', { enum: LEDGER_PERIODS }).notNull().default('month'),
+  /** Pay cadence — the dashboard's period and chart granularity open to it. */
+  payCycle: text('pay_cycle', { enum: PAY_CYCLES }).notNull().default('biweekly'),
   /** IANA zone that defines "today" app-wide and stamps the clock. */
   timeZone: text('time_zone').notNull().default('America/Chicago'),
   /** Off pins the zone to its fixed standard-time offset (no DST shifts). */

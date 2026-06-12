@@ -64,7 +64,17 @@
     quarter: 'Quarterly',
     year: 'Yearly',
   };
-  let period = $state<Period>('biweek');
+  // The pay cycle decides what the dashboard opens to; the selectors still
+  // change it per visit. Daily pay has no hero period, so it opens weekly.
+  const CYCLE_PERIOD: Record<typeof data.payCycle, Period> = {
+    daily: 'week',
+    weekly: 'week',
+    biweekly: 'biweek',
+    monthly: 'month',
+  };
+  // Initial-only read; the selector mutates independently after first render.
+  // svelte-ignore state_referenced_locally
+  let period = $state<Period>(CYCLE_PERIOD[data.payCycle]);
   // Initial-only read of data.today; the anchor mutates independently after first render.
   // svelte-ignore state_referenced_locally
   let anchor = $state(data.today);
@@ -241,11 +251,20 @@
   const GRANULARITY_LABELS: Record<BucketGranularity, string> = {
     day: 'Daily',
     week: 'Weekly',
+    biweek: 'Bi-weekly',
     month: 'Monthly',
     quarter: 'Quarterly',
     year: 'Yearly',
   };
-  let chartGranularity = $state<BucketGranularity>('week');
+  const CYCLE_GRANULARITY: Record<typeof data.payCycle, BucketGranularity> = {
+    daily: 'day',
+    weekly: 'week',
+    biweekly: 'biweek',
+    monthly: 'month',
+  };
+  // Initial-only read; the select mutates independently after first render.
+  // svelte-ignore state_referenced_locally
+  let chartGranularity = $state<BucketGranularity>(CYCLE_GRANULARITY[data.payCycle]);
   const chartBuckets = $derived(
     bucketBreakdown({
       entries: data.entries,
@@ -283,6 +302,19 @@
     overtime: 'Dollars earned beyond your schedule since the start date',
     all: 'Every dollar earned since the start date',
   };
+
+  // One-tap "counting from" picks; DateField clamps them to the epoch floor.
+  const goalDateShortcuts = $derived.by(() => {
+    const m = Number(data.today.slice(5, 7));
+    const qm = String(Math.floor((m - 1) / 3) * 3 + 1).padStart(2, '0');
+    return [
+      { label: 'Today', value: data.today },
+      { label: 'This week', value: weekDates(data.today, data.weekStartsOn)[0] },
+      { label: 'This month', value: `${data.today.slice(0, 7)}-01` },
+      { label: 'This quarter', value: `${data.today.slice(0, 4)}-${qm}-01` },
+      { label: 'This year', value: `${data.today.slice(0, 4)}-01-01` },
+    ];
+  });
 
   // null = closed; id null = adding, otherwise editing that goal.
   let goalDialog = $state<{ id: string | null } | null>(null);
@@ -648,7 +680,7 @@
     <Card.Header class="flex flex-row flex-wrap items-center justify-between gap-2">
       <div>
         <Card.Title>{GRANULARITY_LABELS[chartGranularity]} hours · {data.year}</Card.Title>
-        <Card.Description>Logged vs. target, {chartGranularity} by {chartGranularity}</Card.Description>
+        <Card.Description>Logged vs. target, {GRANULARITY_LABELS[chartGranularity].toLowerCase()}</Card.Description>
       </div>
       <div class="flex items-center gap-2">
         <select
@@ -714,7 +746,7 @@
         </div>
         <div class="flex flex-col gap-1.5">
           <Label for="goal-start">Counting from</Label>
-          <DateField id="goal-start" name="startDate" bind:value={gStart} min={data.epoch} />
+          <DateField id="goal-start" name="startDate" bind:value={gStart} min={data.epoch} shortcuts={goalDateShortcuts} />
         </div>
         <div class="flex flex-col gap-1.5">
           <Label for="goal-allocation">Allocation (%)</Label>

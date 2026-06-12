@@ -112,6 +112,8 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
     false — entry notes start expanded in the Ledger),
     `ledgerPeriod` (`week | biweek | month | quarter | year`, default `month` —
     the period the Ledger opens to),
+    `payCycle` (`daily | weekly | biweekly | monthly`, default `biweekly` —
+    what the dashboard's period selector and chart granularity open to),
     `timeZone` (IANA, default `America/Chicago`) / `observeDst` (default true —
     off pins the zone to its fixed standard offset) / `clockBreakMode`
     (`accrue | split`, default `accrue` — how punch-clock breaks land),
@@ -267,7 +269,9 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   (2-digit day), `formatWeekRange`, `formatRangeISO` (generic two-date span used
   for bi-week labels).
 - `src/lib/csv.ts` — RFC-4180 CSV parser/serializer used by Export/Import.
-- `src/routes/+page.*` — dashboard. Period selector (default **bi-weekly**) +
+- `src/routes/+page.*` — dashboard. Period selector (opens to the `payCycle`
+  setting's mapping — daily pay falls back to weekly since the hero has no
+  day period) +
   prev/next/today nav + a `DateJump` calendar popover (jump to any date;
   month/year dropdowns and reachable days are floored at the epoch — the same
   component sits in the Log page's date bars) drives a derived bucket. The hero answers
@@ -299,8 +303,12 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   "Reached" at 100%); zero goals renders one slim dashed empty-state card.
   Math in `$lib/savings-goals.ts` (pure, tested). The stat grid's four cards
   carry foreground icons; only Net and Earned color their numbers, mirroring
-  the hero's hues. The hours chart below has a per-visit granularity select
-  (daily–yearly over `bucketBreakdown`, default weekly, still year-view),
+  the hero's hues. The goal dialog's "counting from" DateField carries a
+  shortcuts footer (Today / This week / month / quarter / year, clamped to
+  the epoch — an opt-in `shortcuts` prop on DateField). The hours chart
+  below has a per-visit granularity select (daily / weekly / bi-weekly /
+  monthly / quarterly / yearly over `bucketBreakdown`, opening to
+  `payCycle`, still year-view),
   a y-axis with nice-step gridlines, and bars in rose below target, success
   green at it, with a blue overtime cap above the dashed target line
   (legend: Above / Met / Below; the blue matches the goal bars) — rendered
@@ -381,10 +389,10 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   itself and silently block saves. Sections keep uppercase micro-headers.
   The Dashboard section leads with the yearly goal (toggle + readonly-when-off
   dollar field, same hidden-input idiom as the OT multiplier; **on by
-  default** — migration 0025 also flipped the existing row) and the
-  count-expenses default + "bonus tracking is planned" footnote, then the
-  former Pay & schedule content: pay rate, daily hours, and the overtime
-  multiplier. Log & Ledger opens with Schedule (week-start, tracking epoch,
+  default** — migration 0025 also flipped the existing row), the pay cycle
+  select, and the count-expenses default + "bonus tracking is planned"
+  footnote, then the former Pay & schedule content: pay rate, daily hours,
+  and the overtime multiplier. Log & Ledger opens with Schedule (week-start, tracking epoch,
   workday chips ordered by week start), then weekend visibility toggles,
   default ledger period, expand-notes-by-default, and the View audit log
   link. Clock & time keeps timezone (full IANA select) + observe-DST toggle +
@@ -401,7 +409,8 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   slide-down menu over a dim overlay. The Clock link shows a small `bg-success`
   dot while a shift is running (`data.openShift`). The footer shows the app
   version via `__APP_VERSION__`, defined in `vite.config.ts` from
-  `package.json` — no manual sync.
+  `package.json` — no manual sync — plus Discord (FA-brands `DiscordIcon`)
+  and GitHub links.
 - **Brand:** `src/lib/assets/clopen-doors-ampm.svg` is the pre-colored
   two-tone doors mark (sky `#0ea5e9` + rose `#f43f5e`, exported from Serif)
   and the single source for both the header (`ClopenDoors.svelte`) and

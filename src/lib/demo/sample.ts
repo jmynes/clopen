@@ -24,6 +24,7 @@ export const SAMPLE_SETTINGS: Settings = {
   epoch: SAMPLE_START,
   timeFormat: '12h',
   ledgerPeriod: 'month',
+  payCycle: 'biweekly',
   hideWeekendsEntries: false,
   hideWeekendsGrid: false,
   expandNotes: false,

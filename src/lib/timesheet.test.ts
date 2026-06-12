@@ -479,3 +479,25 @@ describe('bucketBreakdown', () => {
     expect(buckets[0]).toMatchObject({ start: '2026-01-01', logged: 0, target: 96 });
   });
 });
+
+describe('bucketBreakdown · biweek', () => {
+  const settings: WorkSettings = { hourlyRate: 10, dailyHours: 8, workdays: [1, 2, 3, 4, 5] };
+
+  it('tiles 14-day buckets phased from the range start week', () => {
+    // Sunday-start weeks: Jan 2026 begins mid-week (Thu); the first bi-week
+    // bucket starts at the week containing Jan 1 (Sun Dec 28) and runs 14 days.
+    const buckets = bucketBreakdown({
+      entries: [{ date: '2026-01-05', hours: 8 }],
+      rangeStart: '2026-01-01',
+      asOf: '2026-02-03',
+      settings,
+      weekStartsOn: 7,
+      granularity: 'biweek',
+    });
+    expect(buckets[0]).toMatchObject({ start: '2025-12-28', end: '2026-01-10', logged: 8 });
+    expect(buckets[1].start).toBe('2026-01-11');
+    expect(buckets[1].end).toBe('2026-01-24');
+    // Target of a clipped first bucket counts only in-range workdays (Jan 1–10 → 7 workdays).
+    expect(buckets[0].target).toBe(56);
+  });
+});
