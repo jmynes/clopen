@@ -11,14 +11,15 @@
   import Receipt from '@lucide/svelte/icons/receipt';
   import Route from '@lucide/svelte/icons/route';
   import ShoppingBag from '@lucide/svelte/icons/shopping-bag';
-  import Soup from '@lucide/svelte/icons/soup';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import Utensils from '@lucide/svelte/icons/utensils';
   import UtensilsCrossed from '@lucide/svelte/icons/utensils-crossed';
   import type { SubmitFunction } from '@sveltejs/kit';
   import { enhance } from '$app/forms';
   import { invalidate } from '$app/navigation';
+  import GrubhubIcon from '$lib/components/brand/GrubhubIcon.svelte';
   import LyftIcon from '$lib/components/brand/LyftIcon.svelte';
+  import UberEatsIcon from '$lib/components/brand/UberEatsIcon.svelte';
   import UberIcon from '$lib/components/brand/UberIcon.svelte';
   import DateField from '$lib/components/DateField.svelte';
   import DateJump from '$lib/components/DateJump.svelte';
@@ -163,13 +164,13 @@
   let submitting = $state(false);
 
   const KIND_ICON = { ride: CarTaxiFront, meal: UtensilsCrossed, other: Receipt } as const;
-  // No FA brand glyph exists for Uber Eats (reuses Uber's badge in the brand
-  // green) or Grubhub (lucide soup in its orange).
+  // Uber Eats and Grubhub aren't in the FA brands pack; their real glyphs
+  // come from Simple Icons instead.
   const VENDOR_ICON = {
     uber: UberIcon,
     lyft: LyftIcon,
-    uber_eats: UberIcon,
-    grubhub: Soup,
+    uber_eats: UberEatsIcon,
+    grubhub: GrubhubIcon,
     restaurant: Utensils,
     other: CarTaxiFront,
   } as const;
@@ -179,7 +180,7 @@
     uber: '',
     lyft: 'text-[#ff00bf]',
     uber_eats: 'text-[#06c167]',
-    grubhub: 'text-orange-500',
+    grubhub: 'text-[#f63440]',
     restaurant: '',
     other: '',
   };
