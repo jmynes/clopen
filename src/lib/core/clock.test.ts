@@ -8,13 +8,14 @@ import {
   clockOut,
   clockStateOf,
   composeEntry,
+  computeClock,
   endBreak,
   isStale,
   resolveDiscard,
   resolveSave,
   startBreak,
 } from './clock';
-import { emptyRepo, type Repo } from './repo';
+import { DEFAULT_SETTINGS, emptyRepo, type Repo } from './repo';
 
 function fakeRepo() {
   let shift: OpenShift | null = null;
@@ -197,5 +198,19 @@ describe('guards and edges', () => {
     // 5min span, 6min break — breakHours must not exceed hours
     const entry = composeEntry(T('2026-06-10', '09:00'), T('2026-06-10', '09:05'), 6 * 60);
     expect(entry.breakHours).toBeLessThanOrEqual(entry.hours);
+  });
+});
+
+describe('computeClock', () => {
+  it('exposes the daily baseline and whether today is a workday', () => {
+    const everyDay = computeClock([], { ...DEFAULT_SETTINGS, workdays: '[1,2,3,4,5,6,7]' }, null);
+    expect(everyDay.dailyHours).toBe(8);
+    expect(everyDay.isTodayWorkday).toBe(true);
+
+    // A workday set that excludes today's weekday, whatever day the test runs.
+    const todayDow = new Date(`${everyDay.today}T00:00:00Z`).getUTCDay() || 7;
+    const offDays = JSON.stringify([1, 2, 3, 4, 5, 6, 7].filter((d) => d !== todayDow));
+    const dayOff = computeClock([], { ...DEFAULT_SETTINGS, workdays: offDays }, null);
+    expect(dayOff.isTodayWorkday).toBe(false);
   });
 });

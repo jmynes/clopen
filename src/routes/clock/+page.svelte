@@ -109,6 +109,23 @@
 
   const badTime = (message: string): ActionOutcome => ({ ok: false, status: 400, data: { error: message } });
 
+  // ── Daily progress ring + projected finish ───────────────────────────────
+  // Today's total: completed entries plus the live shift. In split mode the
+  // finished segments are already entries, and workedMs freezes on accrue
+  // breaks, so nothing double-counts.
+  const totalTodayH = $derived(data.workedToday + workedMs / 3_600_000);
+  const ringPct = $derived(data.dailyHours > 0 ? Math.min(1, totalTodayH / data.dailyHours) : 0);
+  const met = $derived(data.dailyHours > 0 && totalTodayH >= data.dailyHours);
+  // Finish time if work continues from this second — frozen worked time on a
+  // break means the projection honestly slides a second per second.
+  const etaLabel = $derived.by(() => {
+    if (met || !shift || data.stale || data.state === 'idle') return null;
+    const etaMs = nowMs + (data.dailyHours - totalTodayH) * 3_600_000;
+    return formatTime(zonedParts(etaMs).hhmm, data.timeFormat);
+  });
+  const RING_R = 46;
+  const RING_CIRC = 2 * Math.PI * RING_R;
+
   let adjustOpen = $state(false);
   let adjustTime = $state('');
   // Initial-only read: prefill the resolve date once; the user owns it after.
@@ -167,20 +184,50 @@
   {:else}
     <Card.Root>
       <Card.Content class="flex flex-col items-center gap-6 px-6 py-10 text-center">
-        <div class="flex flex-col items-center gap-2">
-          <p
-            class="font-mono text-5xl font-semibold tabular-nums {data.state === 'idle'
-              ? 'text-muted-foreground/50'
-              : ''}"
-          >
-            {#if data.state === 'idle'}
-              0:00:00
-            {:else if data.state === 'working'}
-              {fmtElapsed(workedMs)}
-            {:else}
-              {fmtElapsed(breakMs)}
-            {/if}
-          </p>
+        <div class="flex flex-col items-center gap-3">
+          <!-- Daily progress ring: the arc is today's total against the daily
+               baseline, so it fills across shifts, not just the running one. -->
+          <div class="relative size-60">
+            <svg viewBox="0 0 100 100" class="size-full -rotate-90" aria-hidden="true">
+              <circle cx="50" cy="50" r={RING_R} fill="none" stroke-width="5" class="stroke-muted" />
+              <circle
+                cx="50"
+                cy="50"
+                r={RING_R}
+                fill="none"
+                stroke-width="5"
+                stroke-linecap="round"
+                stroke-dasharray={RING_CIRC}
+                stroke-dashoffset={RING_CIRC * (1 - ringPct)}
+                class="transition-[stroke-dashoffset] duration-500 {met ? 'stroke-success' : 'stroke-primary'}"
+              />
+            </svg>
+            <div
+              class="absolute inset-0 flex flex-col items-center justify-center gap-1"
+              role="progressbar"
+              aria-label="Today against the daily baseline"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.floor(ringPct * 100)}
+            >
+              <p
+                class="font-mono text-4xl font-semibold tabular-nums {data.state === 'idle'
+                  ? 'text-muted-foreground/50'
+                  : ''}"
+              >
+                {#if data.state === 'idle'}
+                  0:00:00
+                {:else if data.state === 'working'}
+                  {fmtElapsed(workedMs)}
+                {:else}
+                  {fmtElapsed(breakMs)}
+                {/if}
+              </p>
+              <p class="text-xs tabular-nums {met ? 'font-medium text-success' : 'text-muted-foreground'}">
+                {hrs(totalTodayH)} of {data.dailyHours}h
+              </p>
+            </div>
+          </div>
           {#if data.state === 'idle'}
             <p class="text-sm text-muted-foreground">Not clocked in</p>
           {:else if data.state === 'working'}
@@ -203,6 +250,16 @@
                 ? `${fmtElapsed(workedMs)} worked`
                 : `${hrs(data.workedToday)} logged today`}
             </p>
+          {/if}
+          {#if met}
+            <p class="text-sm font-medium text-success">
+              Baseline met · +{hrs(totalTodayH - data.dailyHours)} over
+            </p>
+          {:else if etaLabel}
+            <p class="text-sm text-muted-foreground">On pace to hit {data.dailyHours}h at ~{etaLabel}</p>
+          {/if}
+          {#if !data.isTodayWorkday}
+            <p class="text-xs text-muted-foreground">Day off — no hours expected today</p>
           {/if}
         </div>
 

@@ -386,7 +386,14 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   frozen during accrue breaks; break time while on break), state-appropriate
   punch buttons disabled by a page-wide `submitting` flag, an inline
   adjust-start form, a stale-shift banner (DateField + time → `resolveSave`,
-  or a confirm-dialog discard), and a Today card of the day's shifts. Demo
+  or a confirm-dialog discard), and a Today card of the day's shifts. The
+  timer sits inside a **daily progress ring** (SVG arc of today's total —
+  completed entries + live shift — against `dailyHours`; primary under,
+  success at/over, with a `X.XXh of 8h` line inside and a "Baseline met ·
+  +over" line below) plus a projected finish ("On pace to hit 8h at ~5:42
+  PM") while a non-stale shift is open and the baseline isn't met — on a
+  break the projection slides since worked time is frozen. `computeClock`
+  feeds it `dailyHours` and `isTodayWorkday` (a muted day-off hint). Demo
   branches run the core actions against `demoRepo` + `invalidate('demo:data')`.
 - `src/routes/settings/+page.*` — sidebar shell: a section rail (vertical
   from `md`, dropdown below) showing one section at a time in a single wide
