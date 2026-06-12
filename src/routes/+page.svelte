@@ -570,14 +570,14 @@
                               type="submit"
                               variant="ghost"
                               size="sm"
-                              aria-label="Raise priority"
+                              aria-label="Increase priority"
                               disabled={rankIdx === 0 || goalSubmitting}
                             >
                               <ChevronUp class="size-4" />
                             </Button>
                           {/snippet}
                         </Tooltip.Trigger>
-                        <Tooltip.Content>Move up</Tooltip.Content>
+                        <Tooltip.Content>Increase priority</Tooltip.Content>
                       </Tooltip.Root>
                     </form>
                     <form method="POST" action="?/moveGoal" use:enhance={goalEnhance('moveGoal')} class="contents">
@@ -591,14 +591,14 @@
                               type="submit"
                               variant="ghost"
                               size="sm"
-                              aria-label="Lower priority"
+                              aria-label="Decrease priority"
                               disabled={rankIdx === goalCards.length - 1 || goalSubmitting}
                             >
                               <ChevronDown class="size-4" />
                             </Button>
                           {/snippet}
                         </Tooltip.Trigger>
-                        <Tooltip.Content>Move down</Tooltip.Content>
+                        <Tooltip.Content>Decrease priority</Tooltip.Content>
                       </Tooltip.Root>
                     </form>
                   {/if}
