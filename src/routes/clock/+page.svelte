@@ -1,4 +1,7 @@
 <script lang="ts">
+  import Eraser from '@lucide/svelte/icons/eraser';
+  import Pencil from '@lucide/svelte/icons/pencil';
+  import Trash2 from '@lucide/svelte/icons/trash-2';
   import type { SubmitFunction } from '@sveltejs/kit';
   import { enhance } from '$app/forms';
   import { invalidate } from '$app/navigation';
@@ -9,9 +12,10 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import { adjustStart, clockIn, clockOut, endBreak, resolveDiscard, resolveSave, startBreak } from '$lib/core/clock';
-  import type { ActionOutcome } from '$lib/core/log';
+  import { type ActionOutcome, clearPeriodAction, deleteAction, updateAction } from '$lib/core/log';
   import type { Repo } from '$lib/core/repo';
   import { effectiveZone, formatDay, formatTime, formatTimeRange, setAppTimeZone, zonedParts, zonedToMs } from '$lib/date';
+  import type { TimeEntry } from '$lib/db/schema';
   import { isDemo } from '$lib/demo/flag';
   import { parseTimeInput } from '$lib/timesheet';
   import type { ActionData, PageData } from './$types';
@@ -73,8 +77,11 @@
   // Shared enhance: demo cancels the POST and runs the matching core action
   // against localStorage (the layout's demo dependency refreshes the loads);
   // normal mode lets the action run and re-syncs via update().
-  function punchEnhance(run: (repo: Repo) => Promise<ActionOutcome>, onSuccess?: () => void): SubmitFunction {
-    return ({ cancel }) => {
+  function punchEnhance(
+    run: (repo: Repo, formData: FormData) => Promise<ActionOutcome>,
+    onSuccess?: () => void,
+  ): SubmitFunction {
+    return ({ cancel, formData }) => {
       submitting = true;
       if (isDemo) {
         cancel();
@@ -86,7 +93,7 @@
             // layout load having run first.
             const s = await demoRepo.getSettings();
             setAppTimeZone(effectiveZone(s.timeZone, s.observeDst));
-            const out = await run(demoRepo);
+            const out = await run(demoRepo, formData);
             demoForm = out.data as ActionData;
             if (out.ok) onSuccess?.();
             await invalidate('demo:data');
@@ -133,6 +140,35 @@
   let resolveDate = $state(startedDate);
   let resolveTime = $state('');
   let discardOpen = $state(false);
+
+  // ── Today-card edit / delete / clear-day (same core actions as the Log) ──
+  let editingEntry = $state<TimeEntry | null>(null);
+  let eStart = $state('');
+  let eEnd = $state('');
+  let eHours = $state('');
+  let eBreak = $state('');
+  let eNote = $state('');
+  function openEdit(entry: TimeEntry) {
+    editingEntry = entry;
+    eStart = entry.startTime ?? '';
+    eEnd = entry.endTime ?? '';
+    eHours = String(entry.hours);
+    eBreak = String(entry.breakHours);
+    eNote = entry.note ?? '';
+  }
+  // Clock-mode edit when the shift has punch times; plain hours otherwise.
+  const editIsClock = $derived(!!(editingEntry?.startTime && editingEntry?.endTime));
+  const editError = $derived.by(() => {
+    if (!actionData || !('editFieldErrors' in actionData)) return null;
+    const v = (actionData as Record<string, unknown>).editFieldErrors;
+    return v && typeof v === 'object' ? Object.values(v).join('; ') : null;
+  });
+
+  let deletingEntry = $state<TimeEntry | null>(null);
+  let clearDayOpen = $state(false);
+  // Confirm dialogs focus their destructive button on open so Enter confirms.
+  let deleteEntryBtn = $state<HTMLElement | null>(null);
+  let clearDayBtn = $state<HTMLElement | null>(null);
 </script>
 
 <div class="flex flex-col gap-6">
@@ -337,11 +373,24 @@
   {/if}
 
   <Card.Root>
-    <Card.Header class="max-md:text-center">
-      <Card.Title>Today</Card.Title>
-      <Card.Description>
-        {hrs(data.workedToday)} logged{shift && !data.stale && shift.startedAt != null ? ` · ${fmtElapsed(workedMs)} on the clock` : ''}
-      </Card.Description>
+    <Card.Header class="flex flex-row flex-wrap items-center justify-between gap-2 max-md:text-center">
+      <div>
+        <Card.Title>Today</Card.Title>
+        <Card.Description>
+          {hrs(data.workedToday)} logged{shift && !data.stale && shift.startedAt != null ? ` · ${fmtElapsed(workedMs)} on the clock` : ''}
+        </Card.Description>
+      </div>
+      {#if data.todayEntries.length > 0}
+        <Button
+          variant="outline"
+          size="sm"
+          class="shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          title="Delete every entry logged today"
+          onclick={() => (clearDayOpen = true)}
+        >
+          <Eraser class="size-4" /> Clear day
+        </Button>
+      {/if}
     </Card.Header>
     <Card.Content>
       {#if data.todayEntries.length === 0}
@@ -349,13 +398,38 @@
       {:else}
         <ul class="flex flex-col divide-y divide-border/50 text-sm">
           {#each data.todayEntries as entry (entry.id)}
-            <li class="flex items-center justify-between gap-3 py-2 font-mono tabular-nums">
+            <li class="flex items-center justify-between gap-3 py-1 font-mono tabular-nums">
               <span>
                 {entry.startTime && entry.endTime
                   ? formatTimeRange(entry.startTime, entry.endTime, data.timeFormat)
                   : '—'}
               </span>
-              <span>{hrs(entry.hours - entry.breakHours)}</span>
+              <span class="flex items-center gap-1">
+                {hrs(entry.hours - entry.breakHours)}
+                <span class="-mr-2 ml-1 flex">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    title={entry.entryKind === 'work' ? 'Edit shift' : 'Edit leave entries in the Log'}
+                    aria-label="Edit shift"
+                    disabled={entry.entryKind !== 'work' || submitting}
+                    onclick={() => openEdit(entry)}
+                  >
+                    <Pencil class="size-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    title="Delete shift"
+                    aria-label="Delete shift"
+                    class="text-destructive hover:text-destructive"
+                    disabled={submitting}
+                    onclick={() => (deletingEntry = entry)}
+                  >
+                    <Trash2 class="size-4" />
+                  </Button>
+                </span>
+              </span>
             </li>
           {/each}
         </ul>
@@ -363,6 +437,136 @@
     </Card.Content>
   </Card.Root>
 </div>
+
+<!-- edit a Today shift: clock-mode when it has punch times, plain hours otherwise -->
+<Dialog.Root
+  open={editingEntry !== null}
+  onOpenChange={(o) => {
+    if (!o) editingEntry = null;
+  }}
+>
+  <Dialog.Content class="sm:max-w-md">
+    {#if editingEntry}
+      <Dialog.Header>
+        <Dialog.Title>Edit shift</Dialog.Title>
+        <Dialog.Description>Changes land in the ledger like any other edit.</Dialog.Description>
+      </Dialog.Header>
+      <form
+        method="POST"
+        action="?/update"
+        use:enhance={punchEnhance((repo, formData) => updateAction(repo, formData), () => (editingEntry = null))}
+        class="flex flex-col gap-4"
+      >
+        <input type="hidden" name="id" value={editingEntry.id} />
+        <input type="hidden" name="date" value={editingEntry.date} />
+        {#if editIsClock}
+          <input type="hidden" name="mode" value="clock" />
+          <div class="grid grid-cols-2 gap-4">
+            <div class="flex flex-col gap-1.5">
+              <Label for="edit-start">Clock in</Label>
+              <Input id="edit-start" name="startTime" bind:value={eStart} placeholder={timePlaceholder} required />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <Label for="edit-end">Clock out</Label>
+              <Input id="edit-end" name="endTime" bind:value={eEnd} placeholder={timePlaceholder} required />
+            </div>
+          </div>
+        {:else}
+          <div class="flex flex-col gap-1.5">
+            <Label for="edit-hours">Hours worked</Label>
+            <Input id="edit-hours" type="number" name="hours" step="0.25" min="0.25" max="24" bind:value={eHours} required />
+          </div>
+        {/if}
+        <div class="grid grid-cols-2 gap-4">
+          <div class="flex flex-col gap-1.5">
+            <Label for="edit-break">Break (hours)</Label>
+            <Input id="edit-break" type="number" name="breakHours" step="0.25" min="0" max="24" bind:value={eBreak} />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <Label for="edit-note">Note</Label>
+            <Input id="edit-note" type="text" name="note" maxlength={500} bind:value={eNote} />
+          </div>
+        </div>
+        {#if editError}
+          <p class="text-sm text-destructive">{editError}</p>
+        {/if}
+        <Dialog.Footer>
+          <Button type="button" variant="outline" onclick={() => (editingEntry = null)}>Cancel</Button>
+          <Button type="submit" disabled={submitting}>Save</Button>
+        </Dialog.Footer>
+      </form>
+    {/if}
+  </Dialog.Content>
+</Dialog.Root>
+
+<!-- delete one Today shift -->
+<Dialog.Root
+  open={deletingEntry !== null}
+  onOpenChange={(o) => {
+    if (!o) deletingEntry = null;
+  }}
+>
+  <Dialog.Content
+    class="sm:max-w-md"
+    onOpenAutoFocus={(e) => {
+      e.preventDefault();
+      deleteEntryBtn?.focus();
+    }}
+  >
+    {#if deletingEntry}
+      <Dialog.Header>
+        <Dialog.Title>Delete this shift?</Dialog.Title>
+        <Dialog.Description>
+          {deletingEntry.startTime && deletingEntry.endTime
+            ? formatTimeRange(deletingEntry.startTime, deletingEntry.endTime, data.timeFormat)
+            : 'Untimed entry'} · {hrs(deletingEntry.hours - deletingEntry.breakHours)} worked. This can't be undone.
+        </Dialog.Description>
+      </Dialog.Header>
+      <form
+        method="POST"
+        action="?/delete"
+        use:enhance={punchEnhance((repo, formData) => deleteAction(repo, formData), () => (deletingEntry = null))}
+      >
+        <input type="hidden" name="id" value={deletingEntry.id} />
+        <Dialog.Footer>
+          <Button type="button" variant="outline" onclick={() => (deletingEntry = null)}>Cancel</Button>
+          <Button type="submit" variant="destructive" bind:ref={deleteEntryBtn} disabled={submitting}>Delete</Button>
+        </Dialog.Footer>
+      </form>
+    {/if}
+  </Dialog.Content>
+</Dialog.Root>
+
+<!-- wipe the whole day -->
+<Dialog.Root bind:open={clearDayOpen}>
+  <Dialog.Content
+    class="sm:max-w-md"
+    onOpenAutoFocus={(e) => {
+      e.preventDefault();
+      clearDayBtn?.focus();
+    }}
+  >
+    <Dialog.Header>
+      <Dialog.Title>Clear today?</Dialog.Title>
+      <Dialog.Description>
+        Delete all {data.todayEntries.length} of today's entries. Each deletion lands in the audit log, but this
+        can't be undone.
+      </Dialog.Description>
+    </Dialog.Header>
+    <form
+      method="POST"
+      action="?/clearDay"
+      use:enhance={punchEnhance((repo, formData) => clearPeriodAction(repo, formData), () => (clearDayOpen = false))}
+    >
+      <input type="hidden" name="start" value={data.today} />
+      <input type="hidden" name="end" value={data.today} />
+      <Dialog.Footer>
+        <Button type="button" variant="outline" onclick={() => (clearDayOpen = false)}>Cancel</Button>
+        <Button type="submit" variant="destructive" bind:ref={clearDayBtn} disabled={submitting}>Clear day</Button>
+      </Dialog.Footer>
+    </form>
+  </Dialog.Content>
+</Dialog.Root>
 
 <Dialog.Root bind:open={discardOpen}>
   <Dialog.Content class="sm:max-w-md">

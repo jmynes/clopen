@@ -393,7 +393,15 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   +over" line below) plus a projected finish ("On pace to hit 8h at ~5:42
   PM") while a non-stale shift is open and the baseline isn't met — on a
   break the projection slides since worked time is frozen. `computeClock`
-  feeds it `dailyHours` and `isTodayWorkday` (a muted day-off hint). Demo
+  feeds it `dailyHours` and `isTodayWorkday` (a muted day-off hint). The
+  Today card edits like the Log: per-row pencil (a slim dialog — clock-mode
+  start/end when the shift has punch times, plain hours otherwise; work
+  entries only, leave edits point at the Log) and trash, plus a Clear day
+  header button — all through the Log's core actions (`update` / `delete` /
+  `clearDay` → `clearPeriodAction` with start = end = today) added to the
+  clock route's actions; both destructive dialogs focus their confirm
+  button so Enter confirms. `punchEnhance` passes the form's FormData
+  through to its `run` callback for these. Demo
   branches run the core actions against `demoRepo` + `invalidate('demo:data')`.
 - `src/routes/settings/+page.*` — sidebar shell: a section rail (vertical
   from `md`, dropdown below) showing one section at a time in a single wide

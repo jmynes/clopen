@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { adjustStart, clockIn, clockOut, endBreak, resolveDiscard, resolveSave, startBreak } from '$lib/core/clock';
+import { clearPeriodAction, deleteAction, updateAction } from '$lib/core/log';
 import { effectiveZone, setAppTimeZone, zonedToMs } from '$lib/date';
 import { isDemo } from '$lib/demo/flag';
 import { serverRepo } from '$lib/server/repo';
@@ -71,5 +72,22 @@ export const actions: Actions = {
     // future side-effect can't silently run against a stale zone.
     await settingsWithZone();
     return unwrap(await resolveDiscard(serverRepo));
+  },
+  // The Today card edits its shifts like the Log does — same core actions.
+  update: async ({ request }) => {
+    if (isDemo) return demoFail();
+    await settingsWithZone();
+    return unwrap(await updateAction(serverRepo, await request.formData()));
+  },
+  delete: async ({ request }) => {
+    if (isDemo) return demoFail();
+    await settingsWithZone();
+    return unwrap(await deleteAction(serverRepo, await request.formData()));
+  },
+  // "Wipe the day": the ledger's period-clear scoped to a single date.
+  clearDay: async ({ request }) => {
+    if (isDemo) return demoFail();
+    await settingsWithZone();
+    return unwrap(await clearPeriodAction(serverRepo, await request.formData()));
   },
 };
