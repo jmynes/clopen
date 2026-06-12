@@ -319,9 +319,13 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   adjust-start form, a stale-shift banner (DateField + time → `resolveSave`,
   or a confirm-dialog discard), and a Today card of the day's shifts. Demo
   branches run the core actions against `demoRepo` + `invalidate('demo:data')`.
-- `src/routes/settings/+page.*` — five cards (2-col at `md`, 3-col at `lg`:
-  Pay & schedule / Clock & time / Log & Ledger / Dashboard / Expenses) with
-  uppercase section micro-headers: pay rate,
+- `src/routes/settings/+page.*` — sidebar shell: a section rail (vertical
+  from `md`, horizontal scroll pills below) showing one section at a time in
+  a single wide pane (Pay & schedule / Clock & time / Log & Ledger /
+  Dashboard / Expenses). Inactive sections are `hidden`, **not unmounted** —
+  the page stays one form so every field posts on each auto-save; switching
+  sections runs `reportValidity()` first so an invalid field can't hide
+  itself and silently block saves. Sections keep uppercase micro-headers: pay rate,
   daily hours, workdays (chips ordered by week start), week-start, tracking
   epoch, overtime multiplier (toggle + readonly-when-off field), default
   ledger period, timezone (full IANA select) + observe-DST toggle + clock
