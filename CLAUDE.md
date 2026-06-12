@@ -387,23 +387,26 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   adjust-start form, a stale-shift banner (DateField + time → `resolveSave`,
   or a confirm-dialog discard), and a Today card of the day's shifts. Demo
   branches run the core actions against `demoRepo` + `invalidate('demo:data')`.
-- `src/routes/settings/+page.*` — sidebar shell: a section rail (vertical
-  from `md`, horizontal scroll pills below) showing one section at a time in
+- `src/routes/settings/+page.*` — an always-visible **Global** card above a
+  sidebar shell. Global holds the baseline every surface computes from,
+  outside the tabs so it never hides: Compensation (pay rate, daily hours),
+  Schedule (week-start, tracking epoch, workday chips ordered by week
+  start), and Time (time format, timezone full IANA select, observe-DST
+  toggle). Below it, the section rail (vertical
+  from `md`, horizontal scroll pills below) shows one section at a time in
   a single wide pane (Dashboard / Clock & time / Log & Ledger / Expenses,
   opening on Dashboard). Inactive sections are `hidden`, **not unmounted** —
-  the page stays one form so every field posts on each auto-save; switching
+  the whole page, Global card included, stays one form so every field posts
+  on each auto-save; switching
   sections runs `reportValidity()` first so an invalid field can't hide
   itself and silently block saves. Sections keep uppercase micro-headers.
   The Dashboard section leads with the yearly goal (toggle + readonly-when-off
   dollar field, same hidden-input idiom as the OT multiplier; **on by
   default** — migration 0025 also flipped the existing row), the pay cycle
   select, and the count-expenses default + "bonus tracking is planned"
-  footnote, then the former Pay & schedule content: pay rate, daily hours,
-  and the overtime multiplier. Log & Ledger opens with Schedule (week-start, tracking epoch,
-  workday chips ordered by week start), then weekend visibility toggles,
-  default ledger period, expand-notes-by-default, and the View audit log
-  link. Clock & time keeps timezone (full IANA select) + observe-DST toggle +
-  clock break mode + time format.
+  footnote, and the overtime multiplier. Log & Ledger holds weekend
+  visibility toggles, default ledger period, expand-notes-by-default, and
+  the View audit log link. Clock & time keeps just the clock break mode.
   Settings auto-save: every change schedules a debounced (400ms)
   `requestSubmit` through the shared enhance path (native validation gates
   it; zod failures surface in the status bar without persisting). The footer

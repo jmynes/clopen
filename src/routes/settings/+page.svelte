@@ -197,6 +197,142 @@
     }}
     class="flex flex-col gap-6"
   >
+    <!-- ── Global ─────────────────────────────────────────────────────────
+         The baseline every surface computes from — pay, schedule, and time —
+         so it lives above the section rail, always visible, not behind a tab.
+         Still inside the single form: every field posts on each auto-save. -->
+    <Card.Root>
+      <Card.Header class="max-md:text-center">
+        <Card.Title>Global</Card.Title>
+        <Card.Description>Pay, schedule, and time — the baseline every tab computes from.</Card.Description>
+      </Card.Header>
+      <Card.Content>
+        <div class="flex flex-col divide-y divide-border/50">
+          <section class="flex flex-col gap-3 pb-5">
+            <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">
+              Compensation
+            </h3>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div class="flex flex-col gap-1.5">
+                <Label for="hourlyRate">Hourly rate (USD)</Label>
+                <Input
+                  id="hourlyRate"
+                  type="number"
+                  name="hourlyRate"
+                  step="any"
+                  min="0"
+                  value={data.settings.hourlyRate}
+                  required
+                />
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <Label for="dailyHours">Hours per workday</Label>
+                <Input
+                  id="dailyHours"
+                  type="number"
+                  name="dailyHours"
+                  step="0.25"
+                  min="0.25"
+                  max="24"
+                  value={data.settings.dailyHours}
+                  required
+                />
+              </div>
+            </div>
+          </section>
+
+          <section class="flex flex-col gap-4 py-5">
+            <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">
+              Schedule
+            </h3>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div class="flex flex-col gap-1.5">
+                <Label for="weekStartsOn">Week starts on</Label>
+                <select id="weekStartsOn" name="weekStartsOn" bind:value={weekStartsOnValue} class={SELECT_CLASS}>
+                  <option value="1">Monday</option>
+                  <option value="7">Sunday</option>
+                </select>
+                <p class="text-xs text-muted-foreground">Weekly grid order and dashboard grouping.</p>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <Label for="epoch">Tracking since</Label>
+                <DateField
+                  id="epoch"
+                  name="epoch"
+                  bind:value={epochValue}
+                  min="{Number(todayISO().slice(0, 4)) - 10}-01-01"
+                  max={todayISO()}
+                  onchange={scheduleSave}
+                />
+                <p class="text-xs text-muted-foreground">Earliest date that accrues the make-whole baseline.</p>
+              </div>
+            </div>
+            <fieldset class="flex flex-col gap-1.5">
+              <legend class="sr-only">Workdays</legend>
+              <span class="text-sm font-medium">Workdays</span>
+              <p class="text-xs text-muted-foreground">
+                Days that accrue the baseline. Default is Mon–Fri (8h × 5 = 40h/week).
+              </p>
+              <!-- Content-sized chips wrap as needed; the wide pane fits all
+                   seven on one row, narrow screens center the wrapped rows. -->
+              <div class="mt-1 flex flex-wrap justify-center gap-1.5">
+                {#each orderedWeekdays as day (day.n)}
+                  <label
+                    class="flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-input px-3 py-2 font-mono text-sm has-checked:border-primary has-checked:bg-accent"
+                  >
+                    <input
+                      type="checkbox"
+                      name="workdays"
+                      value={day.n}
+                      checked={selected.has(day.n)}
+                      class="accent-primary"
+                    />
+                    {day.label}
+                  </label>
+                {/each}
+              </div>
+            </fieldset>
+          </section>
+
+          <section class="flex flex-col gap-4 pt-5">
+            <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">
+              Time
+            </h3>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div class="flex flex-col gap-1.5">
+                <Label for="timeFormat">Time format</Label>
+                <select id="timeFormat" name="timeFormat" class={SELECT_CLASS}>
+                  <option value="12h" selected={data.timeFormat === '12h'}>12-hour (09:00 AM)</option>
+                  <option value="24h" selected={data.timeFormat === '24h'}>24-hour (09:00)</option>
+                </select>
+                <p class="text-xs text-muted-foreground">How times display everywhere.</p>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <Label for="timeZone">Timezone</Label>
+                <select id="timeZone" name="timeZone" class={SELECT_CLASS}>
+                  {#each timeZones as tz (tz)}
+                    <option value={tz} selected={data.timeZone === tz}>{tz.replaceAll('_', ' ')}</option>
+                  {/each}
+                </select>
+                <p class="text-xs text-muted-foreground">Defines "today" everywhere and stamps the clock.</p>
+              </div>
+            </div>
+            <label
+              class="flex cursor-pointer items-start gap-2 rounded-md border border-input px-3 py-2 text-sm transition-colors has-checked:border-primary has-checked:bg-accent"
+            >
+              <input type="checkbox" name="observeDst" checked={data.observeDst} class="mt-0.5 accent-primary" />
+              <span>
+                <span class="font-medium">Observe daylight saving time</span>
+                <span class="block text-xs text-muted-foreground">
+                  Off pins the timezone to its standard offset year-round (e.g. Central stays UTC−6).
+                </span>
+              </span>
+            </label>
+          </section>
+        </div>
+      </Card.Content>
+    </Card.Root>
+
     <div class="flex flex-col gap-4 md:flex-row md:items-start md:gap-6">
       <!-- Section nav: a dropdown below md, a rail from md. The shadcn Select
            renders the section icons (native options can't); it carries no
@@ -349,39 +485,6 @@
               <p class="text-xs text-muted-foreground">Bonus tracking is planned and will live here.</p>
             </section>
 
-            <section class="flex flex-col gap-3 py-5">
-              <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">
-                Compensation
-              </h3>
-              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div class="flex flex-col gap-1.5">
-                  <Label for="hourlyRate">Hourly rate (USD)</Label>
-                  <Input
-                    id="hourlyRate"
-                    type="number"
-                    name="hourlyRate"
-                    step="any"
-                    min="0"
-                    value={data.settings.hourlyRate}
-                    required
-                  />
-                </div>
-                <div class="flex flex-col gap-1.5">
-                  <Label for="dailyHours">Hours per workday</Label>
-                  <Input
-                    id="dailyHours"
-                    type="number"
-                    name="dailyHours"
-                    step="0.25"
-                    min="0.25"
-                    max="24"
-                    value={data.settings.dailyHours}
-                    required
-                  />
-                </div>
-              </div>
-            </section>
-
             <section class="flex flex-col gap-3 pt-5">
               <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">
                 Overtime
@@ -447,23 +550,6 @@
           <div class="flex-col gap-4 {active === 'clock' ? 'flex' : 'hidden'}">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div class="flex flex-col gap-1.5">
-                <Label for="timeFormat">Time format</Label>
-                <select id="timeFormat" name="timeFormat" class={SELECT_CLASS}>
-                  <option value="12h" selected={data.timeFormat === '12h'}>12-hour (09:00 AM)</option>
-                  <option value="24h" selected={data.timeFormat === '24h'}>24-hour (09:00)</option>
-                </select>
-                <p class="text-xs text-muted-foreground">How clock in/out times display.</p>
-              </div>
-              <div class="flex flex-col gap-1.5">
-                <Label for="timeZone">Timezone</Label>
-                <select id="timeZone" name="timeZone" class={SELECT_CLASS}>
-                  {#each timeZones as tz (tz)}
-                    <option value={tz} selected={data.timeZone === tz}>{tz.replaceAll('_', ' ')}</option>
-                  {/each}
-                </select>
-                <p class="text-xs text-muted-foreground">Defines "today" everywhere and stamps the clock.</p>
-              </div>
-              <div class="flex flex-col gap-1.5">
                 <Label for="clockBreakMode">Clock breaks</Label>
                 <select id="clockBreakMode" name="clockBreakMode" class={SELECT_CLASS}>
                   <option value="accrue" selected={data.clockBreakMode === 'accrue'}>Accrue into the shift</option>
@@ -472,75 +558,11 @@
                 <p class="text-xs text-muted-foreground">How punch-clock breaks land in the ledger.</p>
               </div>
             </div>
-            <label
-              class="flex cursor-pointer items-start gap-2 rounded-md border border-input px-3 py-2 text-sm transition-colors has-checked:border-primary has-checked:bg-accent"
-            >
-              <input type="checkbox" name="observeDst" checked={data.observeDst} class="mt-0.5 accent-primary" />
-              <span>
-                <span class="font-medium">Observe daylight saving time</span>
-                <span class="block text-xs text-muted-foreground">
-                  Off pins the timezone to its standard offset year-round (e.g. Central stays UTC−6).
-                </span>
-              </span>
-            </label>
           </div>
 
           <!-- ── Log & Ledger ───────────────────────────────────────────── -->
           <div class="flex-col divide-y divide-border/50 {active === 'ledger' ? 'flex' : 'hidden'}">
-            <section class="flex flex-col gap-4 pb-5">
-              <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">
-                Schedule
-              </h3>
-              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div class="flex flex-col gap-1.5">
-                  <Label for="weekStartsOn">Week starts on</Label>
-                  <select id="weekStartsOn" name="weekStartsOn" bind:value={weekStartsOnValue} class={SELECT_CLASS}>
-                    <option value="1">Monday</option>
-                    <option value="7">Sunday</option>
-                  </select>
-                  <p class="text-xs text-muted-foreground">Weekly grid order and dashboard grouping.</p>
-                </div>
-                <div class="flex flex-col gap-1.5">
-                  <Label for="epoch">Tracking since</Label>
-                  <DateField
-                    id="epoch"
-                    name="epoch"
-                    bind:value={epochValue}
-                    min="{Number(todayISO().slice(0, 4)) - 10}-01-01"
-                    max={todayISO()}
-                    onchange={scheduleSave}
-                  />
-                  <p class="text-xs text-muted-foreground">Earliest date that accrues the make-whole baseline.</p>
-                </div>
-              </div>
-              <fieldset class="flex flex-col gap-1.5">
-                <legend class="sr-only">Workdays</legend>
-                <span class="text-sm font-medium">Workdays</span>
-                <p class="text-xs text-muted-foreground">
-                  Days that accrue the baseline. Default is Mon–Fri (8h × 5 = 40h/week).
-                </p>
-                <!-- Content-sized chips wrap as needed; the wide pane fits all
-                     seven on one row, narrow screens center the wrapped rows. -->
-                <div class="mt-1 flex flex-wrap justify-center gap-1.5">
-                  {#each orderedWeekdays as day (day.n)}
-                    <label
-                      class="flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-input px-3 py-2 font-mono text-sm has-checked:border-primary has-checked:bg-accent"
-                    >
-                      <input
-                        type="checkbox"
-                        name="workdays"
-                        value={day.n}
-                        checked={selected.has(day.n)}
-                        class="accent-primary"
-                      />
-                      {day.label}
-                    </label>
-                  {/each}
-                </div>
-              </fieldset>
-            </section>
-
-            <fieldset class="flex flex-col gap-3 py-5">
+            <fieldset class="flex flex-col gap-3 pb-5">
               <legend
                 class="float-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:w-full max-md:text-center"
               >
