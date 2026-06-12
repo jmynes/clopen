@@ -22,6 +22,13 @@ export function computeSettingsPage(row: Settings) {
     goalEnabled: row.goalEnabled,
     yearlyGoal: row.yearlyGoal,
     countExpenses: row.countExpenses,
+    defaultExpenseKind: row.defaultExpenseKind,
+    defaultRideVendor: row.defaultRideVendor,
+    defaultRideDirection: row.defaultRideDirection,
+    defaultMealVendor: row.defaultMealVendor,
+    defaultMealMethod: row.defaultMealMethod,
+    defaultPurchaseVendor: row.defaultPurchaseVendor,
+    defaultPurchaseCadence: row.defaultPurchaseCadence,
   };
 }
 
@@ -46,6 +53,13 @@ export async function saveSettingsAction(repo: Repo, form: FormData): Promise<Ac
     goalEnabled: form.has('goalEnabled'),
     yearlyGoal: form.get('yearlyGoal'),
     countExpenses: form.has('countExpenses'),
+    defaultExpenseKind: form.get('defaultExpenseKind'),
+    defaultRideVendor: form.get('defaultRideVendor'),
+    defaultRideDirection: form.get('defaultRideDirection'),
+    defaultMealVendor: form.get('defaultMealVendor'),
+    defaultMealMethod: form.get('defaultMealMethod'),
+    defaultPurchaseVendor: form.get('defaultPurchaseVendor'),
+    defaultPurchaseCadence: form.get('defaultPurchaseCadence'),
   });
   if (!parsed.success) {
     return { ok: false, status: 400, data: { error: parsed.error.issues.map((i) => i.message).join('; ') } };

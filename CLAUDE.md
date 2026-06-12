@@ -106,7 +106,12 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
     beyond the baseline at the multiplier; dashboard earnings only),
     `goalEnabled` / `yearlyGoal` (default false / 80000 — chase a yearly dollar
     target instead of straight salary math), `countExpenses` (default true —
-    the dashboard's include-expenses toggle starts here).
+    the dashboard's include-expenses toggle starts here), and the
+    `defaultExpenseKind` / `defaultRideVendor` / `defaultRideDirection` /
+    `defaultMealVendor` / `defaultMealMethod` / `defaultPurchaseVendor` /
+    `defaultPurchaseCadence` set (what the Expenses add form opens with;
+    defaults ride / uber / to_work / uber_eats / delivery / hardware /
+    monthly).
   - `open_shift` (at most one row, `id = 'current'`): the running punch-clock
     shift — `startedAt` / `breakStartedAt` (epoch **ms**), `breakSeconds`,
     `breakMode` snapshot. Clock-out composes normal `time_entries` and clears
@@ -124,9 +129,10 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   - `expenses`: `id`, `date` (ISO local-day), `amount` (dollars), `kind`
     (from `$lib/expense-kinds`), `vendor` (shared column, values scoped per
     kind by `KIND_VENDORS`), `direction` (ride-only commute leg) / `method`
-    (meal-only delivery-vs-pickup) — detail axes are null on other kinds and
-    legacy rows — `note`, `createdAt`, `updatedAt` (same timestamp semantics
-    as entries).
+    (meal-only delivery / pickup / restaurant-only dine-in) / `cadence`
+    (subscription-purchase-only recurrence) — detail axes are null on other
+    kinds and legacy rows — `note`, `createdAt`, `updatedAt` (same timestamp
+    semantics as entries).
   - `expense_events`: mirror of `entry_events` with `expenseId`; written
     inside the repo implementations' CRUD (server + demo, demo capped at
     500/bucket). `Repo` exposes `listExpenseEvents()` plus `listExpenses` /
@@ -184,13 +190,20 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   set minus 'work'), `LEAVE_META` (label / short / paid / color family), and
   `leaveHours(kind, dailyHours)`.
 - `src/lib/expense-kinds.ts` — expense taxonomy: `EXPENSE_KINDS`
-  (`'ride' | 'meal' | 'other'`), `EXPENSE_META` (label / badge classes —
-  ride amber, meal teal), `EXPENSE_VENDORS` + `KIND_VENDORS` (per-kind
-  vendor lists: ride → uber/lyft/other, meal → uber_eats/grubhub/restaurant)
-  with `VENDOR_LABELS`, plus the per-kind second axes `RIDE_DIRECTIONS`
-  (`to_work | to_home | other`) and `MEAL_METHODS` (`delivery | pickup`)
-  with label maps. Append to extend; the DB columns are plain text so no
-  migration is needed.
+  (`'meal' | 'purchase' | 'ride' | 'other'`), `EXPENSE_META` (label / badge
+  classes — ride amber, meal teal, purchase fuchsia), `EXPENSE_VENDORS` +
+  `KIND_VENDORS` (per-kind lists, exported as literal tuples `RIDE_VENDORS`
+  lyft/taxi/uber/other, `MEAL_VENDORS` grubhub/restaurant/uber_eats,
+  `PURCHASE_VENDORS` hardware/software/subscription/other so zod enums can
+  derive) with `VENDOR_LABELS`, plus the per-kind second axes
+  `RIDE_DIRECTIONS` (`to_work | to_home | other`), `MEAL_METHODS`
+  (`delivery | pickup | dine_in` — `vendorMethods(vendor)` scopes dine-in
+  to the restaurant vendor), and `PURCHASE_CADENCES`
+  (`weekly | monthly | quarterly | yearly`, subscription-only,
+  scale-ordered) with label maps. Ordering convention: kinds and vendor
+  lists read alphabetically with Other pinned last. Append to extend; the
+  kind/vendor DB columns are plain text so no migration is needed (a new
+  *axis* column still migrates, like `cadence`).
   Uber/Lyft brand glyphs come from `@fortawesome/free-brands-svg-icons`
   (data-only pack, icons CC BY 4.0 — lucide dropped brand icons), rendered
   by `$lib/components/brand/BrandIcon.svelte` (a 15-line IconDefinition →
@@ -306,9 +319,9 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   adjust-start form, a stale-shift banner (DateField + time → `resolveSave`,
   or a confirm-dialog discard), and a Today card of the day's shifts. Demo
   branches run the core actions against `demoRepo` + `invalidate('demo:data')`.
-- `src/routes/settings/+page.*` — four cards in a 2×2 grid from `md`
-  (Pay & schedule / Clock & time / Log & Ledger / Dashboard) with uppercase
-  section micro-headers: pay rate,
+- `src/routes/settings/+page.*` — five cards (2-col at `md`, 3-col at `lg`:
+  Pay & schedule / Clock & time / Log & Ledger / Dashboard / Expenses) with
+  uppercase section micro-headers: pay rate,
   daily hours, workdays (chips ordered by week start), week-start, tracking
   epoch, overtime multiplier (toggle + readonly-when-off field), default
   ledger period, timezone (full IANA select) + observe-DST toggle + clock

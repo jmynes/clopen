@@ -22,8 +22,8 @@ export async function getSettings(database: Database = defaultDb): Promise<Setti
 }
 
 export async function updateSettings(input: SettingsInput, database: Database = defaultDb): Promise<void> {
-  const row = {
-    id: DEFAULT_ID,
+  // One column map serves both arms of the upsert.
+  const set = {
     hourlyRate: input.hourlyRate,
     dailyHours: input.dailyHours,
     workdays: JSON.stringify(input.workdays),
@@ -42,31 +42,16 @@ export async function updateSettings(input: SettingsInput, database: Database = 
     goalEnabled: input.goalEnabled,
     yearlyGoal: input.yearlyGoal,
     countExpenses: input.countExpenses,
+    defaultExpenseKind: input.defaultExpenseKind,
+    defaultRideVendor: input.defaultRideVendor,
+    defaultRideDirection: input.defaultRideDirection,
+    defaultMealVendor: input.defaultMealVendor,
+    defaultMealMethod: input.defaultMealMethod,
+    defaultPurchaseVendor: input.defaultPurchaseVendor,
+    defaultPurchaseCadence: input.defaultPurchaseCadence,
   };
   await database
     .insert(settings)
-    .values(row)
-    .onConflictDoUpdate({
-      target: settings.id,
-      set: {
-        hourlyRate: row.hourlyRate,
-        dailyHours: row.dailyHours,
-        workdays: row.workdays,
-        weekStartsOn: row.weekStartsOn,
-        epoch: row.epoch,
-        timeFormat: row.timeFormat,
-        ledgerPeriod: row.ledgerPeriod,
-        timeZone: row.timeZone,
-        observeDst: row.observeDst,
-        clockBreakMode: row.clockBreakMode,
-        hideWeekendsEntries: row.hideWeekendsEntries,
-        hideWeekendsGrid: row.hideWeekendsGrid,
-        expandNotes: row.expandNotes,
-        otMultiplierEnabled: row.otMultiplierEnabled,
-        otMultiplier: row.otMultiplier,
-        goalEnabled: row.goalEnabled,
-        yearlyGoal: row.yearlyGoal,
-        countExpenses: row.countExpenses,
-      },
-    });
+    .values({ id: DEFAULT_ID, ...set })
+    .onConflictDoUpdate({ target: settings.id, set });
 }

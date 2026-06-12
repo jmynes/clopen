@@ -15,6 +15,14 @@ export function computeExpenses(expenses: Expense[], row: Settings) {
     epoch: row.epoch,
     weekStartsOn: row.weekStartsOn,
     ledgerPeriod: row.ledgerPeriod,
+    // What the add form opens with (Settings → Expenses defaults).
+    defaultExpenseKind: row.defaultExpenseKind,
+    defaultRideVendor: row.defaultRideVendor,
+    defaultRideDirection: row.defaultRideDirection,
+    defaultMealVendor: row.defaultMealVendor,
+    defaultMealMethod: row.defaultMealMethod,
+    defaultPurchaseVendor: row.defaultPurchaseVendor,
+    defaultPurchaseCadence: row.defaultPurchaseCadence,
   };
 }
 
@@ -30,6 +38,7 @@ function parseExpense(form: FormData) {
     vendor: form.get('vendor') ?? undefined,
     direction: form.get('direction') ?? undefined,
     method: form.get('method') ?? undefined,
+    cadence: form.get('cadence') ?? undefined,
     note: form.get('note') ?? undefined,
   });
 }

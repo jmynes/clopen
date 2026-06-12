@@ -14,6 +14,20 @@
   import { saveSettingsAction } from '$lib/core/settings-page';
   import { todayISO } from '$lib/date';
   import { isDemo } from '$lib/demo/flag';
+  import {
+    EXPENSE_KINDS,
+    EXPENSE_META,
+    MEAL_METHOD_LABELS,
+    MEAL_VENDORS,
+    PURCHASE_CADENCE_LABELS,
+    PURCHASE_CADENCES,
+    PURCHASE_VENDORS,
+    RIDE_DIRECTION_LABELS,
+    RIDE_DIRECTIONS,
+    RIDE_VENDORS,
+    VENDOR_LABELS,
+    vendorMethods,
+  } from '$lib/expense-kinds';
   import { workdaysJson } from '$lib/schemas/settings';
   import type { ActionData, PageData } from './$types';
 
@@ -51,8 +65,15 @@
   let weekStartsOnValue = $state(String(data.weekStartsOn));
   // svelte-ignore state_referenced_locally
   let epochValue = $state(data.epoch);
+  // svelte-ignore state_referenced_locally
+  let defaultMealVendorValue = $state(data.defaultMealVendor);
+  // svelte-ignore state_referenced_locally
+  let defaultMealMethodValue = $state(data.defaultMealMethod);
   const orderedWeekdays = $derived(weekStartsOnValue === '7' ? [WEEKDAYS[6], ...WEEKDAYS.slice(0, 6)] : WEEKDAYS);
   const timeZones = Intl.supportedValuesOf('timeZone');
+
+  const SELECT_CLASS =
+    'h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none';
 
   // Every change saves on its own: the form-level onchange (and the
   // DateField's explicit one) schedules a debounced submit, so checkbox
@@ -84,6 +105,13 @@
     set('ledgerPeriod', DEFAULT_SETTINGS.ledgerPeriod);
     set('timeZone', DEFAULT_SETTINGS.timeZone);
     set('clockBreakMode', DEFAULT_SETTINGS.clockBreakMode);
+    set('defaultExpenseKind', DEFAULT_SETTINGS.defaultExpenseKind);
+    set('defaultRideVendor', DEFAULT_SETTINGS.defaultRideVendor);
+    set('defaultRideDirection', DEFAULT_SETTINGS.defaultRideDirection);
+    set('defaultPurchaseVendor', DEFAULT_SETTINGS.defaultPurchaseVendor);
+    set('defaultPurchaseCadence', DEFAULT_SETTINGS.defaultPurchaseCadence);
+    defaultMealVendorValue = DEFAULT_SETTINGS.defaultMealVendor;
+    defaultMealMethodValue = DEFAULT_SETTINGS.defaultMealMethod;
     for (const box of formEl.querySelectorAll<HTMLInputElement>('input[name="workdays"]')) {
       box.checked = DEFAULT_WORKDAYS.has(Number(box.value));
     }
@@ -141,7 +169,7 @@
     }}
     class="flex flex-col gap-6"
   >
-    <div class="grid items-start gap-6 md:grid-cols-2">
+    <div class="grid items-start gap-6 md:grid-cols-2 lg:grid-cols-3">
       <Card.Root>
         <Card.Header class="max-md:text-center">
           <Card.Title>Pay & schedule</Card.Title>
@@ -149,7 +177,7 @@
         <Card.Content class="flex flex-col divide-y divide-border/50">
           <section class="flex flex-col gap-3 pb-5">
             <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">Compensation</h3>
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
               <div class="flex flex-col gap-1.5">
                 <Label for="hourlyRate">Hourly rate (USD)</Label>
                 <Input
@@ -229,7 +257,7 @@
           </section>
           <section class="flex flex-col gap-4 pt-5">
             <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">Schedule</h3>
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
               <div class="flex flex-col gap-1.5">
                 <Label for="weekStartsOn">Week starts on</Label>
                 <select
@@ -292,7 +320,7 @@
           <Card.Title>Clock & time</Card.Title>
         </Card.Header>
         <Card.Content class="flex flex-col gap-4">
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
             <div class="flex flex-col gap-1.5">
               <Label for="timeFormat">Time format</Label>
               <select
@@ -391,7 +419,7 @@
 
           <section class="flex flex-col gap-3 py-5">
             <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">Ledger</h3>
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
               <div class="flex flex-col gap-1.5">
                 <Label for="ledgerPeriod">Default period</Label>
                 <select
@@ -524,9 +552,121 @@
           </section>
         </Card.Content>
       </Card.Root>
+
+      <Card.Root>
+        <Card.Header class="max-md:text-center">
+          <Card.Title>Expenses</Card.Title>
+        </Card.Header>
+        <Card.Content class="flex flex-col divide-y divide-border/50">
+          <section class="flex flex-col gap-3 pb-5">
+            <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">
+              New expenses
+            </h3>
+            <div class="flex flex-col gap-1.5">
+              <Label for="defaultExpenseKind">Default kind</Label>
+              <select id="defaultExpenseKind" name="defaultExpenseKind" class={SELECT_CLASS}>
+                {#each EXPENSE_KINDS as kind (kind)}
+                  <option value={kind} selected={data.defaultExpenseKind === kind}>{EXPENSE_META[kind].label}</option>
+                {/each}
+              </select>
+              <p class="text-xs text-muted-foreground">What the add-expense form opens with.</p>
+            </div>
+          </section>
+
+          <section class="flex flex-col gap-3 py-5">
+            <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">
+              Ride defaults
+            </h3>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div class="flex flex-col gap-1.5">
+                <Label for="defaultRideVendor">Service</Label>
+                <select id="defaultRideVendor" name="defaultRideVendor" class={SELECT_CLASS}>
+                  {#each RIDE_VENDORS as vendor (vendor)}
+                    <option value={vendor} selected={data.defaultRideVendor === vendor}>{VENDOR_LABELS[vendor]}</option>
+                  {/each}
+                </select>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <Label for="defaultRideDirection">Direction</Label>
+                <select id="defaultRideDirection" name="defaultRideDirection" class={SELECT_CLASS}>
+                  {#each RIDE_DIRECTIONS as direction (direction)}
+                    <option value={direction} selected={data.defaultRideDirection === direction}>
+                      {RIDE_DIRECTION_LABELS[direction]}
+                    </option>
+                  {/each}
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <section class="flex flex-col gap-3 py-5">
+            <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">
+              Meal defaults
+            </h3>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div class="flex flex-col gap-1.5">
+                <Label for="defaultMealVendor">Service</Label>
+                <!-- Dine-in only fits a restaurant; switching to a delivery app coerces it away. -->
+                <select
+                  id="defaultMealVendor"
+                  name="defaultMealVendor"
+                  bind:value={defaultMealVendorValue}
+                  onchange={() => {
+                    if (!vendorMethods(defaultMealVendorValue).includes(defaultMealMethodValue)) {
+                      defaultMealMethodValue = 'delivery';
+                    }
+                  }}
+                  class={SELECT_CLASS}
+                >
+                  {#each MEAL_VENDORS as vendor (vendor)}
+                    <option value={vendor}>{VENDOR_LABELS[vendor]}</option>
+                  {/each}
+                </select>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <Label for="defaultMealMethod">Method</Label>
+                <select id="defaultMealMethod" name="defaultMealMethod" bind:value={defaultMealMethodValue} class={SELECT_CLASS}>
+                  {#each vendorMethods(defaultMealVendorValue) as method (method)}
+                    <option value={method}>{MEAL_METHOD_LABELS[method]}</option>
+                  {/each}
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <section class="flex flex-col gap-3 pt-5">
+            <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">
+              Purchase defaults
+            </h3>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div class="flex flex-col gap-1.5">
+                <Label for="defaultPurchaseVendor">Category</Label>
+                <select id="defaultPurchaseVendor" name="defaultPurchaseVendor" class={SELECT_CLASS}>
+                  {#each PURCHASE_VENDORS as vendor (vendor)}
+                    <option value={vendor} selected={data.defaultPurchaseVendor === vendor}>
+                      {VENDOR_LABELS[vendor]}
+                    </option>
+                  {/each}
+                </select>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <Label for="defaultPurchaseCadence">Cadence</Label>
+                <select id="defaultPurchaseCadence" name="defaultPurchaseCadence" class={SELECT_CLASS}>
+                  {#each PURCHASE_CADENCES as cadence (cadence)}
+                    <option value={cadence} selected={data.defaultPurchaseCadence === cadence}>
+                      {PURCHASE_CADENCE_LABELS[cadence]}
+                    </option>
+                  {/each}
+                </select>
+                <p class="text-xs text-muted-foreground">Used when the category is Subscription.</p>
+              </div>
+            </div>
+          </section>
+        </Card.Content>
+      </Card.Root>
     </div>
 
-    <!-- Status bar spans all three cards: save feedback plus the reset escape hatch. -->
+    <!-- Status bar spans the card grid: save feedback plus the reset escape hatch. -->
     <div class="flex flex-wrap items-center justify-end gap-3 rounded-xl bg-card px-4 py-3 ring-1 ring-foreground/10">
       {#if actionData?.saved}
         <span class="flex items-center gap-1 text-sm text-success"><Check class="size-4" /> Saved</span>

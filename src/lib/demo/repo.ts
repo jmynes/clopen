@@ -196,6 +196,7 @@ function expenseFromInput(
     vendor: input.vendor,
     direction: input.direction,
     method: input.method,
+    cadence: input.cadence,
     note: input.note,
     createdAt,
     updatedAt,
@@ -339,6 +340,13 @@ export const demoRepo: Repo = {
       goalEnabled: input.goalEnabled,
       yearlyGoal: input.yearlyGoal,
       countExpenses: input.countExpenses,
+      defaultExpenseKind: input.defaultExpenseKind,
+      defaultRideVendor: input.defaultRideVendor,
+      defaultRideDirection: input.defaultRideDirection,
+      defaultMealVendor: input.defaultMealVendor,
+      defaultMealMethod: input.defaultMealMethod,
+      defaultPurchaseVendor: input.defaultPurchaseVendor,
+      defaultPurchaseCadence: input.defaultPurchaseCadence,
     };
     localStorage.setItem(activeKeys().settings, JSON.stringify(row));
   },

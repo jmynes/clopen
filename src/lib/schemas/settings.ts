@@ -1,4 +1,13 @@
 import { z } from 'zod';
+import {
+  EXPENSE_KINDS,
+  MEAL_METHODS,
+  MEAL_VENDORS,
+  PURCHASE_CADENCES,
+  PURCHASE_VENDORS,
+  RIDE_DIRECTIONS,
+  RIDE_VENDORS,
+} from '$lib/expense-kinds';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -37,6 +46,14 @@ export const settingsInput = z.object({
   goalEnabled: z.boolean().default(false),
   yearlyGoal: z.coerce.number().min(0, 'Goal cannot be negative').max(10_000_000).default(80000),
   countExpenses: z.boolean().default(true),
+  // What the Expenses add form opens with: kind, then per-kind details.
+  defaultExpenseKind: z.enum(EXPENSE_KINDS).default('ride'),
+  defaultRideVendor: z.enum(RIDE_VENDORS).default('uber'),
+  defaultRideDirection: z.enum(RIDE_DIRECTIONS).default('to_work'),
+  defaultMealVendor: z.enum(MEAL_VENDORS).default('uber_eats'),
+  defaultMealMethod: z.enum(MEAL_METHODS).default('delivery'),
+  defaultPurchaseVendor: z.enum(PURCHASE_VENDORS).default('hardware'),
+  defaultPurchaseCadence: z.enum(PURCHASE_CADENCES).default('monthly'),
 });
 
 export type SettingsInput = z.infer<typeof settingsInput>;

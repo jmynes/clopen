@@ -9,7 +9,7 @@ import { addExpense, deleteExpense, listExpenseEvents, listExpenses, updateExpen
 type Db = ReturnType<typeof drizzle<typeof schema>>;
 
 function mk(partial: Partial<ExpenseInput> & { date: string; amount: number }): ExpenseInput {
-  return { kind: 'ride', vendor: null, direction: null, method: null, note: null, ...partial };
+  return { kind: 'ride', vendor: null, direction: null, method: null, cadence: null, note: null, ...partial };
 }
 
 let db: Db;

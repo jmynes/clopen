@@ -1,6 +1,15 @@
 import { sql } from 'drizzle-orm';
 import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
-import { EXPENSE_KINDS, EXPENSE_VENDORS, MEAL_METHODS, RIDE_DIRECTIONS } from '$lib/expense-kinds';
+import {
+  EXPENSE_KINDS,
+  EXPENSE_VENDORS,
+  MEAL_METHODS,
+  MEAL_VENDORS,
+  PURCHASE_CADENCES,
+  PURCHASE_VENDORS,
+  RIDE_DIRECTIONS,
+  RIDE_VENDORS,
+} from '$lib/expense-kinds';
 import { ENTRY_KINDS } from '$lib/leave-kinds';
 import { CLOCK_BREAK_MODES, LEDGER_PERIODS } from '$lib/schemas/settings';
 
@@ -75,6 +84,14 @@ export const settings = sqliteTable('settings', {
   yearlyGoal: real('yearly_goal').notNull().default(80000),
   /** Dashboard default for folding expenses into the make-whole math. */
   countExpenses: integer('count_expenses', { mode: 'boolean' }).notNull().default(true),
+  /** What the Expenses add form opens with: kind, then per-kind details. */
+  defaultExpenseKind: text('default_expense_kind', { enum: EXPENSE_KINDS }).notNull().default('ride'),
+  defaultRideVendor: text('default_ride_vendor', { enum: RIDE_VENDORS }).notNull().default('uber'),
+  defaultRideDirection: text('default_ride_direction', { enum: RIDE_DIRECTIONS }).notNull().default('to_work'),
+  defaultMealVendor: text('default_meal_vendor', { enum: MEAL_VENDORS }).notNull().default('uber_eats'),
+  defaultMealMethod: text('default_meal_method', { enum: MEAL_METHODS }).notNull().default('delivery'),
+  defaultPurchaseVendor: text('default_purchase_vendor', { enum: PURCHASE_VENDORS }).notNull().default('hardware'),
+  defaultPurchaseCadence: text('default_purchase_cadence', { enum: PURCHASE_CADENCES }).notNull().default('monthly'),
 });
 
 export type TimeEntry = typeof timeEntries.$inferSelect;
@@ -128,6 +145,8 @@ export const expenses = sqliteTable('expenses', {
   /** Ride-only commute leg / meal-only delivery-vs-pickup. Null elsewhere. */
   direction: text('direction', { enum: RIDE_DIRECTIONS }),
   method: text('method', { enum: MEAL_METHODS }),
+  /** Subscription purchases only: how often the charge recurs. Null elsewhere. */
+  cadence: text('cadence', { enum: PURCHASE_CADENCES }),
   note: text('note'),
   createdAt: integer('created_at').notNull().default(sql`(unixepoch())`),
   /** Epoch seconds of the last edit; null = never edited since creation. */

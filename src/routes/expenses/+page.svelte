@@ -1,14 +1,19 @@
 <script lang="ts">
+  import AppWindow from '@lucide/svelte/icons/app-window';
   import Bike from '@lucide/svelte/icons/bike';
   import Briefcase from '@lucide/svelte/icons/briefcase';
   import CalendarCheck from '@lucide/svelte/icons/calendar-check';
   import CarTaxiFront from '@lucide/svelte/icons/car-taxi-front';
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
+  import ConciergeBell from '@lucide/svelte/icons/concierge-bell';
+  import Cpu from '@lucide/svelte/icons/cpu';
+  import CreditCard from '@lucide/svelte/icons/credit-card';
   import House from '@lucide/svelte/icons/house';
   import Pencil from '@lucide/svelte/icons/pencil';
   import Plus from '@lucide/svelte/icons/plus';
   import Receipt from '@lucide/svelte/icons/receipt';
+  import RefreshCw from '@lucide/svelte/icons/refresh-cw';
   import Route from '@lucide/svelte/icons/route';
   import ShoppingBag from '@lucide/svelte/icons/shopping-bag';
   import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -41,12 +46,15 @@
     type ExpenseVendor,
     KIND_VENDORS,
     MEAL_METHOD_LABELS,
-    MEAL_METHODS,
     type MealMethod,
+    PURCHASE_CADENCE_LABELS,
+    PURCHASE_CADENCES,
+    type PurchaseCadence,
     RIDE_DIRECTION_LABELS,
     RIDE_DIRECTIONS,
     type RideDirection,
     VENDOR_LABELS,
+    vendorMethods,
   } from '$lib/expense-kinds';
   import type { LedgerPeriod } from '$lib/schemas/settings';
   import { addDays, weekDates } from '$lib/timesheet';
@@ -150,38 +158,78 @@
   // The shadcn Selects are display-only (icons in the trigger and menu);
   // hidden inputs alongside them carry the values into the POST, and the
   // ride-only vendor/direction fields appear as the kind flips to ride.
+  /** What a fresh form opens with — every axis comes from Settings → Expenses. */
+  function detailDefaults(kind: ExpenseKind): {
+    vendor: ExpenseVendor;
+    direction: RideDirection;
+    method: MealMethod;
+    cadence: PurchaseCadence;
+  } {
+    const vendor =
+      kind === 'ride'
+        ? data.defaultRideVendor
+        : kind === 'meal'
+          ? data.defaultMealVendor
+          : kind === 'purchase'
+            ? data.defaultPurchaseVendor
+            : 'other';
+    return {
+      vendor,
+      direction: data.defaultRideDirection,
+      method: data.defaultMealMethod,
+      cadence: data.defaultPurchaseCadence,
+    };
+  }
+
   let addDate = $state(todayISO());
-  let addKind = $state<ExpenseKind>('ride');
-  let addVendor = $state<ExpenseVendor>('uber');
-  let addDirection = $state<RideDirection>('to_work');
-  let addMethod = $state<MealMethod>('delivery');
+  // Initial-only reads of the settings defaults; the selects own the values
+  // after first render.
+  // svelte-ignore state_referenced_locally
+  let addKind = $state<ExpenseKind>(data.defaultExpenseKind);
+  // svelte-ignore state_referenced_locally
+  let addVendor = $state<ExpenseVendor>(detailDefaults(addKind).vendor);
+  // svelte-ignore state_referenced_locally
+  let addDirection = $state<RideDirection>(data.defaultRideDirection);
+  // svelte-ignore state_referenced_locally
+  let addMethod = $state<MealMethod>(data.defaultMealMethod);
+  // svelte-ignore state_referenced_locally
+  let addCadence = $state<PurchaseCadence>(data.defaultPurchaseCadence);
   let editKind = $state<ExpenseKind>('ride');
   let editVendor = $state<ExpenseVendor>('other');
   let editDirection = $state<RideDirection>('other');
   let editMethod = $state<MealMethod>('delivery');
+  let editCadence = $state<PurchaseCadence>('monthly');
   let editing = $state<Expense | null>(null);
   let deleting = $state<Expense | null>(null);
   let submitting = $state(false);
 
-  const KIND_ICON = { ride: CarTaxiFront, meal: UtensilsCrossed, other: Receipt } as const;
+  const KIND_ICON = { ride: CarTaxiFront, meal: UtensilsCrossed, purchase: CreditCard, other: Receipt } as const;
   // Uber Eats and Grubhub aren't in the FA brands pack; their real glyphs
   // come from Simple Icons instead.
   const VENDOR_ICON = {
     uber: UberIcon,
     lyft: LyftIcon,
+    taxi: CarTaxiFront,
     uber_eats: UberEatsIcon,
     grubhub: GrubhubIcon,
     restaurant: Utensils,
-    other: CarTaxiFront,
+    hardware: Cpu,
+    software: AppWindow,
+    subscription: RefreshCw,
+    other: Receipt,
   } as const;
   const DIRECTION_ICON = { to_work: Briefcase, to_home: House, other: Route } as const;
-  const METHOD_ICON = { delivery: Bike, pickup: ShoppingBag } as const;
+  const METHOD_ICON = { delivery: Bike, pickup: ShoppingBag, dine_in: ConciergeBell } as const;
   const MARK_CLASS: Record<ExpenseVendor, string> = {
     uber: '',
     lyft: 'text-[#ff00bf]',
+    taxi: 'text-yellow-500',
     uber_eats: 'text-[#06c167]',
     grubhub: 'text-[#f63440]',
     restaurant: '',
+    hardware: '',
+    software: '',
+    subscription: '',
     other: '',
   };
 
@@ -190,13 +238,9 @@
     return e.vendor ? VENDOR_LABELS[e.vendor] : EXPENSE_META[e.kind].label;
   }
 
-  /** Reset the detail axes to kind-appropriate defaults when kind changes. */
-  function detailDefaults(kind: ExpenseKind): { vendor: ExpenseVendor; direction: RideDirection; method: MealMethod } {
-    return {
-      vendor: KIND_VENDORS[kind][0] ?? 'other',
-      direction: 'to_work',
-      method: 'delivery',
-    };
+  /** Dine-in only fits a restaurant; flipping vendor coerces a stranded method. */
+  function coerceMethod(vendor: ExpenseVendor, method: MealMethod): MealMethod {
+    return vendorMethods(vendor).includes(method) ? method : 'delivery';
   }
 
   // Shared enhance: demo cancels the POST and runs the core action against
@@ -282,7 +326,7 @@
   </div>
 {/snippet}
 
-{#snippet methodSelect(id: string, value: MealMethod, set: (v: MealMethod) => void)}
+{#snippet methodSelect(id: string, vendor: ExpenseVendor, value: MealMethod, set: (v: MealMethod) => void)}
   {@const MethodIcon = METHOD_ICON[value]}
   <div class="flex flex-col gap-1.5">
     <Label for={id}>Method</Label>
@@ -294,7 +338,7 @@
         </span>
       </Select.Trigger>
       <Select.Content>
-        {#each MEAL_METHODS as method (method)}
+        {#each vendorMethods(vendor) as method (method)}
           {@const ItemIcon = METHOD_ICON[method]}
           <Select.Item value={method} label={MEAL_METHOD_LABELS[method]}>
             <span class="inline-flex items-center gap-2">
@@ -306,6 +350,31 @@
       </Select.Content>
     </Select.Root>
     <input type="hidden" name="method" {value} />
+  </div>
+{/snippet}
+
+{#snippet cadenceSelect(id: string, value: PurchaseCadence, set: (v: PurchaseCadence) => void)}
+  <div class="flex flex-col gap-1.5">
+    <Label for={id}>Cadence</Label>
+    <Select.Root type="single" {value} onValueChange={(v) => set(v as PurchaseCadence)}>
+      <Select.Trigger {id} aria-label="Cadence" class="w-full">
+        <span class="inline-flex min-w-0 items-center gap-1.5">
+          <RefreshCw class="size-3.5 shrink-0" />
+          <span class="min-w-0 truncate text-xs">{PURCHASE_CADENCE_LABELS[value]}</span>
+        </span>
+      </Select.Trigger>
+      <Select.Content>
+        {#each PURCHASE_CADENCES as cadence (cadence)}
+          <Select.Item value={cadence} label={PURCHASE_CADENCE_LABELS[cadence]}>
+            <span class="inline-flex items-center gap-2">
+              <RefreshCw class="size-3.5" />
+              {PURCHASE_CADENCE_LABELS[cadence]}
+            </span>
+          </Select.Item>
+        {/each}
+      </Select.Content>
+    </Select.Root>
+    <input type="hidden" name="cadence" {value} />
   </div>
 {/snippet}
 
@@ -356,7 +425,9 @@
         use:enhance={expenseEnhance('add', () => (addDate = todayISO()))}
         class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:items-end {addKind === 'other'
           ? 'lg:grid-cols-[10rem_8rem_8rem_1fr_auto]'
-          : 'lg:grid-cols-[9rem_6.5rem_7.5rem_7.5rem_6.5rem_1fr_auto]'}"
+          : addKind === 'purchase' && addVendor !== 'subscription'
+            ? 'lg:grid-cols-[9.5rem_7rem_8rem_7rem_1fr_auto]'
+            : 'lg:grid-cols-[9rem_6.5rem_7.5rem_7.5rem_6.5rem_1fr_auto]'}"
       >
         <div class="flex flex-col gap-1.5">
           <Label for="expense-date">Date</Label>
@@ -364,14 +435,22 @@
         </div>
         {@render kindSelect('expense-kind', addKind, (v) => {
           addKind = v;
-          ({ vendor: addVendor, direction: addDirection, method: addMethod } = detailDefaults(v));
+          ({ vendor: addVendor, direction: addDirection, method: addMethod, cadence: addCadence } = detailDefaults(v));
         })}
         {#if addKind === 'ride'}
           {@render vendorSelect('expense-vendor', 'ride', addVendor, (v) => (addVendor = v))}
           {@render directionSelect('expense-direction', addDirection, (v) => (addDirection = v))}
         {:else if addKind === 'meal'}
-          {@render vendorSelect('expense-vendor', 'meal', addVendor, (v) => (addVendor = v))}
-          {@render methodSelect('expense-method', addMethod, (v) => (addMethod = v))}
+          {@render vendorSelect('expense-vendor', 'meal', addVendor, (v) => {
+            addVendor = v;
+            addMethod = v === 'restaurant' ? 'dine_in' : coerceMethod(v, addMethod);
+          })}
+          {@render methodSelect('expense-method', addVendor, addMethod, (v) => (addMethod = v))}
+        {:else if addKind === 'purchase'}
+          {@render vendorSelect('expense-vendor', 'purchase', addVendor, (v) => (addVendor = v))}
+          {#if addVendor === 'subscription'}
+            {@render cadenceSelect('expense-cadence', addCadence, (v) => (addCadence = v))}
+          {/if}
         {/if}
         <div class="flex flex-col gap-1.5">
           <Label for="expense-amount">Amount (USD)</Label>
@@ -482,6 +561,12 @@
                   {MEAL_METHOD_LABELS[e.method].toLowerCase()}
                 </span>
               {/if}
+              {#if e.cadence}
+                <span class="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <RefreshCw class="size-3.5" />
+                  {PURCHASE_CADENCE_LABELS[e.cadence].toLowerCase()}
+                </span>
+              {/if}
               {#if e.note}<span class="max-w-56 truncate text-xs text-muted-foreground">{e.note}</span>{/if}
               <span class="ml-auto font-mono tabular-nums">{money.format(e.amount)}</span>
               <span class="flex items-center">
@@ -496,6 +581,7 @@
                     editVendor = e.vendor ?? defaults.vendor;
                     editDirection = e.direction ?? defaults.direction;
                     editMethod = e.method ?? defaults.method;
+                    editCadence = e.cadence ?? defaults.cadence;
                     editing = e;
                   }}
                 >
@@ -551,14 +637,23 @@
         </div>
         {@render kindSelect('edit-expense-kind', editKind, (v) => {
           editKind = v;
-          ({ vendor: editVendor, direction: editDirection, method: editMethod } = detailDefaults(v));
+          ({ vendor: editVendor, direction: editDirection, method: editMethod, cadence: editCadence } =
+            detailDefaults(v));
         })}
         {#if editKind === 'ride'}
           {@render vendorSelect('edit-expense-vendor', 'ride', editVendor, (v) => (editVendor = v))}
           {@render directionSelect('edit-expense-direction', editDirection, (v) => (editDirection = v))}
         {:else if editKind === 'meal'}
-          {@render vendorSelect('edit-expense-vendor', 'meal', editVendor, (v) => (editVendor = v))}
-          {@render methodSelect('edit-expense-method', editMethod, (v) => (editMethod = v))}
+          {@render vendorSelect('edit-expense-vendor', 'meal', editVendor, (v) => {
+            editVendor = v;
+            editMethod = v === 'restaurant' ? 'dine_in' : coerceMethod(v, editMethod);
+          })}
+          {@render methodSelect('edit-expense-method', editVendor, editMethod, (v) => (editMethod = v))}
+        {:else if editKind === 'purchase'}
+          {@render vendorSelect('edit-expense-vendor', 'purchase', editVendor, (v) => (editVendor = v))}
+          {#if editVendor === 'subscription'}
+            {@render cadenceSelect('edit-expense-cadence', editCadence, (v) => (editCadence = v))}
+          {/if}
         {/if}
         <div class="flex flex-col gap-1.5">
           <Label for="edit-expense-amount">Amount (USD)</Label>

@@ -13,8 +13,38 @@ describe('expenseInput', () => {
       vendor: null,
       direction: null,
       method: null,
+      cadence: null,
       note: 'Uber to the office',
     });
+  });
+
+  it('accepts the taxi ride vendor', () => {
+    expect(expenseInput.parse({ ...valid, vendor: 'taxi' }).vendor).toBe('taxi');
+  });
+
+  it('keeps dine-in only at a restaurant', () => {
+    const meal = { ...valid, kind: 'meal', method: 'dine_in' };
+    expect(expenseInput.parse({ ...meal, vendor: 'restaurant' }).method).toBe('dine_in');
+    // Delivery apps don't seat you; the stale method scrubs to null.
+    expect(expenseInput.parse({ ...meal, vendor: 'grubhub' }).method).toBeNull();
+    expect(expenseInput.parse(meal).method).toBeNull();
+  });
+
+  it('keeps cadence only on a subscription purchase', () => {
+    const sub = { ...valid, kind: 'purchase', vendor: 'subscription', cadence: 'monthly' };
+    expect(expenseInput.parse(sub).cadence).toBe('monthly');
+    expect(expenseInput.parse({ ...sub, vendor: 'software' }).cadence).toBeNull();
+    expect(expenseInput.parse({ ...sub, kind: 'meal', vendor: 'restaurant' }).cadence).toBeNull();
+  });
+
+  it('keeps vendor on a purchase', () => {
+    expect(expenseInput.parse({ ...valid, kind: 'purchase', vendor: 'hardware' }).vendor).toBe('hardware');
+  });
+
+  it('rejects an unknown cadence', () => {
+    expect(
+      expenseInput.safeParse({ ...valid, kind: 'purchase', vendor: 'subscription', cadence: 'daily' }).success,
+    ).toBe(false);
   });
 
   it('keeps vendor and direction on a ride', () => {

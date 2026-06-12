@@ -52,6 +52,13 @@ export const DEFAULT_SETTINGS = {
   goalEnabled: false,
   yearlyGoal: 80000,
   countExpenses: true,
+  defaultExpenseKind: 'ride',
+  defaultRideVendor: 'uber',
+  defaultRideDirection: 'to_work',
+  defaultMealVendor: 'uber_eats',
+  defaultMealMethod: 'delivery',
+  defaultPurchaseVendor: 'hardware',
+  defaultPurchaseCadence: 'monthly',
 } satisfies Settings;
 
 /** Map a stored settings row to the shape the make-whole math expects. */
