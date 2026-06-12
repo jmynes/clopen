@@ -32,6 +32,11 @@
       {#each weeks as week, i (week.weekStart)}
         {@const met = week.logged >= week.target}
         {@const labelled = i % stride === 0}
+        {@const hLogged = barHeight(week.logged)}
+        <!-- Overtime cap: the slice of the bar above the target line, floored
+             at 2px so a barely-over week still reads as over. -->
+        {@const cap = week.logged > week.target ? Math.min(Math.max(hLogged - barHeight(week.target), 2), hLogged) : 0}
+        {@const hoverTitle = `${formatWeekRange(week.weekStart, true)} · ${week.logged}h logged · ${week.target}h target`}
         <div class="group flex min-w-7 flex-1 flex-col items-center justify-end gap-2 sm:min-w-9">
           <div class="relative w-full" style="height: {trackHeight}px">
             <!-- target marker -->
@@ -40,14 +45,22 @@
               style="bottom: {barHeight(week.target)}px"
               title="Target {week.target}h"
             ></div>
-            <!-- logged bar -->
+            <!-- logged bar (up to the target line) -->
             <div
-              class="absolute inset-x-0.5 rounded-t-sm transition-[height] group-hover:brightness-110 {met
+              class="absolute inset-x-0.5 transition-[height] group-hover:brightness-110 {met
                 ? 'bg-success'
-                : 'bg-amber-500'}"
-              style="height: {barHeight(week.logged)}px; bottom: 0"
-              title="{formatWeekRange(week.weekStart, true)} · {week.logged}h logged · {week.target}h target"
+                : 'bg-amber-500'} {cap === 0 ? 'rounded-t-sm' : ''}"
+              style="height: {hLogged - cap}px; bottom: 0"
+              title={hoverTitle}
             ></div>
+            <!-- overtime above the target line, in the hero's "Beat it" emerald -->
+            {#if cap > 0}
+              <div
+                class="absolute inset-x-0.5 rounded-t-sm bg-emerald-400 transition-[height] group-hover:brightness-110"
+                style="height: {cap}px; bottom: {hLogged - cap}px"
+                title={hoverTitle}
+              ></div>
+            {/if}
             <!-- hover value -->
             <span
               class="absolute inset-x-0 text-center text-[11px] font-medium tabular-nums opacity-0 transition-opacity group-hover:opacity-100"
@@ -69,6 +82,7 @@
       {/each}
     </div>
     <div class="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+      <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-emerald-400"></span> Above target</span>
       <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-success"></span> Met target</span>
       <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-amber-500"></span> Below target</span>
       <span class="flex items-center gap-1.5">
