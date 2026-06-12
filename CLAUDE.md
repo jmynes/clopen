@@ -387,16 +387,15 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   adjust-start form, a stale-shift banner (DateField + time → `resolveSave`,
   or a confirm-dialog discard), and a Today card of the day's shifts. Demo
   branches run the core actions against `demoRepo` + `invalidate('demo:data')`.
-- `src/routes/settings/+page.*` — an always-visible **Global** card above a
-  sidebar shell. Global holds the baseline every surface computes from,
-  outside the tabs so it never hides: Compensation (pay rate, daily hours),
-  Schedule (week-start, tracking epoch, workday chips ordered by week
-  start), and Time (time format, timezone full IANA select, observe-DST
-  toggle). Below it, the section rail (vertical
-  from `md`, horizontal scroll pills below) shows one section at a time in
-  a single wide pane (Dashboard / Clock & time / Log & Ledger / Expenses,
-  opening on Dashboard). Inactive sections are `hidden`, **not unmounted** —
-  the whole page, Global card included, stays one form so every field posts
+- `src/routes/settings/+page.*` — sidebar shell: a section rail (vertical
+  from `md`, dropdown below) showing one section at a time in a single wide
+  pane (Global / Dashboard / Clock & time / Log & Ledger / Expenses,
+  opening on Global). Global holds the baseline every surface computes
+  from: Compensation (pay rate, daily hours), Schedule (week-start,
+  tracking epoch, workday chips ordered by week start), and Time (time
+  format, timezone full IANA select, observe-DST toggle).
+  Inactive sections are `hidden`, **not unmounted** —
+  the page stays one form so every field posts
   on each auto-save; switching
   sections runs `reportValidity()` first so an invalid field can't hide
   itself and silently block saves. Sections keep uppercase micro-headers.
