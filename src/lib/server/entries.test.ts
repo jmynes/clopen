@@ -6,6 +6,7 @@ import * as schema from '$lib/db/schema';
 import type { EntryInput } from '$lib/schemas/entry';
 import {
   addEntry,
+  clearEntries,
   deleteEntriesByDates,
   deleteEntry,
   listEntries,
@@ -121,5 +122,22 @@ describe('entries CRUD', () => {
     );
     const after = (await listEntries(db)).find((e) => e.id === row.id);
     expect(after?.updatedAt).toBeGreaterThanOrEqual(before);
+  });
+});
+
+describe('clearEntries', () => {
+  it('removes every entry and audit-logs each deletion', async () => {
+    await addEntry(mk({ date: '2026-06-10', hours: 8 }), db);
+    await addEntry(mk({ date: '2026-06-11', hours: 8 }), db);
+    await clearEntries(db);
+
+    expect(await listEntries(db)).toHaveLength(0);
+    const events = await listEntryEvents(db);
+    expect(events.filter((e) => e.action === 'delete')).toHaveLength(2);
+  });
+
+  it('is a no-op on an empty ledger', async () => {
+    await clearEntries(db);
+    expect(await listEntryEvents(db)).toHaveLength(0);
   });
 });

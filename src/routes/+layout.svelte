@@ -283,15 +283,6 @@
       </a>
       <span class="ml-auto mr-1 font-mono text-xs" title="App version">v{__APP_VERSION__}</span>
       <a
-        href="https://discord.gg/DAmnh27qna"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="flex items-center gap-1.5 rounded-md px-2 py-1 transition-colors hover:bg-accent hover:text-accent-foreground"
-      >
-        <DiscordIcon class="size-3.5" />
-        Discord
-      </a>
-      <a
         href="https://github.com/jmynes/clopen"
         target="_blank"
         rel="noopener noreferrer"
@@ -304,6 +295,15 @@
           />
         </svg>
         GitHub
+      </a>
+      <a
+        href="https://discord.gg/DAmnh27qna"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="flex items-center gap-1.5 rounded-md px-2 py-1 transition-colors hover:bg-accent hover:text-accent-foreground"
+      >
+        <DiscordIcon class="size-3.5" />
+        Discord
       </a>
     </div>
   </footer>

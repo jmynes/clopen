@@ -1,5 +1,13 @@
 import { fail } from '@sveltejs/kit';
-import { addAction, addWeekAction, deleteAction, importCsvAction, updateAction } from '$lib/core/log';
+import {
+  addAction,
+  addWeekAction,
+  clearAllAction,
+  clearPeriodAction,
+  deleteAction,
+  importCsvAction,
+  updateAction,
+} from '$lib/core/log';
 import { isDemo } from '$lib/demo/flag';
 import { serverRepo } from '$lib/server/repo';
 import type { Actions } from './$types';
@@ -29,5 +37,13 @@ export const actions: Actions = {
   importCsv: async ({ request }) => {
     if (isDemo) return fail(400, { error: 'Demo mode handles this in the browser' });
     return unwrap(await importCsvAction(serverRepo, await request.formData()));
+  },
+  clearAll: async () => {
+    if (isDemo) return fail(400, { error: 'Demo mode handles this in the browser' });
+    return unwrap(await clearAllAction(serverRepo));
+  },
+  clearPeriod: async ({ request }) => {
+    if (isDemo) return fail(400, { error: 'Demo mode handles this in the browser' });
+    return unwrap(await clearPeriodAction(serverRepo, await request.formData()));
   },
 };

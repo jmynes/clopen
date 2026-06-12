@@ -339,7 +339,30 @@ export async function importCsvAction(repo: Repo, form: FormData): Promise<Actio
   };
 }
 
-export type LogActionName = 'add' | 'update' | 'delete' | 'addWeek' | 'importCsv';
+/** Wipe the whole ledger (the Clear dialog's "everything" scope). */
+export async function clearAllAction(repo: Repo): Promise<ActionOutcome> {
+  await repo.clearEntries();
+  return { ok: true, data: { cleared: true } };
+}
+
+/**
+ * Clear every entry inside one ledger page's date range (the Clear dialog's
+ * current-period scope). The range is resolved server-side against the live
+ * ledger, so the client only ever names the bucket bounds.
+ */
+export async function clearPeriodAction(repo: Repo, form: FormData): Promise<ActionOutcome> {
+  const start = String(form.get('start') ?? '');
+  const end = String(form.get('end') ?? '');
+  if (!ISO_DATE.test(start) || !ISO_DATE.test(end) || start > end) {
+    return { ok: false, status: 400, data: { error: 'Invalid period range' } };
+  }
+  const entries = await repo.listEntries();
+  const dates = [...new Set(entries.filter((e) => e.date >= start && e.date <= end).map((e) => e.date))];
+  if (dates.length > 0) await repo.deleteEntriesByDates(dates);
+  return { ok: true, data: { cleared: true } };
+}
+
+export type LogActionName = 'add' | 'update' | 'delete' | 'addWeek' | 'importCsv' | 'clearAll' | 'clearPeriod';
 
 /** Dispatch by SvelteKit action name ("?/add" → add). Demo mode's client router. */
 export function runLogAction(repo: Repo, action: LogActionName, form: FormData): Promise<ActionOutcome> {
@@ -354,6 +377,10 @@ export function runLogAction(repo: Repo, action: LogActionName, form: FormData):
       return addWeekAction(repo, form);
     case 'importCsv':
       return importCsvAction(repo, form);
+    case 'clearAll':
+      return clearAllAction(repo);
+    case 'clearPeriod':
+      return clearPeriodAction(repo, form);
   }
 }
 

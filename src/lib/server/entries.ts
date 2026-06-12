@@ -102,3 +102,9 @@ export async function deleteEntriesByDates(dates: string[], database: Database =
   const removed = await database.delete(timeEntries).where(inArray(timeEntries.date, dates)).returning();
   for (const row of removed) await logEvent(database, 'delete', row);
 }
+
+/** Wipe the whole ledger; every removed entry still lands in the audit log. */
+export async function clearEntries(database: Database = defaultDb): Promise<void> {
+  const removed = await database.delete(timeEntries).returning();
+  for (const row of removed) await logEvent(database, 'delete', row);
+}

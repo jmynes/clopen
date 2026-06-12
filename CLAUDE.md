@@ -345,7 +345,14 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   (default open state comes from `expandNotes`); an expand button takes the
   whole section fullscreen, and paging back stops at the tracking epoch.
   Blank-day rows carry the same action cluster (note/delete disabled, pencil
-  live). Perf: the table (md+) and the mobile card list are alternates — only
+  live). The Ledger header's destructive-outline **Clear** button opens a
+  confirm dialog offering two scopes: the visible period (posts the bucket's
+  start/end to `?/clearPeriod`, which resolves dates server-side) or the
+  whole ledger (`?/clearAll` → `Repo.clearEntries()`); every removed entry
+  still lands in the audit log. Confirm dialogs (row delete + clear) focus
+  their destructive button on open via `onOpenAutoFocus`, so a bare Enter
+  confirms — Tab still reaches Cancel, Escape still closes; the clear dialog
+  falls back to Clear-all focus when the visible period is empty. Perf: the table (md+) and the mobile card list are alternates — only
   the visible one renders client-side (`innerWidth` from
   `svelte/reactivity/window`); entry rows are component-free (plain buttons +
   inline-SVG snippets); the ledger renders two screenfuls and grows only when
@@ -409,8 +416,8 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   slide-down menu over a dim overlay. The Clock link shows a small `bg-success`
   dot while a shift is running (`data.openShift`). The footer shows the app
   version via `__APP_VERSION__`, defined in `vite.config.ts` from
-  `package.json` — no manual sync — plus Discord (FA-brands `DiscordIcon`)
-  and GitHub links.
+  `package.json` — no manual sync — plus GitHub and Discord (FA-brands
+  `DiscordIcon`) links, in that order.
 - **Brand:** `src/lib/assets/clopen-doors-ampm.svg` is the pre-colored
   two-tone doors mark (sky `#0ea5e9` + rose `#f43f5e`, exported from Serif)
   and the single source for both the header (`ClopenDoors.svelte`) and

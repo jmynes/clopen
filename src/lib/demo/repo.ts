@@ -304,6 +304,13 @@ export const demoRepo: Repo = {
     for (const row of entries.filter((e) => drop.has(e.date))) logEvent('delete', row);
   },
 
+  async clearEntries() {
+    ensureSeeded();
+    const entries = readEntries();
+    writeEntries([]);
+    for (const row of entries) logEvent('delete', row);
+  },
+
   async listEntryEvents() {
     ensureSeeded();
     return [...readEvents()].sort((a, b) => b.at - a.at);

@@ -6,6 +6,7 @@
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import Download from '@lucide/svelte/icons/download';
+  import Eraser from '@lucide/svelte/icons/eraser';
   import Maximize2 from '@lucide/svelte/icons/maximize-2';
   import Minimize2 from '@lucide/svelte/icons/minimize-2';
   import Minus from '@lucide/svelte/icons/minus';
@@ -119,12 +120,20 @@
   // Delete-confirmation dialog state — populated by the trash button on a row.
   let deleting = $state<TimeEntry | null>(null);
   let deleteForm = $state<HTMLFormElement | null>(null);
+  // Focus lands on the destructive button when a confirm dialog opens, so a
+  // bare Enter confirms (Tab still reaches Cancel; Escape still closes).
+  let deleteConfirmBtn = $state<HTMLElement | null>(null);
   function confirmDelete(entry: TimeEntry) {
     deleting = entry;
   }
   function executeDelete() {
     deleteForm?.requestSubmit();
   }
+
+  // Clear-ledger dialog: wipe the visible period or the whole ledger.
+  let clearOpen = $state(false);
+  let clearPeriodBtn = $state<HTMLElement | null>(null);
+  let clearAllBtn = $state<HTMLElement | null>(null);
 
   // Conflict-resolution state shared by the add/addWeek/importCsv forms.
   type ConflictEntry = {
@@ -1434,6 +1443,23 @@
                 {...props}
                 variant="outline"
                 size="sm"
+                class="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                disabled={data.entries.length === 0}
+                onclick={() => (clearOpen = true)}
+              >
+                <Eraser class="size-4" /> Clear
+              </Button>
+            {/snippet}
+          </Tooltip.Trigger>
+          <Tooltip.Content>Delete this period's entries, or the whole ledger</Tooltip.Content>
+        </Tooltip.Root>
+        <Tooltip.Root>
+          <Tooltip.Trigger>
+            {#snippet child({ props })}
+              <Button
+                {...props}
+                variant="outline"
+                size="sm"
                 type="button"
                 aria-label={entriesExpanded ? 'Collapse ledger' : 'Expand ledger'}
                 onclick={() => (entriesExpanded = !entriesExpanded)}
@@ -1999,7 +2025,13 @@
     if (!o) deleting = null;
   }}
 >
-  <Dialog.Content class="sm:max-w-md">
+  <Dialog.Content
+    class="sm:max-w-md"
+    onOpenAutoFocus={(e) => {
+      e.preventDefault();
+      deleteConfirmBtn?.focus();
+    }}
+  >
     <Dialog.Header>
       <Dialog.Title>Delete this entry?</Dialog.Title>
       <Dialog.Description>This can't be undone.</Dialog.Description>
@@ -2053,11 +2085,97 @@
       </Button>
       <Button
         variant="destructive"
+        bind:ref={deleteConfirmBtn}
         onclick={executeDelete}
         class="hover:bg-destructive/30 focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2"
       >
         Delete
       </Button>
+    </Dialog.Footer>
+  </Dialog.Content>
+</Dialog.Root>
+
+<!-- clear-ledger confirmation: current period or everything -->
+<Dialog.Root bind:open={clearOpen}>
+  <Dialog.Content
+    class="sm:max-w-md"
+    onOpenAutoFocus={(e) => {
+      e.preventDefault();
+      (pagedEntries.length > 0 ? clearPeriodBtn : clearAllBtn)?.focus();
+    }}
+  >
+    <Dialog.Header>
+      <Dialog.Title>Clear the ledger?</Dialog.Title>
+      <Dialog.Description>
+        Delete every entry in {entriesBucket.label} ({pagedEntries.length}) or the entire ledger
+        ({data.entries.length}). Each deletion lands in the audit log, but this can't be undone.
+      </Dialog.Description>
+    </Dialog.Header>
+    <Dialog.Footer class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <Button variant="outline" onclick={() => (clearOpen = false)}>Cancel</Button>
+      <form
+        method="POST"
+        action="?/clearPeriod"
+        class="contents"
+        use:enhance={({ formElement, formData, cancel }) => {
+          if (isDemo) {
+            cancel();
+            void (async () => {
+              const out = await runDemo(formElement, formData);
+              demoForm = out.data as ActionData;
+              clearOpen = false;
+              await invalidate('demo:data');
+            })();
+            return;
+          }
+          return async ({ update }) => {
+            await update();
+            clearOpen = false;
+          };
+        }}
+      >
+        <input type="hidden" name="start" value={entriesBucket.start} />
+        <input type="hidden" name="end" value={entriesBucket.end} />
+        <Button
+          type="submit"
+          variant="destructive"
+          bind:ref={clearPeriodBtn}
+          disabled={pagedEntries.length === 0}
+          class="hover:bg-destructive/30 focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2"
+        >
+          Clear this {entriesPeriod === 'biweek' ? 'bi-week' : entriesPeriod}
+        </Button>
+      </form>
+      <form
+        method="POST"
+        action="?/clearAll"
+        class="contents"
+        use:enhance={({ formElement, formData, cancel }) => {
+          if (isDemo) {
+            cancel();
+            void (async () => {
+              const out = await runDemo(formElement, formData);
+              demoForm = out.data as ActionData;
+              clearOpen = false;
+              await invalidate('demo:data');
+            })();
+            return;
+          }
+          return async ({ update }) => {
+            await update();
+            clearOpen = false;
+          };
+        }}
+      >
+        <Button
+          type="submit"
+          variant="destructive"
+          bind:ref={clearAllBtn}
+          class="hover:bg-destructive/30 focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2"
+        >
+          Clear all
+        </Button>
+      </form>
     </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>

@@ -18,6 +18,8 @@ export type Repo = {
   findExistingDates(dates: string[]): Promise<string[]>;
   listEntriesByDates(dates: string[]): Promise<TimeEntry[]>;
   deleteEntriesByDates(dates: string[]): Promise<void>;
+  /** Wipe the whole ledger; every removed entry still lands in the audit log. */
+  clearEntries(): Promise<void>;
   getSettings(): Promise<Settings>;
   updateSettings(input: SettingsInput): Promise<void>;
   getOpenShift(): Promise<OpenShift | null>;
@@ -89,6 +91,7 @@ export const emptyRepo: Repo = {
   findExistingDates: async () => [],
   listEntriesByDates: async () => [],
   deleteEntriesByDates: async () => {},
+  clearEntries: async () => {},
   getSettings: async () => DEFAULT_SETTINGS,
   updateSettings: async () => {},
   getOpenShift: async () => null,

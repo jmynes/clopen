@@ -1,6 +1,7 @@
 import type { Repo } from '$lib/core/repo';
 import {
   addEntry,
+  clearEntries,
   deleteEntriesByDates,
   deleteEntry,
   findExistingDates,
@@ -29,6 +30,7 @@ export const serverRepo: Repo = {
   findExistingDates,
   listEntriesByDates,
   deleteEntriesByDates,
+  clearEntries,
   getSettings,
   updateSettings,
   getOpenShift,
