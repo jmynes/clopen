@@ -302,8 +302,9 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   name, `N% share · since date`, and a blue progress bar (success green +
   "Reached" at 100%); zero goals renders one slim dashed empty-state card.
   Math in `$lib/savings-goals.ts` (pure, tested). The stat grid's four cards
-  carry foreground icons; only Net and Earned color their numbers, mirroring
-  the hero's hues. The goal dialog's "counting from" DateField carries a
+  (Expected / Logged / Net / a signed dollar Surplus-or-Deficit vs. the
+  period's target) carry foreground icons; only the Net and Surplus/Deficit
+  numbers take color, mirroring the hero's hues. The goal dialog's "counting from" DateField carries a
   shortcuts footer (Today / This week / month / quarter / year, clamped to
   the epoch — an opt-in `shortcuts` prop on DateField). The hours chart
   below has a per-visit granularity select (daily / weekly / bi-weekly /

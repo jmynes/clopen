@@ -8,26 +8,37 @@ A single-user timesheet app. You set a schedule (hours per day, which days
 you work), log your hours, and it keeps a running balance of logged vs.
 expected — in hours and in pay. Named after the close-then-open shift.
 
-Everything is local: one SQLite file, no accounts, no network.
+Everything is local: one SQLite file, no accounts, no network. There's a
+[live demo](https://clopen-production.up.railway.app) that keeps everything
+in your browser's localStorage instead.
 
 ## What it does
 
-- Running balance for a week, bi-week, month, quarter, or year. It compares
-  totals, not individual days, so a long day covers a short one.
+- Running balance for a week, bi-week, month, quarter, or year — the
+  dashboard opens to your pay cycle. It compares totals, not individual
+  days, so a long day covers a short one. An hours chart shows logged vs.
+  target in daily through yearly buckets.
 - Configurable schedule: hours per workday, which weekdays count, week start
   day, and a tracking start date — nothing is expected before it.
 - Several ways to enter time: clock in/out times (it parses `2pm`, `230`,
   `14:00`), plain hour totals, a weekly grid you can paste into from a
-  spreadsheet, or CSV import. Overnight shifts and multiple shifts per day
-  work.
+  spreadsheet, or CSV import/export. Overnight shifts and multiple shifts
+  per day work.
 - A punch clock: clock in, take breaks, clock out, and the finished shift
   lands in the ledger as a normal entry. Breaks can accrue into one entry or
   split the shift.
 - Leave entries: PTO, sick, holiday, vacation, each paid or unpaid. Paid
   leave counts toward the baseline; unpaid is recorded but doesn't.
 - A ledger of every day back to your start date, logged or not, with
-  fold-out notes and a fullscreen view.
-- Optional overtime pay at a multiplier (off by default).
+  fold-out notes, a fullscreen view, and a clear button for one period or
+  everything. Every add, edit, and delete lands in an append-only audit log.
+- Savings goals: ranked dollar targets funded by your overtime (or by all
+  earnings), each taking a share of the stream — e.g. 80/20 — with spare
+  share from finished goals spilling up the ranking.
+- Earnings options: chase a yearly dollar goal above straight salary (on by
+  default), pay overtime at a multiplier (off by default), and fold logged
+  work expenses — rides, meals, purchases, on their own tab — into the
+  hours you owe.
 - Works on phones: bottom tabs, day cards instead of the grid, a card list
   instead of the table.
 
