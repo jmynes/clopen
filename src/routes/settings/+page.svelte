@@ -141,7 +141,7 @@
     }}
     class="flex flex-col gap-6"
   >
-    <div class="grid items-start gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <div class="grid items-start gap-6 md:grid-cols-2">
       <Card.Root>
         <Card.Header class="max-md:text-center">
           <Card.Title>Pay & schedule</Card.Title>
@@ -149,7 +149,7 @@
         <Card.Content class="flex flex-col divide-y divide-border/50">
           <section class="flex flex-col gap-3 pb-5">
             <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">Compensation</h3>
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div class="flex flex-col gap-1.5">
                 <Label for="hourlyRate">Hourly rate (USD)</Label>
                 <Input
@@ -229,7 +229,7 @@
           </section>
           <section class="flex flex-col gap-4 pt-5">
             <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">Schedule</h3>
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div class="flex flex-col gap-1.5">
                 <Label for="weekStartsOn">Week starts on</Label>
                 <select
@@ -292,7 +292,7 @@
           <Card.Title>Clock & time</Card.Title>
         </Card.Header>
         <Card.Content class="flex flex-col gap-4">
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div class="flex flex-col gap-1.5">
               <Label for="timeFormat">Time format</Label>
               <select
@@ -391,7 +391,7 @@
 
           <section class="flex flex-col gap-3 py-5">
             <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">Ledger</h3>
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div class="flex flex-col gap-1.5">
                 <Label for="ledgerPeriod">Default period</Label>
                 <select
