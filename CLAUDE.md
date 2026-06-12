@@ -72,12 +72,13 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   can't evaluate. Of the a11y rules new in 2.5.0, only `useValidAriaValues`
   is off svelte-wide — it rejects **every** expression-valued aria attribute,
   even `aria-checked={x ? 'true' : 'false'}`, so no dynamic aria state can
-  conform. Three others stay on with single-file exceptions for verified
-  false positives / deliberate patterns: `useSemanticElements` (+layout's
-  ARIA radiogroup toggles), `noStaticElementInteractions` (log's
+  conform. Two others stay on with single-file exceptions for verified
+  false positives: `noStaticElementInteractions` (log's
   `<svelte:window onkeydown>`), `noLabelWithoutControl` (settings' workday
   chips — interpolated label text is invisible to it). New a11y findings
-  anywhere else still fail the build.
+  anywhere else still fail the build. The header's theme and demo-data
+  toggles are native sr-only radio inputs styled by their labels (tab lands
+  once per group, arrows switch), not role="radio" buttons.
 - **shadcn-svelte + Tailwind v4.** UI primitives live in `$lib/components/ui/*`.
   Add more via `bun x shadcn-svelte@latest add <name>`.
 - **Server-only code under `src/lib/server/`.** Validate boundaries with Zod

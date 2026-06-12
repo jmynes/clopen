@@ -132,32 +132,48 @@
                 : 'translate-x-full'}"
             ></span>
             <Tooltip.Root>
-              <Tooltip.Trigger
-                type="button"
-                role="radio"
-                aria-checked={sampleData}
-                aria-label="Sample timesheet"
-                onclick={() => setSample(true)}
-                class="relative z-10 inline-flex h-6 w-9 items-center justify-center rounded-full transition-colors {sampleData
-                  ? 'text-primary'
-                  : 'text-muted-foreground hover:text-foreground'}"
-              >
-                <FlaskConical class="size-4" />
+              <Tooltip.Trigger>
+                {#snippet child({ props })}
+                  <label
+                    {...props}
+                    class="relative z-10 inline-flex h-6 w-9 cursor-pointer items-center justify-center rounded-full transition-colors has-focus-visible:ring-[3px] has-focus-visible:ring-ring/50 {sampleData
+                      ? 'text-primary'
+                      : 'text-muted-foreground hover:text-foreground'}"
+                  >
+                    <input
+                      type="radio"
+                      name="demo-data"
+                      class="sr-only"
+                      checked={sampleData}
+                      onchange={() => setSample(true)}
+                    />
+                    <FlaskConical class="size-4" />
+                    <span class="sr-only">Sample timesheet</span>
+                  </label>
+                {/snippet}
               </Tooltip.Trigger>
               <Tooltip.Content>Sample timesheet — a populated demo</Tooltip.Content>
             </Tooltip.Root>
             <Tooltip.Root>
-              <Tooltip.Trigger
-                type="button"
-                role="radio"
-                aria-checked={!sampleData}
-                aria-label="Your own data"
-                onclick={() => setSample(false)}
-                class="relative z-10 inline-flex h-6 w-9 items-center justify-center rounded-full transition-colors {!sampleData
-                  ? 'text-primary'
-                  : 'text-muted-foreground hover:text-foreground'}"
-              >
-                <PenLine class="size-4" />
+              <Tooltip.Trigger>
+                {#snippet child({ props })}
+                  <label
+                    {...props}
+                    class="relative z-10 inline-flex h-6 w-9 cursor-pointer items-center justify-center rounded-full transition-colors has-focus-visible:ring-[3px] has-focus-visible:ring-ring/50 {!sampleData
+                      ? 'text-primary'
+                      : 'text-muted-foreground hover:text-foreground'}"
+                  >
+                    <input
+                      type="radio"
+                      name="demo-data"
+                      class="sr-only"
+                      checked={!sampleData}
+                      onchange={() => setSample(false)}
+                    />
+                    <PenLine class="size-4" />
+                    <span class="sr-only">Your own data</span>
+                  </label>
+                {/snippet}
               </Tooltip.Trigger>
               <Tooltip.Content>Your own data — a blank sandbox</Tooltip.Content>
             </Tooltip.Root>
@@ -175,32 +191,36 @@
               : ''}"
           ></span>
           <Tooltip.Root>
-            <Tooltip.Trigger
-              type="button"
-              role="radio"
-              aria-checked={!dark}
-              aria-label="Light mode"
-              onclick={() => setTheme(false)}
-              class="relative z-10 inline-flex h-6 w-9 items-center justify-center rounded-full transition-colors {!dark
-                ? 'text-amber-600'
-                : 'text-muted-foreground hover:text-foreground'}"
-            >
-              <Sun class="size-4" />
+            <Tooltip.Trigger>
+              {#snippet child({ props })}
+                <label
+                  {...props}
+                  class="relative z-10 inline-flex h-6 w-9 cursor-pointer items-center justify-center rounded-full transition-colors has-focus-visible:ring-[3px] has-focus-visible:ring-ring/50 {!dark
+                    ? 'text-amber-600'
+                    : 'text-muted-foreground hover:text-foreground'}"
+                >
+                  <input type="radio" name="theme" class="sr-only" checked={!dark} onchange={() => setTheme(false)} />
+                  <Sun class="size-4" />
+                  <span class="sr-only">Light mode</span>
+                </label>
+              {/snippet}
             </Tooltip.Trigger>
             <Tooltip.Content>Light mode</Tooltip.Content>
           </Tooltip.Root>
           <Tooltip.Root>
-            <Tooltip.Trigger
-              type="button"
-              role="radio"
-              aria-checked={dark}
-              aria-label="Dark mode"
-              onclick={() => setTheme(true)}
-              class="relative z-10 inline-flex h-6 w-9 items-center justify-center rounded-full transition-colors {dark
-                ? 'text-sky-300'
-                : 'text-muted-foreground hover:text-foreground'}"
-            >
-              <Moon class="size-4" />
+            <Tooltip.Trigger>
+              {#snippet child({ props })}
+                <label
+                  {...props}
+                  class="relative z-10 inline-flex h-6 w-9 cursor-pointer items-center justify-center rounded-full transition-colors has-focus-visible:ring-[3px] has-focus-visible:ring-ring/50 {dark
+                    ? 'text-sky-300'
+                    : 'text-muted-foreground hover:text-foreground'}"
+                >
+                  <input type="radio" name="theme" class="sr-only" checked={dark} onchange={() => setTheme(true)} />
+                  <Moon class="size-4" />
+                  <span class="sr-only">Dark mode</span>
+                </label>
+              {/snippet}
             </Tooltip.Trigger>
             <Tooltip.Content>Dark mode</Tooltip.Content>
           </Tooltip.Root>

@@ -499,7 +499,14 @@
                   </Button>
                 </span>
               </div>
-              <div class="h-2 overflow-hidden rounded-full bg-muted" role="presentation">
+              <div
+                class="h-2 overflow-hidden rounded-full bg-muted"
+                role="progressbar"
+                aria-label="{goal.name} progress"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.min(100, Math.floor(progress.pct))}
+              >
                 <div
                   class="h-full rounded-full transition-[width] {progress.reached
                     ? 'bg-success'

@@ -99,16 +99,6 @@
       }
     },
     {
-      "includes": ["src/routes/+layout.svelte"],
-      "linter": {
-        "rules": {
-          "a11y": {
-            "useSemanticElements": "off"
-          }
-        }
-      }
-    },
-    {
       "includes": ["src/routes/log/+page.svelte"],
       "linter": {
         "rules": {
