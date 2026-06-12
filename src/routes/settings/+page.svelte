@@ -15,6 +15,7 @@
   import * as Dialog from '$lib/components/ui/dialog';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
+  import * as Select from '$lib/components/ui/select';
   import { DEFAULT_SETTINGS } from '$lib/core/repo';
   import { saveSettingsAction } from '$lib/core/settings-page';
   import { todayISO } from '$lib/date';
@@ -67,6 +68,7 @@
   type SectionId = (typeof SECTIONS)[number]['id'];
   let active = $state<SectionId>('pay');
   const activeSection = $derived(SECTIONS.find((s) => s.id === active) ?? SECTIONS[0]);
+  const ActiveIcon = $derived(activeSection.icon);
 
   // Switching away from a section with an invalid field would hide the only
   // visible validation hint and silently block every later auto-save, so the
@@ -197,22 +199,32 @@
     class="flex flex-col gap-6"
   >
     <div class="flex flex-col gap-4 md:flex-row md:items-start md:gap-6">
-      <!-- Section nav: a dropdown below md (no name, and the change event
-           stops before the form-level auto-save handler), a rail from md. -->
-      <select
-        aria-label="Settings section"
-        class="{SELECT_CLASS} md:hidden"
-        onchange={(e) => {
-          e.stopPropagation();
-          const next = e.currentTarget.value as SectionId;
-          if (formEl?.reportValidity() ?? true) active = next;
-          else e.currentTarget.value = active;
-        }}
-      >
-        {#each SECTIONS as section (section.id)}
-          <option value={section.id} selected={active === section.id}>{section.title}</option>
-        {/each}
-      </select>
+      <!-- Section nav: a dropdown below md, a rail from md. The shadcn Select
+           renders the section icons (native options can't); it carries no
+           form name and bits-ui fires no DOM change event, so picking a
+           section never reaches the form-level auto-save handler. The value
+           is controlled by `active`, so a failed validity gate snaps back. -->
+      <div class="md:hidden">
+        <Select.Root type="single" value={active} onValueChange={(v) => showSection(v as SectionId)}>
+          <Select.Trigger aria-label="Settings section" class="w-full">
+            <span class="inline-flex items-center gap-2">
+              <ActiveIcon class="size-4" />
+              {activeSection.title}
+            </span>
+          </Select.Trigger>
+          <Select.Content>
+            {#each SECTIONS as section (section.id)}
+              {@const Icon = section.icon}
+              <Select.Item value={section.id} label={section.title}>
+                <span class="inline-flex items-center gap-2">
+                  <Icon class="size-4" />
+                  {section.title}
+                </span>
+              </Select.Item>
+            {/each}
+          </Select.Content>
+        </Select.Root>
+      </div>
       <nav
         aria-label="Settings sections"
         class="hidden gap-1 md:sticky md:top-6 md:flex md:w-48 md:shrink-0 md:flex-col"
