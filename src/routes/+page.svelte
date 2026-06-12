@@ -510,9 +510,7 @@
               <div class="flex items-baseline justify-between gap-2">
                 <p class="font-mono text-sm tabular-nums">
                   <span class="font-semibold">{money.format(progress.saved)}</span>
-                  <!-- "of" lives inside the interpolation: biome 2.4.14's svelte
-                       parser misreads a bare `of {` text node as an each-block. -->
-                  <span class="text-muted-foreground">{`of ${money.format(goal.targetAmount)}`}</span>
+                  <span class="text-muted-foreground">of {money.format(goal.targetAmount)}</span>
                 </p>
                 {#if progress.reached}
                   <span class="inline-flex items-center gap-1 text-xs font-medium text-success">

@@ -66,8 +66,18 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   must each report **0 errors and 0 warnings**. No `as any`, no `as unknown`, no
   suppression comments (`biome-ignore`, `@ts-expect-error`, etc.). Type it
   correctly instead.
-- **Biome 2.4.14** is the source of truth: single quotes, semicolons always,
+- **Biome 2.5.0** is the source of truth: single quotes, semicolons always,
   2-space indent, 120 width. `src/app.css` is excluded (Tailwind v4 `@theme`).
+  The `*.svelte` override in biome.json turns off rules its template analysis
+  can't evaluate. Of the a11y rules new in 2.5.0, only `useValidAriaValues`
+  is off svelte-wide — it rejects **every** expression-valued aria attribute,
+  even `aria-checked={x ? 'true' : 'false'}`, so no dynamic aria state can
+  conform. Three others stay on with single-file exceptions for verified
+  false positives / deliberate patterns: `useSemanticElements` (+layout's
+  ARIA radiogroup toggles), `noStaticElementInteractions` (log's
+  `<svelte:window onkeydown>`), `noLabelWithoutControl` (settings' workday
+  chips — interpolated label text is invisible to it). New a11y findings
+  anywhere else still fail the build.
 - **shadcn-svelte + Tailwind v4.** UI primitives live in `$lib/components/ui/*`.
   Add more via `bun x shadcn-svelte@latest add <name>`.
 - **Server-only code under `src/lib/server/`.** Validate boundaries with Zod
@@ -277,9 +287,7 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   (`goalProgress`, pure, tested). Year-view weekly chart sits below: bars are
   rose below target, success green at it, and weeks over target stack a sky
   overtime cap above the dashed target line (legend: Above / Met / Below —
-  the brand's AM/PM door palette, sky caps matching the goal bars). Biome
-  2.4.14 gotcha: a bare `of {expr}` text node breaks its Svelte parser
-  (misread as an each-block) — fold the "of" into the interpolation.
+  the brand's AM/PM door palette, sky caps matching the goal bars).
 - `src/routes/log/+page.*` — entries page. The forms (weekly grid, CSV
   import, and the edit/create dialog) share a `conflictAwareEnhance` factory
   that surfaces duplicate-date conflicts in a dialog (`overwrite | keep

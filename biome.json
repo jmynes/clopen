@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.14/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.0/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -38,7 +38,7 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true
+      "preset": "recommended"
     }
   },
   "javascript": {
@@ -80,6 +80,9 @@
       "includes": ["**/*.svelte"],
       "linter": {
         "rules": {
+          "a11y": {
+            "useValidAriaValues": "off"
+          },
           "style": {
             "useConst": "off",
             "useImportType": "off"
@@ -91,6 +94,36 @@
           },
           "suspicious": {
             "noGlobalAssign": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/routes/+layout.svelte"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useSemanticElements": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/routes/log/+page.svelte"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "noStaticElementInteractions": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/routes/settings/+page.svelte"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "noLabelWithoutControl": "off"
           }
         }
       }
