@@ -14,7 +14,28 @@ describe('savingsGoalInput', () => {
       targetAmount: 349.99,
       startDate: '2026-06-12',
       funding: 'overtime',
+      allocation: 100,
     });
+  });
+
+  it('parses an explicit allocation and rejects out-of-range ones', () => {
+    const parsed = savingsGoalInput.parse({
+      name: 'Switch',
+      targetAmount: '100',
+      startDate: '2026-06-12',
+      funding: 'overtime',
+      allocation: '20',
+    });
+    expect(parsed.allocation).toBe(20);
+    expect(
+      savingsGoalInput.safeParse({
+        name: 'Switch',
+        targetAmount: '100',
+        startDate: '2026-06-12',
+        funding: 'overtime',
+        allocation: '101',
+      }).success,
+    ).toBe(false);
   });
 
   it('rejects a blank name', () => {

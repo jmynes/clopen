@@ -222,6 +222,73 @@ export function weekDates(iso: string, weekStartsOn = 7): string[] {
   return Array.from({ length: 7 }, (_, i) => toISO(start + i * DAY_MS));
 }
 
+export type BucketGranularity = 'day' | 'week' | 'month' | 'quarter' | 'year';
+
+export type BucketSummary = {
+  /** The bucket's natural calendar start (may precede rangeStart) — the label. */
+  start: string;
+  /** Last day the bucket's math covers, clipped to asOf. */
+  end: string;
+  logged: number;
+  target: number;
+  net: number;
+};
+
+/** Natural start of the bucket containing `ms`, plus the start of the next bucket. */
+function bucketBounds(ms: number, granularity: BucketGranularity, weekStartsOn: number): [number, number] {
+  const d = new Date(ms);
+  switch (granularity) {
+    case 'day':
+      return [ms, ms + DAY_MS];
+    case 'week': {
+      const start = ms - ((isoWeekday(ms) - weekStartsOn + 7) % 7) * DAY_MS;
+      return [start, start + 7 * DAY_MS];
+    }
+    case 'month':
+      return [Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1), Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)];
+    case 'quarter': {
+      const q = Math.floor(d.getUTCMonth() / 3) * 3;
+      return [Date.UTC(d.getUTCFullYear(), q, 1), Date.UTC(d.getUTCFullYear(), q + 3, 1)];
+    }
+    case 'year':
+      return [Date.UTC(d.getUTCFullYear(), 0, 1), Date.UTC(d.getUTCFullYear() + 1, 0, 1)];
+  }
+}
+
+/**
+ * Logged-vs-target totals per calendar bucket over [rangeStart, asOf] — the
+ * weeklyBreakdown generalized to any granularity. Buckets carry their natural
+ * calendar start for labeling, but the math clips each one to the range, so a
+ * mid-year epoch or an in-progress bucket prorates exactly like the dashboard.
+ */
+export function bucketBreakdown(params: {
+  entries: EntryLike[];
+  rangeStart: string;
+  asOf: string;
+  settings: WorkSettings;
+  weekStartsOn?: number;
+  granularity: BucketGranularity;
+}): BucketSummary[] {
+  const { entries, rangeStart, asOf, settings, weekStartsOn = 7, granularity } = params;
+  const rangeStartMs = parseISO(rangeStart);
+  const asOfMs = parseISO(asOf);
+  if (asOfMs < rangeStartMs) return [];
+
+  const buckets: BucketSummary[] = [];
+  for (let ms = rangeStartMs; ms <= asOfMs; ) {
+    const [start, next] = bucketBounds(ms, granularity, weekStartsOn);
+    const fromISO = toISO(Math.max(start, rangeStartMs));
+    const toRangeISO = toISO(Math.min(next - DAY_MS, asOfMs));
+
+    const target = round2(countWorkdays(fromISO, toRangeISO, settings.workdays) * settings.dailyHours);
+    const logged = loggedHours(entries.filter((e) => e.date >= fromISO && e.date <= toRangeISO));
+
+    buckets.push({ start: toISO(start), end: toRangeISO, logged, target, net: round2(logged - target) });
+    ms = next;
+  }
+  return buckets;
+}
+
 export function weeklyBreakdown(params: {
   entries: EntryLike[];
   yearStart: string;
@@ -229,29 +296,11 @@ export function weeklyBreakdown(params: {
   settings: WorkSettings;
   weekStartsOn?: number;
 }): WeekSummary[] {
-  const { entries, yearStart, asOf, settings, weekStartsOn = 7 } = params;
-  const yearStartMs = parseISO(yearStart);
-  const asOfMs = parseISO(asOf);
-  if (asOfMs < yearStartMs) return [];
-
-  const weeks: WeekSummary[] = [];
-  for (let weekMs = weekStartOf(yearStart, weekStartsOn); weekMs <= asOfMs; weekMs += 7 * DAY_MS) {
-    const weekEnd = weekMs + 6 * DAY_MS;
-    // Clip the week to the [yearStart, asOf] window.
-    const from = Math.max(weekMs, yearStartMs);
-    const to = Math.min(weekEnd, asOfMs);
-    const fromISO = toISO(from);
-    const toRangeISO = toISO(to);
-
-    const target = round2(countWorkdays(fromISO, toRangeISO, settings.workdays) * settings.dailyHours);
-    const logged = loggedHours(entries.filter((e) => e.date >= fromISO && e.date <= toRangeISO));
-
-    weeks.push({
-      weekStart: toISO(weekMs),
-      logged,
-      target,
-      net: round2(logged - target),
-    });
-  }
-  return weeks;
+  const { yearStart, ...rest } = params;
+  return bucketBreakdown({ ...rest, rangeStart: yearStart, granularity: 'week' }).map((b) => ({
+    weekStart: b.start,
+    logged: b.logged,
+    target: b.target,
+    net: b.net,
+  }));
 }

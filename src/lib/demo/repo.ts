@@ -222,6 +222,7 @@ function writeSavingsGoals(rows: SavingsGoal[]): void {
 function goalFromInput(
   input: SavingsGoalInput,
   id: string,
+  rank: number,
   createdAt: number,
   updatedAt: number | null = null,
 ): SavingsGoal {
@@ -231,6 +232,8 @@ function goalFromInput(
     targetAmount: input.targetAmount,
     startDate: input.startDate,
     funding: input.funding,
+    allocation: input.allocation,
+    rank,
     createdAt,
     updatedAt,
   };
@@ -342,14 +345,15 @@ export const demoRepo: Repo = {
 
   async listSavingsGoals() {
     ensureSeeded();
-    // Server semantics: creation order (stored order is already insertion order).
-    return [...readSavingsGoals()].sort((a, b) => a.createdAt - b.createdAt);
+    // Server semantics: rank order, rank ties by creation order.
+    return [...readSavingsGoals()].sort((a, b) => a.rank - b.rank || a.createdAt - b.createdAt);
   },
 
   async addSavingsGoal(input) {
     ensureSeeded();
     const rows = readSavingsGoals();
-    const row = goalFromInput(input, crypto.randomUUID(), Math.floor(Date.now() / 1000));
+    const rank = rows.reduce((top, g) => Math.max(top, g.rank), -1) + 1;
+    const row = goalFromInput(input, crypto.randomUUID(), rank, Math.floor(Date.now() / 1000));
     rows.push(row);
     writeSavingsGoals(rows);
     return row;
@@ -360,13 +364,22 @@ export const demoRepo: Repo = {
     const rows = readSavingsGoals();
     const idx = rows.findIndex((g) => g.id === id);
     if (idx === -1) return;
-    rows[idx] = goalFromInput(input, id, rows[idx].createdAt, Math.floor(Date.now() / 1000));
+    rows[idx] = goalFromInput(input, id, rows[idx].rank, rows[idx].createdAt, Math.floor(Date.now() / 1000));
     writeSavingsGoals(rows);
   },
 
   async deleteSavingsGoal(id) {
     ensureSeeded();
     writeSavingsGoals(readSavingsGoals().filter((g) => g.id !== id));
+  },
+
+  async setSavingsGoalRank(id, rank) {
+    ensureSeeded();
+    const rows = readSavingsGoals();
+    const row = rows.find((g) => g.id === id);
+    if (!row) return;
+    row.rank = rank;
+    writeSavingsGoals(rows);
   },
 
   async getSettings() {

@@ -169,6 +169,20 @@
       "when": 1781290694283,
       "tag": "0023_huge_george_stacy",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1781295498444,
+      "tag": "0024_special_sister_grimm",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1781296020035,
+      "tag": "0025_light_warlock",
+      "breakpoints": true
     }
   ]
 }

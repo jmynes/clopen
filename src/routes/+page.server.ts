@@ -1,5 +1,10 @@
 import { fail } from '@sveltejs/kit';
-import { addSavingsGoalAction, deleteSavingsGoalAction, updateSavingsGoalAction } from '$lib/core/savings-goals';
+import {
+  addSavingsGoalAction,
+  deleteSavingsGoalAction,
+  moveSavingsGoalAction,
+  updateSavingsGoalAction,
+} from '$lib/core/savings-goals';
 import { isDemo } from '$lib/demo/flag';
 import { serverRepo } from '$lib/server/repo';
 import type { Actions } from './$types';
@@ -24,5 +29,9 @@ export const actions: Actions = {
   deleteGoal: async ({ request }) => {
     if (isDemo) return fail(400, { error: 'Demo mode handles this in the browser' });
     return unwrap(await deleteSavingsGoalAction(serverRepo, await request.formData()));
+  },
+  moveGoal: async ({ request }) => {
+    if (isDemo) return fail(400, { error: 'Demo mode handles this in the browser' });
+    return unwrap(await moveSavingsGoalAction(serverRepo, await request.formData()));
   },
 };

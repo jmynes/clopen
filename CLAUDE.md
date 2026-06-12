@@ -89,7 +89,9 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
 ## Architecture
 
 - `src/lib/timesheet.ts` — pure make-whole math: `countWorkdays`,
-  `expectedHours`, `goalRateOf`, `loggedHours`, `overtimeHours`, `makeWholeStatus`, `weeklyBreakdown`,
+  `expectedHours`, `goalRateOf`, `loggedHours`, `overtimeHours`, `makeWholeStatus`, `bucketBreakdown`
+  (logged-vs-target per day/week/month/quarter/year bucket; `weeklyBreakdown`
+  is its week-granularity wrapper),
   `weekDates`, `yearStartOf`, `parseTimeInput`, `hoursBetween`. Timezone-safe
   (UTC arithmetic on explicit dates). `hoursBetween` wraps past midnight when
   the end time precedes the start. `makeWholeStatus` takes an optional `epoch`
@@ -115,7 +117,7 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
     (`accrue | split`, default `accrue` — how punch-clock breaks land),
     `otMultiplierEnabled` / `otMultiplier` (default false / 1.5 — pay day-hours
     beyond the baseline at the multiplier; dashboard earnings only),
-    `goalEnabled` / `yearlyGoal` (default false / 80000 — chase a yearly dollar
+    `goalEnabled` / `yearlyGoal` (default true / 80000 — chase a yearly dollar
     target instead of straight salary math), `countExpenses` (default true —
     the dashboard's include-expenses toggle starts here), and the
     `defaultExpenseKind` / `defaultRideVendor` / `defaultRideDirection` /
@@ -150,12 +152,16 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
     `addExpense` / `updateExpense` / `deleteExpense`.
   - `savings_goals`: dashboard savings goals ("Nintendo Switch · $350") —
     `id`, `name`, `targetAmount`, `startDate` (ISO local-day), `funding`
-    (`overtime | all`), `createdAt`, `updatedAt`. Progress is derived
-    (`$lib/savings-goals`, pure + tested), never stored, and always uses the
-    straight `hourlyRate` — independent of the yearly stretch goal and of the
-    hero's salary math. No audit events (not ledger records). `Repo` exposes
-    `listSavingsGoals` (creation order) / `addSavingsGoal` /
-    `updateSavingsGoal` / `deleteSavingsGoal`.
+    (`overtime | all`), `rank` (priority order, rewritten 0..n−1 on reorder),
+    `allocation` (percent share of the savings stream, default 100),
+    `createdAt`, `updatedAt`. Progress is derived (`$lib/savings-goals`
+    `allocateGoals` — allocation split, capped at target, spare share spills
+    to the highest-ranked unfinished goal; pure + tested), never stored, and
+    always uses the straight `hourlyRate` — independent of the yearly stretch
+    goal and of the hero's salary math. No audit events (not ledger records).
+    `Repo` exposes `listSavingsGoals` (rank order) / `addSavingsGoal`
+    (appends at rank max+1) / `updateSavingsGoal` / `deleteSavingsGoal` /
+    `setSavingsGoalRank`.
 - `src/lib/db/index.ts` — Drizzle/libSQL client, **lazy-constructed via Proxy**
   so module load doesn't open a connection during SvelteKit's build analyse pass.
   Local default `file:./local.db`.
@@ -172,7 +178,7 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   `log.ts` (`computeLog` + all five form actions returning
   `{ ok, status, data }`), `expenses.ts` (`computeExpenses` + add/update/delete
   actions, same outcome shape, tested in `expenses.test.ts`),
-  `savings-goals.ts` (goal add/update/delete actions, same outcome shape,
+  `savings-goals.ts` (goal add/update/delete/move actions, same outcome shape,
   tested in `savings-goals.test.ts`), `dashboard.ts`,
   `settings-page.ts`, `clock.ts` (the
   punch-clock state machine: idle / working / on_break; `clockIn`,
@@ -282,13 +288,23 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   network-free). Each goal tracks from its own `startDate` (epoch-clamped)
   through today, ignoring the period selector: `overtime` funding accumulates
   dollars earned beyond the as-written schedule (OT premium honored),
-  `all` every dollar earned. Cards show a sky progress bar (success green +
-  "Reached" at 100%), `$saved of $target`, and a funding chip; zero goals
-  renders one slim dashed empty-state card. Math in `$lib/savings-goals.ts`
-  (`goalProgress`, pure, tested). Year-view weekly chart sits below: bars are
-  rose below target, success green at it, and weeks over target stack a sky
-  overtime cap above the dashed target line (legend: Above / Met / Below —
-  the brand's AM/PM door palette, sky caps matching the goal bars).
+  `all` every dollar earned. Goals are **ranked with allocation shares**:
+  each receives `allocation%` of its pool, capped at its target, and spare
+  share from reached goals tops up the highest-ranked unfinished goal
+  (`allocateGoals`, tested in `savings-goals-allocate.test.ts`) — so a small
+  low-priority goal can pay off first. Cards lead with a header strip (rank
+  badge `#N` + outline funding chip with icon, actions right — move up/down
+  forms posting `?/moveGoal`, edit, delete, all with shadcn tooltips), then
+  name, `N% share · since date`, and a blue progress bar (success green +
+  "Reached" at 100%); zero goals renders one slim dashed empty-state card.
+  Math in `$lib/savings-goals.ts` (pure, tested). The stat grid's four cards
+  carry foreground icons; only Net and Earned color their numbers, mirroring
+  the hero's hues. The hours chart below has a per-visit granularity select
+  (daily–yearly over `bucketBreakdown`, default weekly, still year-view),
+  a y-axis with nice-step gridlines, and bars in rose below target, success
+  green at it, with a blue overtime cap above the dashed target line
+  (legend: Above / Met / Below; the blue matches the goal bars) — rendered
+  by `$lib/components/HoursChart.svelte`.
 - `src/routes/log/+page.*` — entries page. The forms (weekly grid, CSV
   import, and the edit/create dialog) share a `conflictAwareEnhance` factory
   that surfaces duplicate-date conflicts in a dialog (`overwrite | keep
@@ -358,19 +374,21 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   branches run the core actions against `demoRepo` + `invalidate('demo:data')`.
 - `src/routes/settings/+page.*` — sidebar shell: a section rail (vertical
   from `md`, horizontal scroll pills below) showing one section at a time in
-  a single wide pane (Pay & schedule / Clock & time / Log & Ledger /
-  Dashboard / Expenses). Inactive sections are `hidden`, **not unmounted** —
+  a single wide pane (Dashboard / Clock & time / Log & Ledger / Expenses,
+  opening on Dashboard). Inactive sections are `hidden`, **not unmounted** —
   the page stays one form so every field posts on each auto-save; switching
   sections runs `reportValidity()` first so an invalid field can't hide
-  itself and silently block saves. Sections keep uppercase micro-headers: pay rate,
-  daily hours, workdays (chips ordered by week start), week-start, tracking
-  epoch, overtime multiplier (toggle + readonly-when-off field), default
-  ledger period, timezone (full IANA select) + observe-DST toggle + clock
-  break mode, time format, weekend visibility toggles,
-  expand-notes-by-default, and the View audit log link. The Dashboard card
-  holds the yearly goal (toggle + readonly-when-off dollar field, same
-  hidden-input idiom as the OT multiplier), the count-expenses default, and a
-  "bonus tracking is planned" footnote.
+  itself and silently block saves. Sections keep uppercase micro-headers.
+  The Dashboard section leads with the yearly goal (toggle + readonly-when-off
+  dollar field, same hidden-input idiom as the OT multiplier; **on by
+  default** — migration 0025 also flipped the existing row) and the
+  count-expenses default + "bonus tracking is planned" footnote, then the
+  former Pay & schedule content: pay rate, daily hours, and the overtime
+  multiplier. Log & Ledger opens with Schedule (week-start, tracking epoch,
+  workday chips ordered by week start), then weekend visibility toggles,
+  default ledger period, expand-notes-by-default, and the View audit log
+  link. Clock & time keeps timezone (full IANA select) + observe-DST toggle +
+  clock break mode + time format.
   Settings auto-save: every change schedules a debounced (400ms)
   `requestSubmit` through the shared enhance path (native validation gates
   it; zod failures surface in the status bar without persisting). The footer

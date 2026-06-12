@@ -1,16 +1,28 @@
 import { describe, expect, it } from 'vitest';
 import type { SavingsGoal } from '$lib/db/schema';
 import { emptyRepo, type Repo } from './repo';
-import { addSavingsGoalAction, deleteSavingsGoalAction, updateSavingsGoalAction } from './savings-goals';
+import {
+  addSavingsGoalAction,
+  deleteSavingsGoalAction,
+  moveSavingsGoalAction,
+  updateSavingsGoalAction,
+} from './savings-goals';
 
 /** In-memory Repo stub: only the savings-goal methods are live. */
 function memRepo(): { repo: Repo; rows: SavingsGoal[] } {
   const rows: SavingsGoal[] = [];
+  const sortByRank = () => rows.sort((a, b) => a.rank - b.rank || a.createdAt - b.createdAt);
   const repo: Repo = {
     ...emptyRepo,
-    listSavingsGoals: async () => rows,
+    listSavingsGoals: async () => sortByRank(),
     addSavingsGoal: async (input) => {
-      const row: SavingsGoal = { id: `g${rows.length + 1}`, ...input, createdAt: 1, updatedAt: null };
+      const row: SavingsGoal = {
+        id: `g${rows.length + 1}`,
+        rank: rows.length,
+        ...input,
+        createdAt: 1,
+        updatedAt: null,
+      };
       rows.push(row);
       return row;
     },
@@ -21,6 +33,10 @@ function memRepo(): { repo: Repo; rows: SavingsGoal[] } {
     deleteSavingsGoal: async (id) => {
       const idx = rows.findIndex((r) => r.id === id);
       if (idx >= 0) rows.splice(idx, 1);
+    },
+    setSavingsGoalRank: async (id, rank) => {
+      const row = rows.find((r) => r.id === id);
+      if (row) row.rank = rank;
     },
   };
   return { repo, rows };
@@ -79,6 +95,29 @@ describe('savings goal actions', () => {
     expect(up.ok).toBe(false);
     const del = await deleteSavingsGoalAction(repo, fd({}));
     expect(del.ok).toBe(false);
+  });
+
+  it('move: swaps a goal with its neighbor and rewrites ranks contiguously', async () => {
+    const { repo, rows } = memRepo();
+    const add = (name: string) =>
+      addSavingsGoalAction(repo, fd({ name, targetAmount: '100', startDate: '2026-06-12', funding: 'overtime' }));
+    await add('a');
+    await add('b');
+    await add('c');
+    const out = await moveSavingsGoalAction(repo, fd({ id: 'g3', dir: 'up' }));
+    expect(out.ok).toBe(true);
+    expect(rows.map((r) => r.name)).toEqual(['a', 'c', 'b']);
+    expect(rows.map((r) => r.rank)).toEqual([0, 1, 2]);
+  });
+
+  it('move: first goal up and missing ids are rejected', async () => {
+    const { repo } = memRepo();
+    await addSavingsGoalAction(
+      repo,
+      fd({ name: 'a', targetAmount: '100', startDate: '2026-06-12', funding: 'overtime' }),
+    );
+    expect((await moveSavingsGoalAction(repo, fd({ id: 'g1', dir: 'up' }))).ok).toBe(false);
+    expect((await moveSavingsGoalAction(repo, fd({ id: 'nope', dir: 'down' }))).ok).toBe(false);
   });
 
   it('delete: removes the row', async () => {

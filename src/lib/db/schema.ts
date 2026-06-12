@@ -81,7 +81,7 @@ export const settings = sqliteTable('settings', {
   otMultiplierEnabled: integer('ot_multiplier_enabled', { mode: 'boolean' }).notNull().default(false),
   otMultiplier: real('ot_multiplier').notNull().default(1.5),
   /** Chase a yearly dollar target instead of straight salary math. */
-  goalEnabled: integer('goal_enabled', { mode: 'boolean' }).notNull().default(false),
+  goalEnabled: integer('goal_enabled', { mode: 'boolean' }).notNull().default(true),
   yearlyGoal: real('yearly_goal').notNull().default(80000),
   /** Dashboard default for folding expenses into the make-whole math. */
   countExpenses: integer('count_expenses', { mode: 'boolean' }).notNull().default(true),
@@ -169,6 +169,10 @@ export const savingsGoals = sqliteTable('savings_goals', {
   /** ISO local-day the goal starts accumulating from (clamped by the epoch). */
   startDate: text('start_date').notNull(),
   funding: text('funding', { enum: GOAL_FUNDINGS }).notNull().default('overtime'),
+  /** Priority order, low first; reorders rewrite ranks as 0..n−1. */
+  rank: integer('rank').notNull().default(0),
+  /** Percent share (0–100) of the savings stream this goal receives. */
+  allocation: real('allocation').notNull().default(100),
   createdAt: integer('created_at').notNull().default(sql`(unixepoch())`),
   /** Epoch seconds of the last edit; null = never edited since creation. */
   updatedAt: integer('updated_at'),

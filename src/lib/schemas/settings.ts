@@ -43,7 +43,7 @@ export const settingsInput = z.object({
   expandNotes: z.boolean().default(false),
   otMultiplierEnabled: z.boolean().default(false),
   otMultiplier: z.coerce.number().min(1, 'Multiplier must be at least 1').max(10).default(1.5),
-  goalEnabled: z.boolean().default(false),
+  goalEnabled: z.boolean().default(true),
   yearlyGoal: z.coerce.number().min(0, 'Goal cannot be negative').max(10_000_000).default(80000),
   countExpenses: z.boolean().default(true),
   // What the Expenses add form opens with: kind, then per-kind details.

@@ -29,7 +29,7 @@ export const SAMPLE_SETTINGS: Settings = {
   expandNotes: false,
   otMultiplierEnabled: false,
   otMultiplier: 1.5,
-  goalEnabled: false,
+  goalEnabled: true,
   yearlyGoal: 80000,
   countExpenses: true,
   defaultExpenseKind: 'ride',

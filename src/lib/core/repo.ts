@@ -31,11 +31,12 @@ export type Repo = {
   deleteExpense(id: string): Promise<void>;
   /** Audit log of expense mutations, newest first. */
   listExpenseEvents(): Promise<ExpenseEvent[]>;
-  /** Savings goals in creation order. */
+  /** Savings goals in rank (allocation-priority) order. */
   listSavingsGoals(): Promise<SavingsGoal[]>;
   addSavingsGoal(input: SavingsGoalInput): Promise<SavingsGoal>;
   updateSavingsGoal(id: string, input: SavingsGoalInput): Promise<void>;
   deleteSavingsGoal(id: string): Promise<void>;
+  setSavingsGoalRank(id: string, rank: number): Promise<void>;
 };
 
 export const DEFAULT_SETTINGS = {
@@ -55,7 +56,7 @@ export const DEFAULT_SETTINGS = {
   expandNotes: false,
   otMultiplierEnabled: false,
   otMultiplier: 1.5,
-  goalEnabled: false,
+  goalEnabled: true,
   yearlyGoal: 80000,
   countExpenses: true,
   defaultExpenseKind: 'ride',
@@ -106,4 +107,5 @@ export const emptyRepo: Repo = {
   },
   updateSavingsGoal: async () => {},
   deleteSavingsGoal: async () => {},
+  setSavingsGoalRank: async () => {},
 };

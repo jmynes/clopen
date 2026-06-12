@@ -1,8 +1,10 @@
 <script lang="ts">
   import CalendarCheck from '@lucide/svelte/icons/calendar-check';
   import Check from '@lucide/svelte/icons/check';
+  import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
+  import ChevronUp from '@lucide/svelte/icons/chevron-up';
   import Clock from '@lucide/svelte/icons/clock';
   import Pencil from '@lucide/svelte/icons/pencil';
   import PiggyBank from '@lucide/svelte/icons/piggy-bank';
@@ -17,6 +19,7 @@
   import { invalidate } from '$app/navigation';
   import DateField from '$lib/components/DateField.svelte';
   import DateJump from '$lib/components/DateJump.svelte';
+  import HoursChart from '$lib/components/HoursChart.svelte';
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
@@ -25,13 +28,21 @@
   import { Label } from '$lib/components/ui/label';
   import * as Select from '$lib/components/ui/select';
   import * as Tooltip from '$lib/components/ui/tooltip';
-  import WeeklyChart from '$lib/components/WeeklyChart.svelte';
   import { runSavingsGoalAction, type SavingsGoalActionName } from '$lib/core/savings-goals';
   import { formatDay, formatRangeISO, formatWeekRange, todayISO } from '$lib/date';
   import type { SavingsGoal } from '$lib/db/schema';
   import { isDemo } from '$lib/demo/flag';
-  import { GOAL_FUNDING_LABELS, GOAL_FUNDINGS, type GoalFunding, goalProgress } from '$lib/savings-goals';
-  import { addDays, countWorkdays, goalRateOf, loggedHours, overtimeHours, weekDates } from '$lib/timesheet';
+  import { allocateGoals, GOAL_FUNDING_LABELS, GOAL_FUNDINGS, type GoalFunding } from '$lib/savings-goals';
+  import {
+    addDays,
+    type BucketGranularity,
+    bucketBreakdown,
+    countWorkdays,
+    goalRateOf,
+    loggedHours,
+    overtimeHours,
+    weekDates,
+  } from '$lib/timesheet';
   import type { ActionData, PageData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -226,26 +237,43 @@
     return `${hrs(logged)} logged, ${hrs(targetHours)} expected so far. ${workdaysElapsed} of ${totalWorkdaysInPeriod} workdays elapsed.`;
   });
 
-  // ── Savings goals ────────────────────────────────────────────────────────
-  // Independent of the period selector and of the yearly stretch goal: each
-  // goal accumulates from its own start date through today at the straight
-  // salary rate, so the hero's as-written tracking stays untouched.
-  const goalCards = $derived(
-    data.savingsGoals.map((goal) => ({
-      goal,
-      progress: goalProgress({
-        entries: data.entries,
-        startDate: goal.startDate,
-        targetAmount: goal.targetAmount,
-        funding: goal.funding,
-        asOf: data.today,
-        settings: { hourlyRate: data.hourlyRate, dailyHours: data.dailyHours, workdays: data.workdays },
-        epoch: data.epoch,
-        otMultiplierEnabled: data.otMultiplierEnabled,
-        otMultiplier: data.otMultiplier,
-      }),
-    })),
+  // ── Hours chart ──────────────────────────────────────────────────────────
+  const GRANULARITY_LABELS: Record<BucketGranularity, string> = {
+    day: 'Daily',
+    week: 'Weekly',
+    month: 'Monthly',
+    quarter: 'Quarterly',
+    year: 'Yearly',
+  };
+  let chartGranularity = $state<BucketGranularity>('week');
+  const chartBuckets = $derived(
+    bucketBreakdown({
+      entries: data.entries,
+      rangeStart: maxStr(`${data.year}-01-01`, data.epoch),
+      asOf: data.asOf,
+      settings: { hourlyRate: data.hourlyRate, dailyHours: data.dailyHours, workdays: data.workdays },
+      weekStartsOn: data.weekStartsOn,
+      granularity: chartGranularity,
+    }),
   );
+
+  // ── Savings goals ────────────────────────────────────────────────────────
+  // Independent of the period selector and of the yearly stretch goal: goals
+  // accumulate from their own start dates through today at the straight
+  // salary rate, split by allocation in rank order — spare share from goals
+  // already reached tops up the highest-ranked unfinished goal.
+  const goalCards = $derived.by(() => {
+    const progress = allocateGoals({
+      goals: data.savingsGoals,
+      entries: data.entries,
+      asOf: data.today,
+      settings: { hourlyRate: data.hourlyRate, dailyHours: data.dailyHours, workdays: data.workdays },
+      epoch: data.epoch,
+      otMultiplierEnabled: data.otMultiplierEnabled,
+      otMultiplier: data.otMultiplier,
+    });
+    return data.savingsGoals.map((goal, i) => ({ goal, progress: progress[i] }));
+  });
 
   const goalDateFmt = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeZone: 'UTC' });
   const fmtGoalDate = (iso: string) => goalDateFmt.format(new Date(`${iso}T00:00:00Z`));
@@ -262,6 +290,7 @@
   let gTarget = $state('');
   let gStart = $state('');
   let gFunding = $state<GoalFunding>('overtime');
+  let gAllocation = $state('100');
   let deletingGoal = $state<SavingsGoal | null>(null);
   let goalSubmitting = $state(false);
 
@@ -270,6 +299,7 @@
     gTarget = goal ? String(goal.targetAmount) : '';
     gStart = goal?.startDate ?? data.today;
     gFunding = goal?.funding ?? 'overtime';
+    gAllocation = String(goal?.allocation ?? 100);
     demoForm = null;
     goalDialog = { id: goal?.id ?? null };
   }
@@ -299,13 +329,23 @@
     };
   }
 
+  // Only the numbers carry color, and only when it means something:
+  // Net and Earned mirror the hero's ahead/behind hues; the rest stay plain.
   const stats = $derived([
-    { label: 'Expected', value: hrs(targetHours) },
-    { label: 'Logged', value: hrs(logged) },
-    { label: 'Net', value: `${net >= 0 ? '+' : ''}${hrs(net)}` },
+    { label: 'Expected', value: hrs(targetHours), icon: CalendarCheck, valueClass: '' },
+    { label: 'Logged', value: hrs(logged), icon: Clock, valueClass: '' },
+    {
+      label: 'Net',
+      value: `${net >= 0 ? '+' : ''}${hrs(net)}`,
+      icon: net >= 0 ? TrendingUp : TrendingDown,
+      valueClass:
+        net >= 0 ? 'text-success' : periodState === 'done' ? 'text-destructive' : 'text-amber-500',
+    },
     {
       label: periodState === 'done' ? 'Earned' : 'Earned so far',
       value: money.format(earnedDollars),
+      icon: Wallet,
+      valueClass: dollarsDelta >= 0 ? 'text-success' : 'text-amber-500',
     },
   ]);
 </script>
@@ -427,10 +467,14 @@
   <!-- stat grid -->
   <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
     {#each stats as stat (stat.label)}
+      {@const StatIcon = stat.icon}
       <Card.Root>
         <Card.Content class="p-5">
-          <p class="text-xs uppercase tracking-wider text-muted-foreground">{stat.label}</p>
-          <p class="mt-1 font-mono text-xl font-semibold tabular-nums">{stat.value}</p>
+          <p class="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground">
+            <StatIcon class="size-3.5 shrink-0 text-foreground" />
+            {stat.label}
+          </p>
+          <p class="mt-1 font-mono text-xl font-semibold tabular-nums {stat.valueClass}">{stat.value}</p>
         </Card.Content>
       </Card.Root>
     {/each}
@@ -464,40 +508,105 @@
       </Card.Root>
     {:else}
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {#each goalCards as { goal, progress } (goal.id)}
+        {#each goalCards as { goal, progress }, rankIdx (goal.id)}
           {@const FundingIcon = FUNDING_ICON[goal.funding]}
           <Card.Root class={progress.reached ? 'border-success/50' : ''}>
             <Card.Content class="flex flex-col gap-3 p-5">
-              <div class="flex items-start justify-between gap-1">
-                <div class="min-w-0">
-                  <p class="truncate font-medium" title={goal.name}>{goal.name}</p>
-                  <p class="mt-0.5 inline-flex items-center gap-1 text-xs text-muted-foreground" title={FUNDING_HINT[goal.funding]}>
-                    <FundingIcon class="size-3" />
+              <!-- header strip: rank + funding chip left, actions right -->
+              <div class="-mt-1 flex items-center justify-between gap-1">
+                <span class="flex min-w-0 items-center gap-1.5">
+                  <Badge variant="secondary" class="px-1.5 font-mono text-[11px] tabular-nums">#{rankIdx + 1}</Badge>
+                  <Badge
+                    variant="outline"
+                    class="gap-1.5 font-normal text-muted-foreground"
+                    title={FUNDING_HINT[goal.funding]}
+                  >
+                    <FundingIcon class="size-3.5" />
                     {GOAL_FUNDING_LABELS[goal.funding]}
-                    · {goal.startDate > data.today ? `starts ${fmtGoalDate(goal.startDate)}` : `since ${fmtGoalDate(goal.startDate)}`}
-                  </p>
-                </div>
-                <span class="-mr-2 -mt-1 flex shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    title="Edit goal"
-                    aria-label="Edit goal"
-                    onclick={() => openGoalDialog(goal)}
-                  >
-                    <Pencil class="size-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    title="Delete goal"
-                    aria-label="Delete goal"
-                    class="text-destructive hover:text-destructive"
-                    onclick={() => (deletingGoal = goal)}
-                  >
-                    <Trash2 class="size-4" />
-                  </Button>
+                  </Badge>
                 </span>
+                <span class="-mr-2 flex shrink-0">
+                  {#if goalCards.length > 1}
+                    <form method="POST" action="?/moveGoal" use:enhance={goalEnhance('moveGoal')} class="contents">
+                      <input type="hidden" name="id" value={goal.id} />
+                      <input type="hidden" name="dir" value="up" />
+                      <Tooltip.Root>
+                        <Tooltip.Trigger>
+                          {#snippet child({ props })}
+                            <Button
+                              {...props}
+                              type="submit"
+                              variant="ghost"
+                              size="sm"
+                              aria-label="Raise priority"
+                              disabled={rankIdx === 0 || goalSubmitting}
+                            >
+                              <ChevronUp class="size-4" />
+                            </Button>
+                          {/snippet}
+                        </Tooltip.Trigger>
+                        <Tooltip.Content>Move up</Tooltip.Content>
+                      </Tooltip.Root>
+                    </form>
+                    <form method="POST" action="?/moveGoal" use:enhance={goalEnhance('moveGoal')} class="contents">
+                      <input type="hidden" name="id" value={goal.id} />
+                      <input type="hidden" name="dir" value="down" />
+                      <Tooltip.Root>
+                        <Tooltip.Trigger>
+                          {#snippet child({ props })}
+                            <Button
+                              {...props}
+                              type="submit"
+                              variant="ghost"
+                              size="sm"
+                              aria-label="Lower priority"
+                              disabled={rankIdx === goalCards.length - 1 || goalSubmitting}
+                            >
+                              <ChevronDown class="size-4" />
+                            </Button>
+                          {/snippet}
+                        </Tooltip.Trigger>
+                        <Tooltip.Content>Move down</Tooltip.Content>
+                      </Tooltip.Root>
+                    </form>
+                  {/if}
+                  <Tooltip.Root>
+                    <Tooltip.Trigger>
+                      {#snippet child({ props })}
+                        <Button {...props} variant="ghost" size="sm" aria-label="Edit goal" onclick={() => openGoalDialog(goal)}>
+                          <Pencil class="size-4" />
+                        </Button>
+                      {/snippet}
+                    </Tooltip.Trigger>
+                    <Tooltip.Content>Edit goal</Tooltip.Content>
+                  </Tooltip.Root>
+                  <Tooltip.Root>
+                    <Tooltip.Trigger>
+                      {#snippet child({ props })}
+                        <Button
+                          {...props}
+                          variant="ghost"
+                          size="sm"
+                          aria-label="Delete goal"
+                          class="text-destructive hover:text-destructive"
+                          onclick={() => (deletingGoal = goal)}
+                        >
+                          <Trash2 class="size-4" />
+                        </Button>
+                      {/snippet}
+                    </Tooltip.Trigger>
+                    <Tooltip.Content>Delete goal</Tooltip.Content>
+                  </Tooltip.Root>
+                </span>
+              </div>
+              <div class="min-w-0">
+                <p class="truncate font-medium" title={goal.name}>{goal.name}</p>
+                <p class="mt-0.5 text-xs text-muted-foreground">
+                  {(goalCards.length > 1 ? `${goal.allocation}% share · ` : '') +
+                    (goal.startDate > data.today
+                      ? `starts ${fmtGoalDate(goal.startDate)}`
+                      : `since ${fmtGoalDate(goal.startDate)}`)}
+                </p>
               </div>
               <div
                 class="h-2 overflow-hidden rounded-full bg-muted"
@@ -510,7 +619,7 @@
                 <div
                   class="h-full rounded-full transition-[width] {progress.reached
                     ? 'bg-success'
-                    : 'bg-sky-500 dark:bg-sky-400'}"
+                    : 'bg-blue-600 dark:bg-blue-400'}"
                   style="width: {Math.min(100, progress.pct)}%"
                 ></div>
               </div>
@@ -534,17 +643,31 @@
     {/if}
   </div>
 
-  <!-- weekly chart (still year-view reference) -->
+  <!-- hours chart (still year-view reference; granularity is per-visit) -->
   <Card.Root>
-    <Card.Header class="flex flex-row items-center justify-between">
+    <Card.Header class="flex flex-row flex-wrap items-center justify-between gap-2">
       <div>
-        <Card.Title>Weekly hours · {data.year}</Card.Title>
-        <Card.Description>Logged vs. target, week by week</Card.Description>
+        <Card.Title>{GRANULARITY_LABELS[chartGranularity]} hours · {data.year}</Card.Title>
+        <Card.Description>Logged vs. target, {chartGranularity} by {chartGranularity}</Card.Description>
       </div>
-      <Badge variant="secondary">{data.weeks.length} weeks</Badge>
+      <div class="flex items-center gap-2">
+        <select
+          aria-label="Chart granularity"
+          value={chartGranularity}
+          onchange={(e) => {
+            chartGranularity = e.currentTarget.value as BucketGranularity;
+          }}
+          class="h-8 rounded-md border border-input bg-transparent px-2 text-sm focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+        >
+          {#each Object.entries(GRANULARITY_LABELS) as [v, label] (v)}
+            <option value={v}>{label}</option>
+          {/each}
+        </select>
+        <Badge variant="secondary">{chartBuckets.length}</Badge>
+      </div>
     </Card.Header>
     <Card.Content>
-      <WeeklyChart weeks={data.weeks} />
+      <HoursChart buckets={chartBuckets} granularity={chartGranularity} />
     </Card.Content>
   </Card.Root>
 </div>
@@ -592,6 +715,23 @@
         <div class="flex flex-col gap-1.5">
           <Label for="goal-start">Counting from</Label>
           <DateField id="goal-start" name="startDate" bind:value={gStart} min={data.epoch} />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <Label for="goal-allocation">Allocation (%)</Label>
+          <Input
+            id="goal-allocation"
+            type="number"
+            name="allocation"
+            step="1"
+            min="0"
+            max="100"
+            bind:value={gAllocation}
+            required
+          />
+          <p class="text-xs text-muted-foreground">
+            This goal's share of new savings. Spare share from goals already reached tops up the highest-ranked
+            unfinished goal.
+          </p>
         </div>
         <div class="flex flex-col gap-1.5">
           <Label for="goal-funding">Funded by</Label>

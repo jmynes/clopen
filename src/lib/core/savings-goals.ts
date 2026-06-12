@@ -18,6 +18,7 @@ function parseGoal(form: FormData) {
     targetAmount: form.get('targetAmount'),
     startDate: form.get('startDate'),
     funding: form.get('funding'),
+    allocation: form.get('allocation') ?? undefined,
   });
 }
 
@@ -44,7 +45,31 @@ export async function deleteSavingsGoalAction(repo: Repo, form: FormData): Promi
   return { ok: true, data: { goalDeleted: true } };
 }
 
-export type SavingsGoalActionName = 'addGoal' | 'updateGoal' | 'deleteGoal';
+/**
+ * Move a goal one step up or down the ranking. Ranks are rewritten as the
+ * full 0..n−1 sequence so legacy rows (which all defaulted to rank 0)
+ * normalize on first reorder.
+ */
+export async function moveSavingsGoalAction(repo: Repo, form: FormData): Promise<ActionOutcome> {
+  const id = String(form.get('id') ?? '');
+  const dir = String(form.get('dir') ?? '');
+  if (!id || (dir !== 'up' && dir !== 'down')) {
+    return { ok: false, status: 400, data: { goalError: 'Missing goal id or direction' } };
+  }
+  const goals = await repo.listSavingsGoals();
+  const idx = goals.findIndex((g) => g.id === id);
+  const swap = dir === 'up' ? idx - 1 : idx + 1;
+  if (idx === -1 || swap < 0 || swap >= goals.length) {
+    return { ok: false, status: 400, data: { goalError: 'Cannot move that goal further' } };
+  }
+  [goals[idx], goals[swap]] = [goals[swap], goals[idx]];
+  for (let rank = 0; rank < goals.length; rank++) {
+    if (goals[rank].rank !== rank) await repo.setSavingsGoalRank(goals[rank].id, rank);
+  }
+  return { ok: true, data: { goalMoved: true } };
+}
+
+export type SavingsGoalActionName = 'addGoal' | 'updateGoal' | 'deleteGoal' | 'moveGoal';
 
 /** Dispatch by SvelteKit action name ("?/addGoal" → addGoal). Demo mode's client router. */
 export function runSavingsGoalAction(
@@ -59,5 +84,7 @@ export function runSavingsGoalAction(
       return updateSavingsGoalAction(repo, form);
     case 'deleteGoal':
       return deleteSavingsGoalAction(repo, form);
+    case 'moveGoal':
+      return moveSavingsGoalAction(repo, form);
   }
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDays,
+  bucketBreakdown,
   countWorkdays,
   expectedHours,
   goalRateOf,
@@ -391,5 +392,90 @@ describe('goalRateOf', () => {
 
   it('returns 0 when no workdays are configured', () => {
     expect(goalRateOf(82_000, 2026, 8, [])).toBe(0);
+  });
+});
+
+describe('bucketBreakdown', () => {
+  const settings: WorkSettings = { hourlyRate: 10, dailyHours: 8, workdays: [1, 2, 3, 4, 5] };
+  // Jan 2026: Thu 1, Fri 2; week of Jan 4 (Sun start) runs Sun 04 – Sat 10.
+  const entries = [
+    { date: '2026-01-02', hours: 8 },
+    { date: '2026-01-05', hours: 10 },
+    { date: '2026-02-02', hours: 4 },
+  ];
+
+  it('weekly granularity matches weeklyBreakdown', () => {
+    const buckets = bucketBreakdown({
+      entries,
+      rangeStart: '2026-01-01',
+      asOf: '2026-02-03',
+      settings,
+      weekStartsOn: 7,
+      granularity: 'week',
+    });
+    const weeks = weeklyBreakdown({ entries, yearStart: '2026-01-01', asOf: '2026-02-03', settings, weekStartsOn: 7 });
+    expect(buckets.map((b) => [b.start, b.logged, b.target])).toEqual(
+      weeks.map((w) => [w.weekStart, w.logged, w.target]),
+    );
+  });
+
+  it('daily granularity emits one bucket per day with per-day targets', () => {
+    const buckets = bucketBreakdown({
+      entries,
+      rangeStart: '2026-01-01',
+      asOf: '2026-01-04',
+      settings,
+      granularity: 'day',
+    });
+    expect(buckets).toHaveLength(4);
+    expect(buckets[0]).toMatchObject({ start: '2026-01-01', logged: 0, target: 8 });
+    expect(buckets[1]).toMatchObject({ start: '2026-01-02', logged: 8, target: 8 });
+    expect(buckets[3]).toMatchObject({ start: '2026-01-04', logged: 0, target: 0 }); // Sunday
+  });
+
+  it('monthly granularity clips the open month at asOf', () => {
+    const buckets = bucketBreakdown({
+      entries,
+      rangeStart: '2026-01-01',
+      asOf: '2026-02-03',
+      settings,
+      granularity: 'month',
+    });
+    expect(buckets).toHaveLength(2);
+    expect(buckets[0]).toMatchObject({ start: '2026-01-01', end: '2026-01-31', logged: 18, target: 176 });
+    // Feb clipped to Feb 1–3: Mon 2 + Tue 3 are workdays.
+    expect(buckets[1]).toMatchObject({ start: '2026-02-01', end: '2026-02-03', logged: 4, target: 16 });
+  });
+
+  it('quarterly and yearly granularities bucket by calendar boundaries', () => {
+    const q = bucketBreakdown({
+      entries,
+      rangeStart: '2026-01-01',
+      asOf: '2026-04-01',
+      settings,
+      granularity: 'quarter',
+    });
+    expect(q.map((b) => b.start)).toEqual(['2026-01-01', '2026-04-01']);
+    const y = bucketBreakdown({
+      entries,
+      rangeStart: '2026-01-01',
+      asOf: '2026-02-03',
+      settings,
+      granularity: 'year',
+    });
+    expect(y).toHaveLength(1);
+    expect(y[0]).toMatchObject({ start: '2026-01-01', logged: 22 });
+  });
+
+  it('a mid-year range start clips the first bucket, like the epoch clamp', () => {
+    const buckets = bucketBreakdown({
+      entries,
+      rangeStart: '2026-01-15',
+      asOf: '2026-02-03',
+      settings,
+      granularity: 'month',
+    });
+    // Jan bucket spans the 15th–31st: 12 workdays, none of the Jan entries (1/2, 1/5) inside.
+    expect(buckets[0]).toMatchObject({ start: '2026-01-01', logged: 0, target: 96 });
   });
 });

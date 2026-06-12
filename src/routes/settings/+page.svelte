@@ -5,7 +5,6 @@
   import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
   import NotebookText from '@lucide/svelte/icons/notebook-text';
   import ReceiptText from '@lucide/svelte/icons/receipt-text';
-  import Wallet from '@lucide/svelte/icons/wallet';
   import { tick } from 'svelte';
   import { enhance } from '$app/forms';
   import { invalidate } from '$app/navigation';
@@ -59,14 +58,13 @@
   // mounted (display:none) so the single form still posts every value — the
   // save action validates the full settings shape on each submit.
   const SECTIONS = [
-    { id: 'pay', title: 'Pay & schedule', icon: Wallet },
+    { id: 'dashboard', title: 'Dashboard', icon: LayoutDashboard },
     { id: 'clock', title: 'Clock & time', icon: Clock },
     { id: 'ledger', title: 'Log & Ledger', icon: NotebookText },
-    { id: 'dashboard', title: 'Dashboard', icon: LayoutDashboard },
     { id: 'expenses', title: 'Expenses', icon: ReceiptText },
   ] as const;
   type SectionId = (typeof SECTIONS)[number]['id'];
-  let active = $state<SectionId>('pay');
+  let active = $state<SectionId>('dashboard');
   const activeSection = $derived(SECTIONS.find((s) => s.id === active) ?? SECTIONS[0]);
   const ActiveIcon = $derived(activeSection.icon);
 
@@ -251,9 +249,86 @@
           <Card.Title>{activeSection.title}</Card.Title>
         </Card.Header>
         <Card.Content>
-          <!-- ── Pay & schedule ─────────────────────────────────────────── -->
-          <div class="flex-col divide-y divide-border/50 {active === 'pay' ? 'flex' : 'hidden'}">
+          <!-- ── Dashboard (goal + expense defaults, then pay & schedule) ── -->
+          <div class="flex-col divide-y divide-border/50 {active === 'dashboard' ? 'flex' : 'hidden'}">
             <section class="flex flex-col gap-3 pb-5">
+              <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">
+                Goal
+              </h3>
+              <div
+                class="rounded-md border border-input text-sm transition-colors has-checked:border-primary has-checked:bg-accent"
+              >
+                <label class="flex cursor-pointer items-start gap-2 px-3 py-2">
+                  <input type="checkbox" name="goalEnabled" bind:checked={goalEnabled} class="mt-0.5 accent-primary" />
+                  <span>
+                    <span class="font-medium">Chase a yearly goal</span>
+                    <span class="block text-xs text-muted-foreground">
+                      Target take-home for the year — e.g. stretching for $82k on an $80k salary via overtime. Off
+                      keeps the target at straight salary math.
+                    </span>
+                  </span>
+                </label>
+                <!-- Disabled while toggled off so it's fully inert; a disabled input
+                     doesn't submit, so a hidden input carries the bound value and a
+                     custom goal isn't silently reset on save. -->
+                <div
+                  class="flex items-center justify-between gap-3 border-t border-border/50 px-3 py-2 transition-opacity {goalEnabled
+                    ? ''
+                    : 'opacity-50'}"
+                >
+                  <Label for="yearlyGoal">Yearly goal (USD)</Label>
+                  {#if !goalEnabled}
+                    <input type="hidden" name="yearlyGoal" value={yearlyGoalValue} />
+                  {/if}
+                  <div class="relative w-32 shrink-0">
+                    <span
+                      aria-hidden="true"
+                      class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground"
+                    >
+                      $
+                    </span>
+                    <Input
+                      id="yearlyGoal"
+                      type="number"
+                      name="yearlyGoal"
+                      step="500"
+                      min="0"
+                      max="10000000"
+                      bind:value={yearlyGoalValue}
+                      required
+                      disabled={!goalEnabled}
+                      class="pl-7 text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="flex flex-col gap-3 py-5">
+              <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">
+                Expenses
+              </h3>
+              <label
+                class="flex cursor-pointer items-start gap-2 rounded-md border border-input px-3 py-2 text-sm transition-colors has-checked:border-primary has-checked:bg-accent"
+              >
+                <input
+                  type="checkbox"
+                  name="countExpenses"
+                  checked={data.countExpenses}
+                  class="mt-0.5 accent-primary"
+                />
+                <span>
+                  <span class="font-medium">Count expenses by default</span>
+                  <span class="block text-xs text-muted-foreground">
+                    The dashboard opens with logged expenses folded into the hours to make up. Its per-period toggle
+                    still flips it per visit.
+                  </span>
+                </span>
+              </label>
+              <p class="text-xs text-muted-foreground">Bonus tracking is planned and will live here.</p>
+            </section>
+
+            <section class="flex flex-col gap-3 py-5">
               <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">
                 Compensation
               </h3>
@@ -286,7 +361,7 @@
               </div>
             </section>
 
-            <section class="flex flex-col gap-3 py-5">
+            <section class="flex flex-col gap-3 pt-5">
               <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">
                 Overtime
               </h3>
@@ -345,7 +420,53 @@
               </div>
             </section>
 
-            <section class="flex flex-col gap-4 pt-5">
+          </div>
+
+          <!-- ── Clock & time ───────────────────────────────────────────── -->
+          <div class="flex-col gap-4 {active === 'clock' ? 'flex' : 'hidden'}">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div class="flex flex-col gap-1.5">
+                <Label for="timeFormat">Time format</Label>
+                <select id="timeFormat" name="timeFormat" class={SELECT_CLASS}>
+                  <option value="12h" selected={data.timeFormat === '12h'}>12-hour (09:00 AM)</option>
+                  <option value="24h" selected={data.timeFormat === '24h'}>24-hour (09:00)</option>
+                </select>
+                <p class="text-xs text-muted-foreground">How clock in/out times display.</p>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <Label for="timeZone">Timezone</Label>
+                <select id="timeZone" name="timeZone" class={SELECT_CLASS}>
+                  {#each timeZones as tz (tz)}
+                    <option value={tz} selected={data.timeZone === tz}>{tz.replaceAll('_', ' ')}</option>
+                  {/each}
+                </select>
+                <p class="text-xs text-muted-foreground">Defines "today" everywhere and stamps the clock.</p>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <Label for="clockBreakMode">Clock breaks</Label>
+                <select id="clockBreakMode" name="clockBreakMode" class={SELECT_CLASS}>
+                  <option value="accrue" selected={data.clockBreakMode === 'accrue'}>Accrue into the shift</option>
+                  <option value="split" selected={data.clockBreakMode === 'split'}>Split shifts at breaks</option>
+                </select>
+                <p class="text-xs text-muted-foreground">How punch-clock breaks land in the ledger.</p>
+              </div>
+            </div>
+            <label
+              class="flex cursor-pointer items-start gap-2 rounded-md border border-input px-3 py-2 text-sm transition-colors has-checked:border-primary has-checked:bg-accent"
+            >
+              <input type="checkbox" name="observeDst" checked={data.observeDst} class="mt-0.5 accent-primary" />
+              <span>
+                <span class="font-medium">Observe daylight saving time</span>
+                <span class="block text-xs text-muted-foreground">
+                  Off pins the timezone to its standard offset year-round (e.g. Central stays UTC−6).
+                </span>
+              </span>
+            </label>
+          </div>
+
+          <!-- ── Log & Ledger ───────────────────────────────────────────── -->
+          <div class="flex-col divide-y divide-border/50 {active === 'ledger' ? 'flex' : 'hidden'}">
+            <section class="flex flex-col gap-4 pb-5">
               <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">
                 Schedule
               </h3>
@@ -397,53 +518,8 @@
                 </div>
               </fieldset>
             </section>
-          </div>
 
-          <!-- ── Clock & time ───────────────────────────────────────────── -->
-          <div class="flex-col gap-4 {active === 'clock' ? 'flex' : 'hidden'}">
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div class="flex flex-col gap-1.5">
-                <Label for="timeFormat">Time format</Label>
-                <select id="timeFormat" name="timeFormat" class={SELECT_CLASS}>
-                  <option value="12h" selected={data.timeFormat === '12h'}>12-hour (09:00 AM)</option>
-                  <option value="24h" selected={data.timeFormat === '24h'}>24-hour (09:00)</option>
-                </select>
-                <p class="text-xs text-muted-foreground">How clock in/out times display.</p>
-              </div>
-              <div class="flex flex-col gap-1.5">
-                <Label for="timeZone">Timezone</Label>
-                <select id="timeZone" name="timeZone" class={SELECT_CLASS}>
-                  {#each timeZones as tz (tz)}
-                    <option value={tz} selected={data.timeZone === tz}>{tz.replaceAll('_', ' ')}</option>
-                  {/each}
-                </select>
-                <p class="text-xs text-muted-foreground">Defines "today" everywhere and stamps the clock.</p>
-              </div>
-              <div class="flex flex-col gap-1.5">
-                <Label for="clockBreakMode">Clock breaks</Label>
-                <select id="clockBreakMode" name="clockBreakMode" class={SELECT_CLASS}>
-                  <option value="accrue" selected={data.clockBreakMode === 'accrue'}>Accrue into the shift</option>
-                  <option value="split" selected={data.clockBreakMode === 'split'}>Split shifts at breaks</option>
-                </select>
-                <p class="text-xs text-muted-foreground">How punch-clock breaks land in the ledger.</p>
-              </div>
-            </div>
-            <label
-              class="flex cursor-pointer items-start gap-2 rounded-md border border-input px-3 py-2 text-sm transition-colors has-checked:border-primary has-checked:bg-accent"
-            >
-              <input type="checkbox" name="observeDst" checked={data.observeDst} class="mt-0.5 accent-primary" />
-              <span>
-                <span class="font-medium">Observe daylight saving time</span>
-                <span class="block text-xs text-muted-foreground">
-                  Off pins the timezone to its standard offset year-round (e.g. Central stays UTC−6).
-                </span>
-              </span>
-            </label>
-          </div>
-
-          <!-- ── Log & Ledger ───────────────────────────────────────────── -->
-          <div class="flex-col divide-y divide-border/50 {active === 'ledger' ? 'flex' : 'hidden'}">
-            <fieldset class="flex flex-col gap-3 pb-5">
+            <fieldset class="flex flex-col gap-3 py-5">
               <legend
                 class="float-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:w-full max-md:text-center"
               >
@@ -543,86 +619,6 @@
               <p class="text-xs text-muted-foreground">
                 Every add, edit, and delete on the ledger, timestamped, with a snapshot of the entry as it was.
               </p>
-            </section>
-          </div>
-
-          <!-- ── Dashboard ──────────────────────────────────────────────── -->
-          <div class="flex-col divide-y divide-border/50 {active === 'dashboard' ? 'flex' : 'hidden'}">
-            <section class="flex flex-col gap-3 pb-5">
-              <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">
-                Goal
-              </h3>
-              <div
-                class="rounded-md border border-input text-sm transition-colors has-checked:border-primary has-checked:bg-accent"
-              >
-                <label class="flex cursor-pointer items-start gap-2 px-3 py-2">
-                  <input type="checkbox" name="goalEnabled" bind:checked={goalEnabled} class="mt-0.5 accent-primary" />
-                  <span>
-                    <span class="font-medium">Chase a yearly goal</span>
-                    <span class="block text-xs text-muted-foreground">
-                      Target take-home for the year — e.g. stretching for $82k on an $80k salary via overtime. Off
-                      keeps the target at straight salary math.
-                    </span>
-                  </span>
-                </label>
-                <!-- Disabled while toggled off so it's fully inert; a disabled input
-                     doesn't submit, so a hidden input carries the bound value and a
-                     custom goal isn't silently reset on save. -->
-                <div
-                  class="flex items-center justify-between gap-3 border-t border-border/50 px-3 py-2 transition-opacity {goalEnabled
-                    ? ''
-                    : 'opacity-50'}"
-                >
-                  <Label for="yearlyGoal">Yearly goal (USD)</Label>
-                  {#if !goalEnabled}
-                    <input type="hidden" name="yearlyGoal" value={yearlyGoalValue} />
-                  {/if}
-                  <div class="relative w-32 shrink-0">
-                    <span
-                      aria-hidden="true"
-                      class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground"
-                    >
-                      $
-                    </span>
-                    <Input
-                      id="yearlyGoal"
-                      type="number"
-                      name="yearlyGoal"
-                      step="500"
-                      min="0"
-                      max="10000000"
-                      bind:value={yearlyGoalValue}
-                      required
-                      disabled={!goalEnabled}
-                      class="pl-7 text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                    />
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <section class="flex flex-col gap-3 pt-5">
-              <h3 class="text-[11px] font-medium uppercase tracking-wider text-muted-foreground max-md:text-center">
-                Expenses
-              </h3>
-              <label
-                class="flex cursor-pointer items-start gap-2 rounded-md border border-input px-3 py-2 text-sm transition-colors has-checked:border-primary has-checked:bg-accent"
-              >
-                <input
-                  type="checkbox"
-                  name="countExpenses"
-                  checked={data.countExpenses}
-                  class="mt-0.5 accent-primary"
-                />
-                <span>
-                  <span class="font-medium">Count expenses by default</span>
-                  <span class="block text-xs text-muted-foreground">
-                    The dashboard opens with logged expenses folded into the hours to make up. Its per-period toggle
-                    still flips it per visit.
-                  </span>
-                </span>
-              </label>
-              <p class="text-xs text-muted-foreground">Bonus tracking is planned and will live here.</p>
             </section>
           </div>
 

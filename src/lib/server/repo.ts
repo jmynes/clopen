@@ -11,7 +11,13 @@ import {
 } from '$lib/server/entries';
 import { addExpense, deleteExpense, listExpenseEvents, listExpenses, updateExpense } from '$lib/server/expenses';
 import { clearOpenShift, getOpenShift, saveOpenShift } from '$lib/server/open-shift';
-import { addSavingsGoal, deleteSavingsGoal, listSavingsGoals, updateSavingsGoal } from '$lib/server/savings-goals';
+import {
+  addSavingsGoal,
+  deleteSavingsGoal,
+  listSavingsGoals,
+  setSavingsGoalRank,
+  updateSavingsGoal,
+} from '$lib/server/savings-goals';
 import { getSettings, updateSettings } from '$lib/server/settings';
 
 /** The Drizzle/libSQL implementation of the Repo storage contract. */
@@ -38,4 +44,5 @@ export const serverRepo: Repo = {
   addSavingsGoal,
   updateSavingsGoal,
   deleteSavingsGoal,
+  setSavingsGoalRank,
 };

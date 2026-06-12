@@ -4,12 +4,18 @@ import { migrate } from 'drizzle-orm/libsql/migrator';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as schema from '$lib/db/schema';
 import type { SavingsGoalInput } from '$lib/schemas/savings-goal';
-import { addSavingsGoal, deleteSavingsGoal, listSavingsGoals, updateSavingsGoal } from './savings-goals';
+import {
+  addSavingsGoal,
+  deleteSavingsGoal,
+  listSavingsGoals,
+  setSavingsGoalRank,
+  updateSavingsGoal,
+} from './savings-goals';
 
 type Db = ReturnType<typeof drizzle<typeof schema>>;
 
 function mk(partial: Partial<SavingsGoalInput> & { name: string }): SavingsGoalInput {
-  return { targetAmount: 350, startDate: '2026-06-12', funding: 'overtime', ...partial };
+  return { targetAmount: 350, startDate: '2026-06-12', funding: 'overtime', allocation: 100, ...partial };
 }
 
 let db: Db;
@@ -30,11 +36,26 @@ describe('savings goals CRUD', () => {
     expect(all[0]).toMatchObject({ name: 'Nintendo Switch', targetAmount: 350, funding: 'overtime' });
   });
 
-  it('lists in creation order', async () => {
+  it('lists in rank order; new goals append at the end', async () => {
     await addSavingsGoal(mk({ name: 'first' }), db);
     await addSavingsGoal(mk({ name: 'second' }), db);
     const all = await listSavingsGoals(db);
     expect(all.map((g) => g.name)).toEqual(['first', 'second']);
+    expect(all[1].rank).toBeGreaterThan(all[0].rank);
+  });
+
+  it('setSavingsGoalRank reorders the list', async () => {
+    const a = await addSavingsGoal(mk({ name: 'a' }), db);
+    const b = await addSavingsGoal(mk({ name: 'b' }), db);
+    await setSavingsGoalRank(a.id, 1, db);
+    await setSavingsGoalRank(b.id, 0, db);
+    const all = await listSavingsGoals(db);
+    expect(all.map((g) => g.name)).toEqual(['b', 'a']);
+  });
+
+  it('persists allocation', async () => {
+    await addSavingsGoal(mk({ name: 'split', allocation: 20 }), db);
+    expect((await listSavingsGoals(db))[0].allocation).toBe(20);
   });
 
   it('updates a goal and stamps updatedAt', async () => {
