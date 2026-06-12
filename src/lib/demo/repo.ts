@@ -17,7 +17,7 @@ import type { EntryInput } from '$lib/schemas/entry';
 import type { ExpenseInput } from '$lib/schemas/expense';
 import type { SavingsGoalInput } from '$lib/schemas/savings-goal';
 import type { SettingsInput } from '$lib/schemas/settings';
-import { SAMPLE_SETTINGS, sampleEntries } from './sample';
+import { SAMPLE_SETTINGS, sampleEntries, sampleSavingsGoals } from './sample';
 
 const SAMPLE_FLAG_KEY = 'clopen:demo-sample';
 const KEYS = {
@@ -105,6 +105,10 @@ function ensureSeeded(): void {
     }
     if (localStorage.getItem(KEYS.sample.settings) === null) {
       localStorage.setItem(KEYS.sample.settings, JSON.stringify(SAMPLE_SETTINGS));
+    }
+    // Keyed separately so existing demo visitors pick the goals up too.
+    if (localStorage.getItem(KEYS.sample.savingsGoals) === null) {
+      localStorage.setItem(KEYS.sample.savingsGoals, JSON.stringify(sampleSavingsGoals()));
     }
   } catch {
     // SSR / storage unavailable — nothing to seed

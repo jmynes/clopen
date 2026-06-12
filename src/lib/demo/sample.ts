@@ -9,7 +9,7 @@
  * tracking epoch pinned to Jan 1, so the make-whole math accrues from there.
  */
 import { todayISO } from '$lib/date';
-import type { Settings, TimeEntry } from '$lib/db/schema';
+import type { SavingsGoal, Settings, TimeEntry } from '$lib/db/schema';
 import type { EntryKind } from '$lib/leave-kinds';
 
 export const SAMPLE_START = '2026-01-01';
@@ -133,6 +133,46 @@ function leaveEntry(date: string, kind: EntryKind, paid: boolean): TimeEntry {
     createdAt: Math.floor(Date.parse(date) / 1000),
     updatedAt: null,
   };
+}
+
+/**
+ * Sample savings goals, sized against the surplus the entries above produce
+ * (single-digit overtime hours × $45 by mid-year): a 75/25 ranked split of
+ * the overtime stream where the small #2 reaches its target and spills its
+ * spare share up to #1, plus an all-earnings goal anchored to the current
+ * month so it sits mid-progress whenever the demo is visited.
+ */
+export function sampleSavingsGoals(): SavingsGoal[] {
+  const goal = (n: number, row: Omit<SavingsGoal, 'id' | 'rank' | 'createdAt' | 'updatedAt'>): SavingsGoal => ({
+    id: `sample-goal-${n}`,
+    rank: n,
+    createdAt: Math.floor(Date.parse(row.startDate) / 1000),
+    updatedAt: null,
+    ...row,
+  });
+  return [
+    goal(0, {
+      name: 'Nintendo Switch 2',
+      targetAmount: 450,
+      startDate: SAMPLE_START,
+      funding: 'overtime',
+      allocation: 75,
+    }),
+    goal(1, {
+      name: 'Mechanical keyboard',
+      targetAmount: 60,
+      startDate: SAMPLE_START,
+      funding: 'overtime',
+      allocation: 25,
+    }),
+    goal(2, {
+      name: 'Coffee fund',
+      targetAmount: 250,
+      startDate: `${todayISO().slice(0, 7)}-01`,
+      funding: 'all',
+      allocation: 2,
+    }),
+  ];
 }
 
 /**

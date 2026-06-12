@@ -374,10 +374,13 @@
         net >= 0 ? 'text-success' : periodState === 'done' ? 'text-destructive' : 'text-amber-500',
     },
     {
-      label: periodState === 'done' ? 'Earned' : 'Earned so far',
-      value: money.format(earnedDollars),
+      // The dollar twin of Net: signed distance from the period's dollar
+      // target, titled by which side of it the period sits on.
+      label: dollarsDelta >= 0 ? 'Surplus' : 'Deficit',
+      value: `${dollarsDelta >= 0 ? '+' : '−'}${money.format(Math.abs(dollarsDelta))}`,
       icon: Wallet,
-      valueClass: dollarsDelta >= 0 ? 'text-success' : 'text-amber-500',
+      valueClass:
+        dollarsDelta >= 0 ? 'text-success' : periodState === 'done' ? 'text-destructive' : 'text-amber-500',
     },
   ]);
 </script>
