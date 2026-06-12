@@ -204,8 +204,8 @@
   let submitting = $state(false);
 
   const KIND_ICON = { ride: CarTaxiFront, meal: UtensilsCrossed, purchase: CreditCard, other: Receipt } as const;
-  // Uber Eats and Grubhub aren't in the FA brands pack; their real glyphs
-  // come from Simple Icons instead.
+  // Uber Eats isn't in the FA brands pack (its glyph comes from Simple
+  // Icons); Grubhub renders its actual app icon (see GrubhubIcon).
   const VENDOR_ICON = {
     uber: UberIcon,
     lyft: LyftIcon,
@@ -225,7 +225,7 @@
     lyft: 'text-[#ff00bf]',
     taxi: 'text-yellow-500',
     uber_eats: 'text-[#06c167]',
-    grubhub: 'text-[#f63440]',
+    grubhub: '',
     restaurant: '',
     hardware: '',
     software: '',

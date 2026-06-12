@@ -209,12 +209,13 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   by `$lib/components/brand/BrandIcon.svelte` (a 15-line IconDefinition →
   inline-SVG renderer; no svelte-fa dependency) behind thin `UberIcon` /
   `LyftIcon` wrappers so icon maps stay uniform with lucide components.
-  Grubhub/Uber Eats aren't in the FA pack; they come from `simple-icons`
-  via the parallel `SimpleBrandIcon.svelte` + `GrubhubIcon`/`UberEatsIcon`
-  wrappers. Grubhub's glyph is `siJusteat` — the house-with-cutlery
-  brandmark Grubhub shares with parent Just Eat Takeaway (Simple Icons'
-  own Grubhub entry was the wordmark and is gone after v14). Lyft renders
-  in its brand pink, Grubhub its brand red, Uber Eats its green.
+  Uber Eats isn't in the FA pack; it comes from `simple-icons` via the
+  parallel `SimpleBrandIcon.svelte` + `UberEatsIcon` wrapper. Grubhub has
+  no mark of its own in any pack (Simple Icons only carries the
+  house-with-cutlery shared with parent Just Eat Takeaway), so `GrubhubIcon`
+  renders the genuine app icon (`assets/grubhub-app-icon.png`, fetched from
+  grubhub.com's apple-touch-icon) as a 2KB raster. Lyft renders in its
+  brand pink, Uber Eats its green.
 - `src/lib/schemas/*` — Zod schemas:
   - `entryInput` — plain hours-mode (positive hours, optional break/note).
   - `clockEntryInput` — start + end times; computed hours via `hoursBetween`

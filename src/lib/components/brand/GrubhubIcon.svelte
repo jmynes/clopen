@@ -1,12 +1,12 @@
-<!-- Grubhub's brandmark — the house-with-cutlery it shares with parent
-     Just Eat Takeaway since the 2021 rebrand. Simple Icons carries the
-     glyph under Just Eat (its own Grubhub entry was the wordmark, and was
-     dropped after v14); the red tint at the call site makes it Grubhub's. -->
+<!-- Grubhub's actual app icon (fetched from grubhub.com/apple-touch-icon.png).
+     No pack carries a Grubhub-specific mark — Simple Icons only has the
+     house-with-cutlery it shares with parent Just Eat Takeaway — so the
+     genuine 2KB raster rides along in assets instead of the look-alike.
+     Decorative: label text sits beside it everywhere it renders. -->
 <script lang="ts">
-  import { siJusteat } from 'simple-icons';
-  import SimpleBrandIcon from './SimpleBrandIcon.svelte';
+  import icon from '$lib/assets/grubhub-app-icon.png';
 
   let { class: className = undefined }: { class?: string } = $props();
 </script>
 
-<SimpleBrandIcon icon={siJusteat} class={className} />
+<img src={icon} alt="" aria-hidden="true" class="rounded-[3px] {className}" />
