@@ -49,14 +49,15 @@
             <div
               class="absolute inset-x-0.5 transition-[height] group-hover:brightness-110 {met
                 ? 'bg-success'
-                : 'bg-amber-500'} {cap === 0 ? 'rounded-t-sm' : ''}"
+                : 'bg-rose-500 dark:bg-rose-400'} {cap === 0 ? 'rounded-t-sm' : ''}"
               style="height: {hLogged - cap}px; bottom: 0"
               title={hoverTitle}
             ></div>
-            <!-- overtime above the target line, in the hero's "Beat it" emerald -->
+            <!-- overtime above the target line, in the brand's AM-door sky —
+                 the same color savings-goal progress bars use for banked OT -->
             {#if cap > 0}
               <div
-                class="absolute inset-x-0.5 rounded-t-sm bg-emerald-400 transition-[height] group-hover:brightness-110"
+                class="absolute inset-x-0.5 rounded-t-sm bg-sky-500 transition-[height] group-hover:brightness-110 dark:bg-sky-400"
                 style="height: {cap}px; bottom: {hLogged - cap}px"
                 title={hoverTitle}
               ></div>
@@ -82,9 +83,9 @@
       {/each}
     </div>
     <div class="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-      <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-emerald-400"></span> Above target</span>
+      <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-sky-500 dark:bg-sky-400"></span> Above target</span>
       <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-success"></span> Met target</span>
-      <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-amber-500"></span> Below target</span>
+      <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-rose-500 dark:bg-rose-400"></span> Below target</span>
       <span class="flex items-center gap-1.5">
         <span class="h-0 w-3.5 border-t-2 border-dashed border-muted-foreground/60"></span> Weekly target
       </span>
