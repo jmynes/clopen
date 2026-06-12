@@ -1,6 +1,6 @@
 /** Dashboard view math, computed in the universal page load from layout data. */
 import { todayISO } from '$lib/date';
-import type { Expense, Settings, TimeEntry } from '$lib/db/schema';
+import type { Expense, SavingsGoal, Settings, TimeEntry } from '$lib/db/schema';
 import { makeWholeStatus, weeklyBreakdown, yearStartOf } from '$lib/timesheet';
 import { toWorkSettings } from './repo';
 
@@ -11,6 +11,7 @@ export function computeDashboard(
   expenses: Expense[],
   settingsRow: Settings,
   requested: string | null,
+  savingsGoals: SavingsGoal[] = [],
 ) {
   const today = todayISO();
   const asOf = requested && ISO_DATE.test(requested) ? requested : today;
@@ -46,6 +47,7 @@ export function computeDashboard(
     countExpenses: settingsRow.countExpenses,
     entries,
     expenses,
+    savingsGoals,
     status,
     weeks,
   };

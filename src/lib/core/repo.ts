@@ -1,6 +1,7 @@
-import type { EntryEvent, Expense, ExpenseEvent, OpenShift, Settings, TimeEntry } from '$lib/db/schema';
+import type { EntryEvent, Expense, ExpenseEvent, OpenShift, SavingsGoal, Settings, TimeEntry } from '$lib/db/schema';
 import type { EntryInput } from '$lib/schemas/entry';
 import type { ExpenseInput } from '$lib/schemas/expense';
+import type { SavingsGoalInput } from '$lib/schemas/savings-goal';
 import { type SettingsInput, workdaysJson } from '$lib/schemas/settings';
 import type { WorkSettings } from '$lib/timesheet';
 
@@ -30,6 +31,11 @@ export type Repo = {
   deleteExpense(id: string): Promise<void>;
   /** Audit log of expense mutations, newest first. */
   listExpenseEvents(): Promise<ExpenseEvent[]>;
+  /** Savings goals in creation order. */
+  listSavingsGoals(): Promise<SavingsGoal[]>;
+  addSavingsGoal(input: SavingsGoalInput): Promise<SavingsGoal>;
+  updateSavingsGoal(id: string, input: SavingsGoalInput): Promise<void>;
+  deleteSavingsGoal(id: string): Promise<void>;
 };
 
 export const DEFAULT_SETTINGS = {
@@ -94,4 +100,10 @@ export const emptyRepo: Repo = {
   updateExpense: async () => {},
   deleteExpense: async () => {},
   listExpenseEvents: async () => [],
+  listSavingsGoals: async () => [],
+  addSavingsGoal: async () => {
+    throw new Error('emptyRepo is read-only');
+  },
+  updateSavingsGoal: async () => {},
+  deleteSavingsGoal: async () => {},
 };

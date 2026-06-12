@@ -137,6 +137,14 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
     inside the repo implementations' CRUD (server + demo, demo capped at
     500/bucket). `Repo` exposes `listExpenseEvents()` plus `listExpenses` /
     `addExpense` / `updateExpense` / `deleteExpense`.
+  - `savings_goals`: dashboard savings goals ("Nintendo Switch · $350") —
+    `id`, `name`, `targetAmount`, `startDate` (ISO local-day), `funding`
+    (`overtime | all`), `createdAt`, `updatedAt`. Progress is derived
+    (`$lib/savings-goals`, pure + tested), never stored, and always uses the
+    straight `hourlyRate` — independent of the yearly stretch goal and of the
+    hero's salary math. No audit events (not ledger records). `Repo` exposes
+    `listSavingsGoals` (creation order) / `addSavingsGoal` /
+    `updateSavingsGoal` / `deleteSavingsGoal`.
 - `src/lib/db/index.ts` — Drizzle/libSQL client, **lazy-constructed via Proxy**
   so module load doesn't open a connection during SvelteKit's build analyse pass.
   Local default `file:./local.db`.
@@ -152,7 +160,9 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   storage contract + `DEFAULT_SETTINGS` + `toWorkSettings` + `emptyRepo`),
   `log.ts` (`computeLog` + all five form actions returning
   `{ ok, status, data }`), `expenses.ts` (`computeExpenses` + add/update/delete
-  actions, same outcome shape, tested in `expenses.test.ts`), `dashboard.ts`,
+  actions, same outcome shape, tested in `expenses.test.ts`),
+  `savings-goals.ts` (goal add/update/delete actions, same outcome shape,
+  tested in `savings-goals.test.ts`), `dashboard.ts`,
   `settings-page.ts`, `clock.ts` (the
   punch-clock state machine: idle / working / on_break; `clockIn`,
   `startBreak`, `endBreak`, `clockOut`, `adjustStart`, `resolveSave`/`Discard`,
@@ -178,9 +188,10 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   handler has a demo branch that cancels the POST and runs the core action
   against localStorage (results stand in for the `form` prop via an
   `actionData` derived).
-- `src/lib/server/entries.ts` / `expenses.ts` / `settings.ts` — CRUD with an
+- `src/lib/server/entries.ts` / `expenses.ts` / `savings-goals.ts` /
+  `settings.ts` — CRUD with an
   **injectable `db` arg** so unit tests run against an in-memory libSQL
-  (`entries.test.ts`, `expenses.test.ts`);
+  (`entries.test.ts`, `expenses.test.ts`, `savings-goals.test.ts`);
   `repo.ts` bundles them as `serverRepo`, the Drizzle `Repo` implementation.
   Entries module also exports `findExistingDates`, `listEntriesByDates`, and
   `deleteEntriesByDates` for the conflict-resolution flow. `toWorkSettings` maps
@@ -227,6 +238,8 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   - `expenseInput` — ISO date + positive dollar amount (≤ 100k) + kind +
     optional vendor/direction/method (each scrubbed to null when it doesn't
     belong to the kind) + optional note (blank → null).
+  - `savingsGoalInput` — trimmed name (1–80) + positive target (≤ 1M) + ISO
+    start date + funding (`GOAL_FUNDINGS` enum from `$lib/savings-goals`).
   - `settingsInput` — adds `epoch` (ISO regex), `timeFormat` (`12h | 24h`),
     `ledgerPeriod` (`LEDGER_PERIODS` enum, also exported here), the
     `hideWeekendsEntries` / `hideWeekendsGrid` / `expandNotes` booleans, and
@@ -250,9 +263,23 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   rate) — with goal off and no expenses this reduces exactly to schedule
   hours. When the window contains expenses, an amber "Include $X expenses"
   toggle sits under the earnings block (default from `countExpenses`,
-  per-visit after that). Year-view weekly chart sits below: bars are amber
-  below target, success green at it, and weeks over target stack an emerald
-  overtime cap above the dashed target line (legend: Above / Met / Below).
+  per-visit after that). A **Savings goals** section sits between the stat
+  grid and the chart: a responsive card grid (1/2/3 cols) of dollar targets
+  managed entirely in-page (add/edit/delete dialogs via a `goalEnhance`
+  factory mirroring the Expenses idiom; actions live in the dashboard's
+  `+page.server.ts` — actions only, no load, so tab switches stay
+  network-free). Each goal tracks from its own `startDate` (epoch-clamped)
+  through today, ignoring the period selector: `overtime` funding accumulates
+  dollars earned beyond the as-written schedule (OT premium honored),
+  `all` every dollar earned. Cards show a sky progress bar (success green +
+  "Reached" at 100%), `$saved of $target`, and a funding chip; zero goals
+  renders one slim dashed empty-state card. Math in `$lib/savings-goals.ts`
+  (`goalProgress`, pure, tested). Year-view weekly chart sits below: bars are
+  rose below target, success green at it, and weeks over target stack a sky
+  overtime cap above the dashed target line (legend: Above / Met / Below —
+  the brand's AM/PM door palette, sky caps matching the goal bars). Biome
+  2.4.14 gotcha: a bare `of {expr}` text node breaks its Svelte parser
+  (misread as an each-block) — fold the "of" into the interpolation.
 - `src/routes/log/+page.*` — entries page. The forms (weekly grid, CSV
   import, and the edit/create dialog) share a `conflictAwareEnhance` factory
   that surfaces duplicate-date conflicts in a dialog (`overwrite | keep

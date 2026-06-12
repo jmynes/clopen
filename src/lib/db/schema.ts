@@ -11,6 +11,7 @@ import {
   RIDE_VENDORS,
 } from '$lib/expense-kinds';
 import { ENTRY_KINDS } from '$lib/leave-kinds';
+import { GOAL_FUNDINGS } from '$lib/savings-goals';
 import { CLOCK_BREAK_MODES, LEDGER_PERIODS } from '$lib/schemas/settings';
 
 /**
@@ -153,6 +154,26 @@ export const expenses = sqliteTable('expenses', {
   updatedAt: integer('updated_at'),
 });
 export type Expense = typeof expenses.$inferSelect;
+
+/**
+ * A savings goal shown on the dashboard ("Nintendo Switch · $350"). Tracked
+ * independently of the salary math and of Settings' yearly stretch goal:
+ * `funding` picks what accumulates from `startDate` — `overtime` is dollars
+ * earned beyond the as-written schedule, `all` is every dollar earned.
+ * Progress is derived ($lib/savings-goals), never stored.
+ */
+export const savingsGoals = sqliteTable('savings_goals', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  targetAmount: real('target_amount').notNull(),
+  /** ISO local-day the goal starts accumulating from (clamped by the epoch). */
+  startDate: text('start_date').notNull(),
+  funding: text('funding', { enum: GOAL_FUNDINGS }).notNull().default('overtime'),
+  createdAt: integer('created_at').notNull().default(sql`(unixepoch())`),
+  /** Epoch seconds of the last edit; null = never edited since creation. */
+  updatedAt: integer('updated_at'),
+});
+export type SavingsGoal = typeof savingsGoals.$inferSelect;
 
 /**
  * Append-only audit log of expense mutations — the exact shape of

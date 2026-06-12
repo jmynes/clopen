@@ -4,20 +4,41 @@
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import Clock from '@lucide/svelte/icons/clock';
+  import Pencil from '@lucide/svelte/icons/pencil';
+  import PiggyBank from '@lucide/svelte/icons/piggy-bank';
+  import Plus from '@lucide/svelte/icons/plus';
   import Sparkles from '@lucide/svelte/icons/sparkles';
+  import Trash2 from '@lucide/svelte/icons/trash-2';
   import TrendingDown from '@lucide/svelte/icons/trending-down';
   import TrendingUp from '@lucide/svelte/icons/trending-up';
+  import Wallet from '@lucide/svelte/icons/wallet';
+  import type { SubmitFunction } from '@sveltejs/kit';
+  import { enhance } from '$app/forms';
+  import { invalidate } from '$app/navigation';
+  import DateField from '$lib/components/DateField.svelte';
   import DateJump from '$lib/components/DateJump.svelte';
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
+  import * as Dialog from '$lib/components/ui/dialog';
+  import { Input } from '$lib/components/ui/input';
+  import { Label } from '$lib/components/ui/label';
+  import * as Select from '$lib/components/ui/select';
   import * as Tooltip from '$lib/components/ui/tooltip';
   import WeeklyChart from '$lib/components/WeeklyChart.svelte';
+  import { runSavingsGoalAction, type SavingsGoalActionName } from '$lib/core/savings-goals';
   import { formatDay, formatRangeISO, formatWeekRange, todayISO } from '$lib/date';
+  import type { SavingsGoal } from '$lib/db/schema';
+  import { isDemo } from '$lib/demo/flag';
+  import { GOAL_FUNDING_LABELS, GOAL_FUNDINGS, type GoalFunding, goalProgress } from '$lib/savings-goals';
   import { addDays, countWorkdays, goalRateOf, loggedHours, overtimeHours, weekDates } from '$lib/timesheet';
-  import type { PageData } from './$types';
+  import type { ActionData, PageData } from './$types';
 
-  let { data }: { data: PageData } = $props();
+  let { data, form }: { data: PageData; form: ActionData } = $props();
+
+  // Demo mode intercepts mutations client-side; results stand in for `form`.
+  let demoForm = $state<ActionData>(null);
+  const actionData = $derived(isDemo ? demoForm : form);
 
   const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
   const hrs = (n: number) =>
@@ -205,6 +226,79 @@
     return `${hrs(logged)} logged, ${hrs(targetHours)} expected so far. ${workdaysElapsed} of ${totalWorkdaysInPeriod} workdays elapsed.`;
   });
 
+  // ── Savings goals ────────────────────────────────────────────────────────
+  // Independent of the period selector and of the yearly stretch goal: each
+  // goal accumulates from its own start date through today at the straight
+  // salary rate, so the hero's as-written tracking stays untouched.
+  const goalCards = $derived(
+    data.savingsGoals.map((goal) => ({
+      goal,
+      progress: goalProgress({
+        entries: data.entries,
+        startDate: goal.startDate,
+        targetAmount: goal.targetAmount,
+        funding: goal.funding,
+        asOf: data.today,
+        settings: { hourlyRate: data.hourlyRate, dailyHours: data.dailyHours, workdays: data.workdays },
+        epoch: data.epoch,
+        otMultiplierEnabled: data.otMultiplierEnabled,
+        otMultiplier: data.otMultiplier,
+      }),
+    })),
+  );
+
+  const goalDateFmt = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeZone: 'UTC' });
+  const fmtGoalDate = (iso: string) => goalDateFmt.format(new Date(`${iso}T00:00:00Z`));
+
+  const FUNDING_ICON = { overtime: Sparkles, all: Wallet } as const;
+  const FUNDING_HINT: Record<GoalFunding, string> = {
+    overtime: 'Dollars earned beyond your schedule since the start date',
+    all: 'Every dollar earned since the start date',
+  };
+
+  // null = closed; id null = adding, otherwise editing that goal.
+  let goalDialog = $state<{ id: string | null } | null>(null);
+  let gName = $state('');
+  let gTarget = $state('');
+  let gStart = $state('');
+  let gFunding = $state<GoalFunding>('overtime');
+  let deletingGoal = $state<SavingsGoal | null>(null);
+  let goalSubmitting = $state(false);
+
+  function openGoalDialog(goal?: SavingsGoal) {
+    gName = goal?.name ?? '';
+    gTarget = goal ? String(goal.targetAmount) : '';
+    gStart = goal?.startDate ?? data.today;
+    gFunding = goal?.funding ?? 'overtime';
+    demoForm = null;
+    goalDialog = { id: goal?.id ?? null };
+  }
+
+  // Shared enhance: demo cancels the POST and runs the core action against
+  // localStorage; normal mode submits and invalidateAll() refreshes the layout.
+  function goalEnhance(action: SavingsGoalActionName, after?: () => void): SubmitFunction {
+    return ({ formData, cancel }) => {
+      goalSubmitting = true;
+      if (isDemo) {
+        cancel();
+        void (async () => {
+          const { demoRepo } = await import('$lib/demo/repo');
+          const out = await runSavingsGoalAction(demoRepo, action, formData);
+          demoForm = out.data as ActionData;
+          if (out.ok) after?.();
+          await invalidate('demo:data');
+          goalSubmitting = false;
+        })();
+        return;
+      }
+      return async ({ result, update }) => {
+        await update();
+        if (result.type === 'success') after?.();
+        goalSubmitting = false;
+      };
+    };
+  }
+
   const stats = $derived([
     { label: 'Expected', value: hrs(targetHours) },
     { label: 'Logged', value: hrs(logged) },
@@ -342,6 +436,99 @@
     {/each}
   </div>
 
+  <!-- savings goals -->
+  <div class="flex flex-col gap-3">
+    <div class="flex items-center justify-between gap-2">
+      <p class="text-sm font-medium uppercase tracking-wider text-muted-foreground">Savings goals</p>
+      {#if goalCards.length > 0}
+        <Button variant="outline" size="sm" onclick={() => openGoalDialog()}>
+          <Plus class="size-4" /> Add goal
+        </Button>
+      {/if}
+    </div>
+    {#if goalCards.length === 0}
+      <Card.Root class="border-dashed">
+        <Card.Content
+          class="flex flex-col items-center gap-3 p-5 text-center sm:flex-row sm:justify-between sm:text-left"
+        >
+          <div class="flex items-center gap-3 max-sm:flex-col">
+            <PiggyBank class="size-5 shrink-0 text-muted-foreground" />
+            <p class="text-sm text-muted-foreground">
+              Put your banked overtime toward something — a Switch, a trip, a rainy-day fund.
+            </p>
+          </div>
+          <Button variant="outline" size="sm" class="shrink-0" onclick={() => openGoalDialog()}>
+            <Plus class="size-4" /> Add goal
+          </Button>
+        </Card.Content>
+      </Card.Root>
+    {:else}
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {#each goalCards as { goal, progress } (goal.id)}
+          {@const FundingIcon = FUNDING_ICON[goal.funding]}
+          <Card.Root class={progress.reached ? 'border-success/50' : ''}>
+            <Card.Content class="flex flex-col gap-3 p-5">
+              <div class="flex items-start justify-between gap-1">
+                <div class="min-w-0">
+                  <p class="truncate font-medium" title={goal.name}>{goal.name}</p>
+                  <p class="mt-0.5 inline-flex items-center gap-1 text-xs text-muted-foreground" title={FUNDING_HINT[goal.funding]}>
+                    <FundingIcon class="size-3" />
+                    {GOAL_FUNDING_LABELS[goal.funding]}
+                    · {goal.startDate > data.today ? `starts ${fmtGoalDate(goal.startDate)}` : `since ${fmtGoalDate(goal.startDate)}`}
+                  </p>
+                </div>
+                <span class="-mr-2 -mt-1 flex shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    title="Edit goal"
+                    aria-label="Edit goal"
+                    onclick={() => openGoalDialog(goal)}
+                  >
+                    <Pencil class="size-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    title="Delete goal"
+                    aria-label="Delete goal"
+                    class="text-destructive hover:text-destructive"
+                    onclick={() => (deletingGoal = goal)}
+                  >
+                    <Trash2 class="size-4" />
+                  </Button>
+                </span>
+              </div>
+              <div class="h-2 overflow-hidden rounded-full bg-muted" role="presentation">
+                <div
+                  class="h-full rounded-full transition-[width] {progress.reached
+                    ? 'bg-success'
+                    : 'bg-sky-500 dark:bg-sky-400'}"
+                  style="width: {Math.min(100, progress.pct)}%"
+                ></div>
+              </div>
+              <div class="flex items-baseline justify-between gap-2">
+                <p class="font-mono text-sm tabular-nums">
+                  <span class="font-semibold">{money.format(progress.saved)}</span>
+                  <!-- "of" lives inside the interpolation: biome 2.4.14's svelte
+                       parser misreads a bare `of {` text node as an each-block. -->
+                  <span class="text-muted-foreground">{`of ${money.format(goal.targetAmount)}`}</span>
+                </p>
+                {#if progress.reached}
+                  <span class="inline-flex items-center gap-1 text-xs font-medium text-success">
+                    <Check class="size-3.5" /> Reached
+                  </span>
+                {:else}
+                  <span class="font-mono text-xs tabular-nums text-muted-foreground">{Math.floor(progress.pct)}%</span>
+                {/if}
+              </div>
+            </Card.Content>
+          </Card.Root>
+        {/each}
+      </div>
+    {/if}
+  </div>
+
   <!-- weekly chart (still year-view reference) -->
   <Card.Root>
     <Card.Header class="flex flex-row items-center justify-between">
@@ -356,3 +543,112 @@
     </Card.Content>
   </Card.Root>
 </div>
+
+<!-- add / edit goal dialog -->
+<Dialog.Root
+  open={goalDialog !== null}
+  onOpenChange={(o) => {
+    if (!o) goalDialog = null;
+  }}
+>
+  <Dialog.Content class="sm:max-w-md">
+    {#if goalDialog}
+      <Dialog.Header>
+        <Dialog.Title>{goalDialog.id ? 'Edit goal' : 'Add a savings goal'}</Dialog.Title>
+        <Dialog.Description>
+          A dollar target tracked beside — never instead of — your salary math.
+        </Dialog.Description>
+      </Dialog.Header>
+      <form
+        method="POST"
+        action={goalDialog.id ? '?/updateGoal' : '?/addGoal'}
+        use:enhance={goalEnhance(goalDialog.id ? 'updateGoal' : 'addGoal', () => (goalDialog = null))}
+        class="flex flex-col gap-4"
+      >
+        {#if goalDialog.id}
+          <input type="hidden" name="id" value={goalDialog.id} />
+        {/if}
+        <div class="flex flex-col gap-1.5">
+          <Label for="goal-name">Name</Label>
+          <Input
+            id="goal-name"
+            type="text"
+            name="name"
+            placeholder="Nintendo Switch"
+            maxlength={80}
+            bind:value={gName}
+            required
+          />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <Label for="goal-target">Target (USD)</Label>
+          <Input id="goal-target" type="number" name="targetAmount" step="0.01" min="0.01" bind:value={gTarget} required />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <Label for="goal-start">Counting from</Label>
+          <DateField id="goal-start" name="startDate" bind:value={gStart} min={data.epoch} />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <Label for="goal-funding">Funded by</Label>
+          <Select.Root type="single" value={gFunding} onValueChange={(v) => (gFunding = v as GoalFunding)}>
+            <Select.Trigger id="goal-funding" aria-label="Funded by" class="w-full">
+              {@const TriggerIcon = FUNDING_ICON[gFunding]}
+              <span class="inline-flex min-w-0 items-center gap-1.5">
+                <TriggerIcon class="size-3.5 shrink-0" />
+                <span class="min-w-0 truncate text-xs">{GOAL_FUNDING_LABELS[gFunding]}</span>
+              </span>
+            </Select.Trigger>
+            <Select.Content>
+              {#each GOAL_FUNDINGS as funding (funding)}
+                {@const ItemIcon = FUNDING_ICON[funding]}
+                <Select.Item value={funding} label={GOAL_FUNDING_LABELS[funding]}>
+                  <span class="inline-flex items-center gap-2">
+                    <ItemIcon class="size-3.5" />
+                    <span>
+                      {GOAL_FUNDING_LABELS[funding]}
+                      <span class="block text-xs text-muted-foreground">{FUNDING_HINT[funding]}</span>
+                    </span>
+                  </span>
+                </Select.Item>
+              {/each}
+            </Select.Content>
+          </Select.Root>
+          <input type="hidden" name="funding" value={gFunding} />
+        </div>
+        {#if actionData && 'goalError' in actionData && actionData.goalError}
+          <p class="text-sm text-destructive">{actionData.goalError}</p>
+        {/if}
+        <Dialog.Footer>
+          <Button type="button" variant="outline" onclick={() => (goalDialog = null)}>Cancel</Button>
+          <Button type="submit" disabled={goalSubmitting}>{goalDialog.id ? 'Save' : 'Add goal'}</Button>
+        </Dialog.Footer>
+      </form>
+    {/if}
+  </Dialog.Content>
+</Dialog.Root>
+
+<!-- delete goal confirm -->
+<Dialog.Root
+  open={deletingGoal !== null}
+  onOpenChange={(o) => {
+    if (!o) deletingGoal = null;
+  }}
+>
+  <Dialog.Content class="sm:max-w-md">
+    {#if deletingGoal}
+      <Dialog.Header>
+        <Dialog.Title>Delete this goal?</Dialog.Title>
+        <Dialog.Description>
+          {deletingGoal.name} · {money.format(deletingGoal.targetAmount)} · {GOAL_FUNDING_LABELS[deletingGoal.funding]}
+        </Dialog.Description>
+      </Dialog.Header>
+      <form method="POST" action="?/deleteGoal" use:enhance={goalEnhance('deleteGoal', () => (deletingGoal = null))}>
+        <input type="hidden" name="id" value={deletingGoal.id} />
+        <Dialog.Footer>
+          <Button type="button" variant="outline" onclick={() => (deletingGoal = null)}>Cancel</Button>
+          <Button type="submit" variant="destructive" disabled={goalSubmitting}>Delete</Button>
+        </Dialog.Footer>
+      </form>
+    {/if}
+  </Dialog.Content>
+</Dialog.Root>

@@ -12,9 +12,10 @@
  * other and toggling flips cleanly between them.
  */
 import { DEFAULT_SETTINGS, type Repo } from '$lib/core/repo';
-import type { EntryEvent, Expense, ExpenseEvent, OpenShift, Settings, TimeEntry } from '$lib/db/schema';
+import type { EntryEvent, Expense, ExpenseEvent, OpenShift, SavingsGoal, Settings, TimeEntry } from '$lib/db/schema';
 import type { EntryInput } from '$lib/schemas/entry';
 import type { ExpenseInput } from '$lib/schemas/expense';
+import type { SavingsGoalInput } from '$lib/schemas/savings-goal';
 import type { SettingsInput } from '$lib/schemas/settings';
 import { SAMPLE_SETTINGS, sampleEntries } from './sample';
 
@@ -27,6 +28,7 @@ const KEYS = {
     events: 'clopen:sample-entry-events',
     expenses: 'clopen:sample-expenses',
     expenseEvents: 'clopen:sample-expense-events',
+    savingsGoals: 'clopen:sample-savings-goals',
   },
   yours: {
     entries: 'clopen:entries',
@@ -35,6 +37,7 @@ const KEYS = {
     events: 'clopen:entry-events',
     expenses: 'clopen:expenses',
     expenseEvents: 'clopen:expense-events',
+    savingsGoals: 'clopen:savings-goals',
   },
 } as const;
 
@@ -203,6 +206,36 @@ function expenseFromInput(
   };
 }
 
+function readSavingsGoals(): SavingsGoal[] {
+  try {
+    const raw = localStorage.getItem(activeKeys().savingsGoals);
+    return raw ? (JSON.parse(raw) as SavingsGoal[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeSavingsGoals(rows: SavingsGoal[]): void {
+  localStorage.setItem(activeKeys().savingsGoals, JSON.stringify(rows));
+}
+
+function goalFromInput(
+  input: SavingsGoalInput,
+  id: string,
+  createdAt: number,
+  updatedAt: number | null = null,
+): SavingsGoal {
+  return {
+    id,
+    name: input.name,
+    targetAmount: input.targetAmount,
+    startDate: input.startDate,
+    funding: input.funding,
+    createdAt,
+    updatedAt,
+  };
+}
+
 export const demoRepo: Repo = {
   async listEntries() {
     ensureSeeded();
@@ -305,6 +338,35 @@ export const demoRepo: Repo = {
   async listExpenseEvents() {
     ensureSeeded();
     return [...readExpenseEvents()].sort((a, b) => b.at - a.at);
+  },
+
+  async listSavingsGoals() {
+    ensureSeeded();
+    // Server semantics: creation order (stored order is already insertion order).
+    return [...readSavingsGoals()].sort((a, b) => a.createdAt - b.createdAt);
+  },
+
+  async addSavingsGoal(input) {
+    ensureSeeded();
+    const rows = readSavingsGoals();
+    const row = goalFromInput(input, crypto.randomUUID(), Math.floor(Date.now() / 1000));
+    rows.push(row);
+    writeSavingsGoals(rows);
+    return row;
+  },
+
+  async updateSavingsGoal(id, input) {
+    ensureSeeded();
+    const rows = readSavingsGoals();
+    const idx = rows.findIndex((g) => g.id === id);
+    if (idx === -1) return;
+    rows[idx] = goalFromInput(input, id, rows[idx].createdAt, Math.floor(Date.now() / 1000));
+    writeSavingsGoals(rows);
+  },
+
+  async deleteSavingsGoal(id) {
+    ensureSeeded();
+    writeSavingsGoals(readSavingsGoals().filter((g) => g.id !== id));
   },
 
   async getSettings() {
