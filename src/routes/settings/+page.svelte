@@ -197,10 +197,25 @@
     class="flex flex-col gap-6"
   >
     <div class="flex flex-col gap-4 md:flex-row md:items-start md:gap-6">
-      <!-- Section rail: vertical from md, horizontal scroll pills below. -->
+      <!-- Section nav: a dropdown below md (no name, and the change event
+           stops before the form-level auto-save handler), a rail from md. -->
+      <select
+        aria-label="Settings section"
+        class="{SELECT_CLASS} md:hidden"
+        onchange={(e) => {
+          e.stopPropagation();
+          const next = e.currentTarget.value as SectionId;
+          if (formEl?.reportValidity() ?? true) active = next;
+          else e.currentTarget.value = active;
+        }}
+      >
+        {#each SECTIONS as section (section.id)}
+          <option value={section.id} selected={active === section.id}>{section.title}</option>
+        {/each}
+      </select>
       <nav
         aria-label="Settings sections"
-        class="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 md:sticky md:top-6 md:mx-0 md:w-48 md:shrink-0 md:flex-col md:overflow-visible md:p-0"
+        class="hidden gap-1 md:sticky md:top-6 md:flex md:w-48 md:shrink-0 md:flex-col"
       >
         {#each SECTIONS as section (section.id)}
           {@const Icon = section.icon}
