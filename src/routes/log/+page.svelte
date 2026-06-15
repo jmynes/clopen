@@ -2109,22 +2109,25 @@
           {/if}
         </div>
         {/if}
-        <div
-          class="mt-3 flex min-h-12 flex-wrap items-center justify-end gap-x-4 gap-y-1 border-t border-border/40 px-2 py-2 font-mono text-sm tabular-nums"
-        >
-          <span class="mr-auto text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            {entriesBucket.label} total
-          </span>
-          <span>
-            <span class="text-xs uppercase tracking-wider text-muted-foreground">Break</span>
-            {hrs(ledgerSummary.breakHrs)}
-          </span>
-          <span class="font-medium">
-            <span class="text-xs uppercase tracking-wider text-muted-foreground">Worked</span>
-            {hrs(ledgerSummary.worked)}
-          </span>
-        </div>
       {/if}
+      <!-- period total stays put even when the period is empty (shows 0.00h).
+           pt-4 matches the card's own bottom padding so the total sits with
+           equal space above and below. -->
+      <div
+        class="mt-3 flex flex-wrap items-center justify-end gap-x-4 gap-y-1 border-t border-border/40 px-2 pt-4 font-mono text-sm tabular-nums"
+      >
+        <span class="mr-auto text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          {entriesBucket.label} total
+        </span>
+        <span>
+          <span class="text-xs uppercase tracking-wider text-muted-foreground">Break</span>
+          {hrs(ledgerSummary.breakHrs)}
+        </span>
+        <span class="font-medium">
+          <span class="text-xs uppercase tracking-wider text-muted-foreground">Worked</span>
+          {hrs(ledgerSummary.worked)}
+        </span>
+      </div>
     </Card.Content>
   </Card.Root>
 </div>
