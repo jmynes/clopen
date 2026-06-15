@@ -524,6 +524,19 @@
     data.entries.filter((e) => e.date >= entriesBucket.start && e.date <= entriesBucket.end),
   );
 
+  // Worked/break totals for the visible period, mirroring the weekly grid's
+  // footer. Worked is net of breaks and matches the sum of the Worked column
+  // (leave entries included — their credited hours show there too).
+  const ledgerSummary = $derived.by(() => {
+    let worked = 0;
+    let breakHrs = 0;
+    for (const e of pagedEntries) {
+      worked += e.hours - e.breakHours;
+      breakHrs += e.breakHours;
+    }
+    return { worked, breakHrs };
+  });
+
   // The tracking epoch is the floor: once the current bucket reaches it there's
   // nothing older to page back to.
   const entriesAtEpoch = $derived(entriesBucket.start <= data.epoch);
@@ -2096,6 +2109,21 @@
           {/if}
         </div>
         {/if}
+        <div
+          class="mt-3 flex flex-wrap items-center justify-end gap-x-4 gap-y-1 border-t border-border/40 px-2 pt-2 font-mono text-sm tabular-nums"
+        >
+          <span class="mr-auto text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            {entriesBucket.label} total
+          </span>
+          <span>
+            <span class="text-xs uppercase tracking-wider text-muted-foreground">Break</span>
+            {hrs(ledgerSummary.breakHrs)}
+          </span>
+          <span class="font-medium">
+            <span class="text-xs uppercase tracking-wider text-muted-foreground">Worked</span>
+            {hrs(ledgerSummary.worked)}
+          </span>
+        </div>
       {/if}
     </Card.Content>
   </Card.Root>
