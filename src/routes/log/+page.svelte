@@ -31,7 +31,7 @@
   import * as Select from '$lib/components/ui/select';
   import * as Table from '$lib/components/ui/table';
   import * as Tooltip from '$lib/components/ui/tooltip';
-  import { type LogActionName, runLogAction } from '$lib/core/log';
+  import { futureImportDates, type LogActionName, runLogAction } from '$lib/core/log';
   import { toCsv } from '$lib/csv';
   import { formatDay, formatRangeISO, formatTime, formatTimestamp, formatWeekRange, isWeekend, todayISO, weekdayShort } from '$lib/date';
   import type { TimeEntry } from '$lib/db/schema';
@@ -192,6 +192,90 @@
     conflicts = [];
     formEl.requestSubmit();
   }
+
+  // Future-date confirmation. Future-dating is allowed (scheduling shifts or
+  // leave ahead of time), but any save landing past today asks first so it's
+  // never an accidental off-by-one. The check runs client-side before the POST
+  // in every entry path (grid + add/edit dialog); a `futureConfirmed` marker on
+  // the form flags an approved retry so it isn't asked twice, and survives the
+  // conflict round-trip but is stripped once the submit settles.
+  let futureConfirm = $state<{ form: HTMLFormElement; dates: string[] } | null>(null);
+  let futureConfirmBtn = $state<HTMLElement | null>(null);
+  function pendingFutureDates(formData: FormData): string[] {
+    const today = todayISO();
+    const out = new Set<string>();
+    const single = formData.get('date');
+    if (typeof single === 'string' && single > today) out.add(single);
+    // Weekly grid: rows are weekStart + offset; a row is active when any of its
+    // worked/leave fields (incl. extra shifts start-{i}-{j}) carries a value.
+    const ws = formData.get('weekStart');
+    if (typeof ws === 'string' && ws) {
+      for (let i = 0; i < 7; i++) {
+        const d = addDays(ws, i);
+        if (d <= today) continue;
+        for (const [k, v] of formData.entries()) {
+          if (typeof v !== 'string' || v.trim() === '') continue;
+          if (
+            k === `start-${i}` ||
+            k === `hours-${i}` ||
+            k === `leave-${i}` ||
+            k.startsWith(`start-${i}-`) ||
+            k.startsWith(`hours-${i}-`)
+          ) {
+            out.add(d);
+            break;
+          }
+        }
+      }
+    }
+    return [...out].sort();
+  }
+  function needsFutureConfirm(formElement: HTMLFormElement, formData: FormData): boolean {
+    if (formData.has('futureConfirmed')) return false;
+    const dates = pendingFutureDates(formData);
+    if (dates.length === 0) return false;
+    futureConfirm = { form: formElement, dates };
+    return true;
+  }
+  function clearFutureConfirmed(formEl: HTMLFormElement) {
+    formEl.querySelector('input[name="futureConfirmed"]')?.remove();
+  }
+  // Mark the form future-approved and resubmit; the marker makes the re-run skip
+  // the check and (for import) the async re-parse, so it reaches the POST.
+  function submitConfirmedFuture(form: HTMLFormElement) {
+    let input = form.querySelector<HTMLInputElement>('input[name="futureConfirmed"]');
+    if (!input) {
+      input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'futureConfirmed';
+      form.appendChild(input);
+    }
+    input.value = '1';
+    form.requestSubmit();
+  }
+  function confirmFuture() {
+    const form = futureConfirm?.form;
+    futureConfirm = null;
+    if (form) submitConfirmedFuture(form);
+  }
+  // CSV import can't be checked from FormData synchronously (the dates live in
+  // the uploaded file), so it gets its own pass: cancel, read + scan the file,
+  // and either prompt or proceed. Once approved (`futureConfirmed`), it delegates
+  // straight to the shared conflict-aware flow.
+  function importEnhance() {
+    const base = conflictAwareEnhance();
+    return (params: { formElement: HTMLFormElement; formData: FormData; cancel: () => void }) => {
+      if (params.formData.has('futureConfirmed')) return base(params);
+      params.cancel();
+      void (async () => {
+        const file = params.formData.get('file');
+        const text = file instanceof File ? await file.text() : '';
+        const dates = futureImportDates(text, todayISO());
+        if (dates.length > 0) futureConfirm = { form: params.formElement, dates };
+        else submitConfirmedFuture(params.formElement);
+      })();
+    };
+  }
   // Re-runnable enhance factory: closes over a `resetOnSuccess` flag so the
   // weekly grid (which resets) and import form (which doesn't) share one path.
   function conflictAwareEnhance(opts: { resetOnSuccess?: boolean; onSuccess?: () => void } = {}) {
@@ -204,6 +288,11 @@
       formData: FormData;
       cancel: () => void;
     }) => {
+      // Ask before saving any future-dated row; the retry carries the marker.
+      if (needsFutureConfirm(formElement, formData)) {
+        cancel();
+        return;
+      }
       // If this is the user's first submit (not a retry), strip any stale
       // conflictStrategy from a previous round so the server re-detects.
       if (!formData.has('conflictStrategy')) clearConflictStrategy(formElement);
@@ -220,6 +309,7 @@
             return;
           }
           clearConflictStrategy(formElement);
+          clearFutureConfirmed(formElement);
           demoForm = out.data as ActionData;
           if (out.ok) {
             if (opts.resetOnSuccess) formElement.reset();
@@ -238,6 +328,7 @@
           return;
         }
         clearConflictStrategy(formElement);
+        clearFutureConfirmed(formElement);
         await update({ reset: opts.resetOnSuccess && result.type === 'success' });
         if (result.type === 'success') opts.onSuccess?.();
       };
@@ -353,7 +444,14 @@
   let entriesExpanded = $state(false);
   function onWindowKeydown(e: KeyboardEvent) {
     if (e.key !== 'Escape') return;
-    if (entriesExpanded && !editOpen && deleting === null && conflicts.length === 0 && fillPlan === null)
+    if (
+      entriesExpanded &&
+      !editOpen &&
+      deleting === null &&
+      conflicts.length === 0 &&
+      fillPlan === null &&
+      futureConfirm === null
+    )
       entriesExpanded = false;
   }
 
@@ -429,10 +527,12 @@
       byDate.set(e.date, list);
     }
     const rows: DisplayRow[] = [];
-    // Walk dates from end → start so newest stays on top. Cap upper bound at
-    // today so future dates in the bucket (e.g. rest of year) aren't listed.
+    // Walk dates from end → start so newest stays on top. Days that actually
+    // have entries always render — including future ones, now that
+    // future-dating is allowed. Only the *blank* padding is capped at today, so
+    // the unlogged rest of a period (e.g. the rest of the year) isn't listed.
     const today = todayISO();
-    let cursor = entriesBucket.end < today ? entriesBucket.end : today;
+    let cursor = entriesBucket.end;
     // dayIdx drives zebra striping per *day*, so a multi-shift day reads as
     // one block; shiftNo/dayCount let follow-up rows drop the repeated date.
     let dayIdx = 0;
@@ -443,7 +543,7 @@
           rows.push({ kind: 'entry', entry, dayIdx, shiftNo: k + 1, dayCount: dayEntries.length });
         });
         dayIdx++;
-      } else if (cursor >= data.epoch && (!hideBlankWeekends || !isWeekend(cursor))) {
+      } else if (cursor <= today && cursor >= data.epoch && (!hideBlankWeekends || !isWeekend(cursor))) {
         rows.push({ kind: 'blank', date: cursor, dayIdx });
         dayIdx++;
       }
@@ -1422,7 +1522,7 @@
           method="POST"
           action="?/importCsv"
           enctype="multipart/form-data"
-          use:enhance={conflictAwareEnhance()}
+          use:enhance={importEnhance()}
         >
           <input
             bind:this={csvInput}
@@ -1832,6 +1932,10 @@
         method="POST"
         action={editing ? '?/update' : '?/add'}
         use:enhance={({ formElement, formData, cancel }) => {
+          if (needsFutureConfirm(formElement, formData)) {
+            cancel();
+            return;
+          }
           if (isDemo) {
             cancel();
             void (async () => {
@@ -1863,7 +1967,6 @@
             name="date"
             value={editing?.date ?? creatingDate ?? ''}
             min={data.epoch}
-            max={todayISO()}
             ariaInvalid={dialogErrors.date ? 'true' : undefined}
           />
           {#if dialogErrors.date}<p class="text-xs text-destructive">{dialogErrors.date}</p>{/if}
@@ -2091,6 +2194,42 @@
       >
         Delete
       </Button>
+    </Dialog.Footer>
+  </Dialog.Content>
+</Dialog.Root>
+
+<!-- future-date confirmation: saving one or more entries dated after today -->
+<Dialog.Root
+  open={futureConfirm !== null}
+  onOpenChange={(o) => {
+    if (!o) futureConfirm = null;
+  }}
+>
+  <Dialog.Content
+    class="sm:max-w-md"
+    onOpenAutoFocus={(e) => {
+      e.preventDefault();
+      futureConfirmBtn?.focus();
+    }}
+  >
+    <Dialog.Header>
+      <Dialog.Title>Save a future-dated entry?</Dialog.Title>
+      <Dialog.Description>
+        {#if futureConfirm}
+          {#if futureConfirm.dates.length === 1}
+            {formatDay(futureConfirm.dates[0])} is in the future.
+          {:else}
+            {futureConfirm.dates.length} of these days are in the future ({formatDay(futureConfirm.dates[0])} – {formatDay(
+              futureConfirm.dates[futureConfirm.dates.length - 1],
+            )}).
+          {/if}
+        {/if}
+        It'll be saved and listed in the ledger; hours you haven't worked yet just won't count toward your totals until that day arrives.
+      </Dialog.Description>
+    </Dialog.Header>
+    <Dialog.Footer class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <Button variant="outline" onclick={() => (futureConfirm = null)}>Cancel</Button>
+      <Button bind:ref={futureConfirmBtn} onclick={confirmFuture}>Save anyway</Button>
     </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>

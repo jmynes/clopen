@@ -287,14 +287,7 @@ export async function importCsvAction(repo: Repo, form: FormData): Promise<Actio
   if (rows.length < 2) return { ok: false, status: 400, data: { importError: 'CSV has a header but no data rows' } };
 
   const header = rows[0].map((h) => h.trim().toLowerCase());
-  const col = (...names: string[]) => header.findIndex((h) => names.includes(h));
-  // "day of the week" matches export-style sheets that prefix the weekday onto the date cell.
-  const di = col('date', 'day', 'day of the week');
-  const hi = col('hours', 'hrs', 'total hours', 'total');
-  const bi = col('break', 'break hours', 'breakhours');
-  const si = col('clock in', 'in', 'start', 'start time', 'check-in time', 'check in time', 'checkin');
-  const ei = col('clock out', 'out', 'end', 'end time', 'check-out time', 'check out time', 'checkout');
-  const ni = col('note', 'notes', 'description');
+  const { di, hi, bi, si, ei, ni } = importColumnIndices(header);
   if (di === -1) return { ok: false, status: 400, data: { importError: 'CSV needs a date column' } };
 
   const inputs: EntryInput[] = [];
@@ -307,7 +300,7 @@ export async function importCsvAction(repo: Repo, form: FormData): Promise<Actio
     const end = at(ei);
     const hours = at(hi);
     // Days with no in/out and zero/blank hours are off-days in cumulative exports — skip silently.
-    if (!start && !end && (!hours || Number(hours) === 0)) return;
+    if (isImportOffDay(start, end, hours)) return;
     const date = normalizeImportDate(rawDate);
     if (!date) {
       errors.push(`Row ${idx + 2}: unrecognized date "${rawDate}"`);
@@ -382,6 +375,56 @@ export function runLogAction(repo: Repo, action: LogActionName, form: FormData):
     case 'clearPeriod':
       return clearPeriodAction(repo, form);
   }
+}
+
+// Column-name aliases for the importer, resolved once per CSV. "day of the
+// week" matches export-style sheets that prefix the weekday onto the date cell.
+function importColumnIndices(header: string[]) {
+  const col = (...names: string[]) => header.findIndex((h) => names.includes(h));
+  return {
+    di: col('date', 'day', 'day of the week'),
+    hi: col('hours', 'hrs', 'total hours', 'total'),
+    bi: col('break', 'break hours', 'breakhours'),
+    si: col('clock in', 'in', 'start', 'start time', 'check-in time', 'check in time', 'checkin'),
+    ei: col('clock out', 'out', 'end', 'end time', 'check-out time', 'check out time', 'checkout'),
+    ni: col('note', 'notes', 'description'),
+  };
+}
+
+// Off-day rows (no clock punches and zero/blank hours) are skipped silently.
+function isImportOffDay(start: string, end: string, hours: string): boolean {
+  return !start && !end && (!hours || Number(hours) === 0);
+}
+
+/**
+ * Distinct future-dated (past `today`) days a CSV would import, sorted, for the
+ * import path's future-date confirmation. Mirrors the importer's column,
+ * off-day-skip, and date-normalization rules so it flags exactly the rows that
+ * would actually be added — no false prompts for skipped off-days. Returns []
+ * for unparseable or date-columnless input (the import action surfaces those
+ * errors itself).
+ */
+export function futureImportDates(text: string, today: string): string[] {
+  let rows: string[][];
+  try {
+    rows = parseCsv(text);
+  } catch {
+    return [];
+  }
+  if (rows.length < 2) return [];
+  const header = rows[0].map((h) => h.trim().toLowerCase());
+  const { di, hi, si, ei } = importColumnIndices(header);
+  if (di === -1) return [];
+  const out = new Set<string>();
+  for (const r of rows.slice(1)) {
+    const at = (i: number) => (i >= 0 ? (r[i] ?? '').trim() : '');
+    const rawDate = at(di);
+    if (!rawDate) continue;
+    if (isImportOffDay(at(si), at(ei), at(hi))) continue;
+    const date = normalizeImportDate(rawDate);
+    if (date && date > today) out.add(date);
+  }
+  return [...out].sort();
 }
 
 // Accept ISO ("2026-01-01"), M/D/YY, M/D/YYYY, and the same with a leading
