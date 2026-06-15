@@ -1818,12 +1818,12 @@
                       onclick={() => toggleDay(row.date)}
                       aria-expanded={row.expanded ? 'true' : 'false'}
                       title={row.expanded ? 'Collapse shifts' : 'Show shifts'}
-                      class="flex h-full min-h-12 w-full items-center gap-1 px-2 text-left uppercase outline-none hover:text-foreground focus-visible:text-foreground"
+                      class="group flex h-full min-h-12 w-full cursor-pointer items-center gap-1 px-2 text-left uppercase outline-none hover:text-foreground focus-visible:text-foreground"
                     >
                       {#if row.expanded}
-                        <ChevronDown class="size-3.5 shrink-0 text-muted-foreground" />
+                        <ChevronDown class="size-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
                       {:else}
-                        <ChevronRight class="size-3.5 shrink-0 text-muted-foreground" />
+                        <ChevronRight class="size-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
                       {/if}
                       <span class="cursor-text select-text">
                         <span class="text-muted-foreground">{weekdayShort(row.date)}</span>
@@ -1995,13 +1995,13 @@
                 type="button"
                 onclick={() => toggleDay(row.date)}
                 aria-expanded={row.expanded ? 'true' : 'false'}
-                class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left outline-none focus-visible:bg-muted/40 {row.dayIdx % 2 === 1 ? 'bg-muted/70' : ''}"
+                class="group flex w-full cursor-pointer items-center justify-between gap-3 px-3 py-2 text-left outline-none focus-visible:bg-muted/40 {row.dayIdx % 2 === 1 ? 'bg-muted/70' : ''}"
               >
                 <span class="flex flex-wrap items-center gap-2 font-mono text-sm font-medium uppercase tabular-nums">
                   {#if row.expanded}
-                    <ChevronDown class="size-3.5 shrink-0 text-muted-foreground" />
+                    <ChevronDown class="size-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
                   {:else}
-                    <ChevronRight class="size-3.5 shrink-0 text-muted-foreground" />
+                    <ChevronRight class="size-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
                   {/if}
                   <span class="cursor-text select-text">
                     <span class="text-muted-foreground">{weekdayShort(row.date)}</span>
