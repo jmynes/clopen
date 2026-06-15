@@ -1760,7 +1760,9 @@
         <Table.Root class="table-fixed">
           <Table.Header class="sticky top-0 z-10 bg-background">
             <Table.Row>
-              <Table.Head class="w-32 p-0">
+              <!-- expand/collapse gutter for multi-shift days -->
+              <Table.Head class="w-7 p-0"></Table.Head>
+              <Table.Head class="w-28 p-0">
                 <button
                   type="button"
                   onclick={() => (ledgerAsc = !ledgerAsc)}
@@ -1790,14 +1792,10 @@
                 <Table.Row
                   class={`text-muted-foreground/60 ${isWeekend(row.date) ? 'bg-amber-500/10' : row.dayIdx % 2 === 1 ? 'bg-muted/70' : ''}`}
                 >
+                  <Table.Cell class="p-0"></Table.Cell>
                   <Table.Cell class="font-mono text-sm uppercase tabular-nums">
-                    <span class="flex items-center gap-1">
-                      <span class="size-3.5 shrink-0"></span>
-                      <span>
-                        <span>{weekdayShort(row.date)}</span>
-                        <span class="ml-1">{formatDay(row.date).replace(/^\w+,\s/, '')}</span>
-                      </span>
-                    </span>
+                    <span>{weekdayShort(row.date)}</span>
+                    <span class="ml-1">{formatDay(row.date).replace(/^\w+,\s/, '')}</span>
                   </Table.Cell>
                   <Table.Cell class="font-mono text-sm tabular-nums">—</Table.Cell>
                   <Table.Cell class="font-mono text-sm tabular-nums">—</Table.Cell>
@@ -1812,24 +1810,24 @@
               {:else if row.kind === 'daytotal'}
                 {@const dayOT = dayTotals[row.date] > data.dailyHours}
                 <Table.Row class={row.dayIdx % 2 === 1 ? 'bg-muted/70 hover:bg-muted!' : 'hover:bg-muted/30!'}>
-                  <Table.Cell class="p-0 font-mono text-sm font-medium tabular-nums">
+                  <Table.Cell class="p-0">
                     <button
                       type="button"
                       onclick={() => toggleDay(row.date)}
                       aria-expanded={row.expanded ? 'true' : 'false'}
                       title={row.expanded ? 'Collapse shifts' : 'Show shifts'}
-                      class="group flex h-full min-h-12 w-full cursor-pointer items-center gap-1 px-2 text-left uppercase outline-none hover:text-foreground focus-visible:text-foreground"
+                      class="group flex h-full min-h-12 w-full cursor-pointer items-center justify-center outline-none"
                     >
                       {#if row.expanded}
                         <ChevronDown class="size-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
                       {:else}
                         <ChevronRight class="size-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
                       {/if}
-                      <span class="cursor-text select-text">
-                        <span class="text-muted-foreground">{weekdayShort(row.date)}</span>
-                        <span class="ml-1">{formatDay(row.date).replace(/^\w+,\s/, '')}</span>
-                      </span>
                     </button>
+                  </Table.Cell>
+                  <Table.Cell class="font-mono text-sm font-medium uppercase tabular-nums">
+                    <span class="text-muted-foreground">{weekdayShort(row.date)}</span>
+                    <span class="ml-1">{formatDay(row.date).replace(/^\w+,\s/, '')}</span>
                   </Table.Cell>
                   <Table.Cell class="font-mono text-sm tabular-nums text-muted-foreground">{row.shifts} shifts</Table.Cell>
                   <Table.Cell class="font-mono text-sm tabular-nums text-muted-foreground">—</Table.Cell>
@@ -1860,20 +1858,16 @@
                       ? 'bg-muted/70 hover:bg-muted!'
                       : 'hover:bg-muted/30!'}
                 >
+                <Table.Cell class="p-0"></Table.Cell>
                 <Table.Cell class="font-mono text-sm uppercase tabular-nums">
-                  <span class="flex items-center gap-1">
-                    <span class="size-3.5 shrink-0"></span>
-                    {#if row.dayCount === 1}
-                      <span>
-                        <span class="text-muted-foreground">{weekdayShort(entry.date)}</span>
-                        <span class="ml-1">{formatDay(entry.date).replace(/^\w+,\s/, '')}</span>
-                      </span>
-                    {:else}
-                      <span class="text-xs text-muted-foreground" title="Shift {row.shiftNo} on {entry.date}">
-                        Shift {row.shiftNo}
-                      </span>
-                    {/if}
-                  </span>
+                  {#if row.dayCount === 1}
+                    <span class="text-muted-foreground">{weekdayShort(entry.date)}</span>
+                    <span class="ml-1">{formatDay(entry.date).replace(/^\w+,\s/, '')}</span>
+                  {:else}
+                    <span class="text-xs text-muted-foreground" title="Shift {row.shiftNo} on {entry.date}">
+                      Shift {row.shiftNo}
+                    </span>
+                  {/if}
                 </Table.Cell>
                 <Table.Cell class="font-mono text-sm tabular-nums">
                   {#if entry.startTime}
@@ -1933,6 +1927,7 @@
                       ? 'bg-muted/70 hover:bg-muted/70!'
                       : 'hover:bg-transparent!'}
                 >
+                  <Table.Cell class="p-0"></Table.Cell>
                   <Table.Cell colspan={8} class="py-2">
                     <div transition:slide={{ duration: 150 }} class="flex items-start gap-2 text-sm text-muted-foreground">
                       {@render iconNote('mt-0.5 size-3.5 shrink-0')}
@@ -1945,7 +1940,7 @@
             {/each}
             {#if ledgerLimit < displayRows.length}
               <tr use:growWhenVisible>
-                <td colspan="8" class="p-2 text-center text-xs text-muted-foreground">…</td>
+                <td colspan="9" class="p-2 text-center text-xs text-muted-foreground">…</td>
               </tr>
             {/if}
           </Table.Body>
