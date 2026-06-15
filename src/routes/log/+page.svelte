@@ -3,8 +3,10 @@
   import Briefcase from '@lucide/svelte/icons/briefcase';
   import CalendarCheck from '@lucide/svelte/icons/calendar-check';
   import CalendarRange from '@lucide/svelte/icons/calendar-range';
+  import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
+  import ChevronUp from '@lucide/svelte/icons/chevron-up';
   import Download from '@lucide/svelte/icons/download';
   import Eraser from '@lucide/svelte/icons/eraser';
   import Maximize2 from '@lucide/svelte/icons/maximize-2';
@@ -410,6 +412,18 @@
   // svelte-ignore state_referenced_locally
   let entriesPeriod = $state<Period>(data.ledgerPeriod);
   let entriesAnchor = $state(todayISO());
+  // Ledger sort: earliest → latest by default (chronological, like a timesheet);
+  // the Date column header toggles it.
+  let ledgerAsc = $state(true);
+  // Multi-shift days collapse to just their total row; the date's chevron
+  // expands the per-shift breakdown. Collapsed by default (date absent from set).
+  let expandedDays = $state<Set<string>>(new Set());
+  function toggleDay(date: string) {
+    const next = new Set(expandedDays);
+    if (next.has(date)) next.delete(date);
+    else next.add(date);
+    expandedDays = next;
+  }
   // The entries table (md+) and stacked list (below md) are alternates; with
   // hundreds of rows per period, rendering both and hiding one via CSS doubles
   // the work. SSR/hydration (width unknown) renders both — the md:/md:hidden
@@ -518,6 +532,7 @@
   const hideBlankWeekends = $derived(data.hideWeekendsEntries || data.hideWeekendsGrid);
   type DisplayRow =
     | { kind: 'entry'; entry: TimeEntry; dayIdx: number; shiftNo: number; dayCount: number }
+    | { kind: 'daytotal'; date: string; dayIdx: number; shifts: number; worked: number; breakHrs: number; expanded: boolean }
     | { kind: 'blank'; date: string; dayIdx: number };
   const displayRows = $derived.by<DisplayRow[]>(() => {
     const byDate = new Map<string, TimeEntry[]>();
@@ -526,28 +541,42 @@
       list.push(e);
       byDate.set(e.date, list);
     }
-    const rows: DisplayRow[] = [];
-    // Walk dates from end → start so newest stays on top. Days that actually
-    // have entries always render — including future ones, now that
-    // future-dating is allowed. Only the *blank* padding is capped at today, so
+    // Visit every day in the bucket, oldest → newest, then flip for descending.
+    // Days with entries always render — including future ones, now that
+    // future-dating is allowed; only the *blank* padding is capped at today, so
     // the unlogged rest of a period (e.g. the rest of the year) isn't listed.
     const today = todayISO();
-    let cursor = entriesBucket.end;
-    // dayIdx drives zebra striping per *day*, so a multi-shift day reads as
-    // one block; shiftNo/dayCount let follow-up rows drop the repeated date.
+    const dates: string[] = [];
+    for (let c = entriesBucket.start; c <= entriesBucket.end; c = addDays(c, 1)) dates.push(c);
+    if (!ledgerAsc) dates.reverse();
+    const rows: DisplayRow[] = [];
+    // dayIdx drives zebra striping per *day*, so a multi-shift day (its total
+    // row plus each shift) reads as one block. A day with 2+ shifts leads with
+    // a daytotal summary row and stays collapsed until expanded — its shift
+    // rows (labelled "Shift N" in place of the date) only render then. Single-
+    // shift days stay one plain row.
     let dayIdx = 0;
-    while (cursor >= entriesBucket.start) {
-      const dayEntries = byDate.get(cursor);
+    for (const date of dates) {
+      const dayEntries = byDate.get(date);
       if (dayEntries && dayEntries.length > 0) {
-        dayEntries.forEach((entry, k) => {
-          rows.push({ kind: 'entry', entry, dayIdx, shiftNo: k + 1, dayCount: dayEntries.length });
-        });
+        if (dayEntries.length > 1) {
+          const worked = dayEntries.reduce((s, e) => s + e.hours - e.breakHours, 0);
+          const breakHrs = dayEntries.reduce((s, e) => s + e.breakHours, 0);
+          const expanded = expandedDays.has(date);
+          rows.push({ kind: 'daytotal', date, dayIdx, shifts: dayEntries.length, worked, breakHrs, expanded });
+          if (expanded) {
+            dayEntries.forEach((entry, k) => {
+              rows.push({ kind: 'entry', entry, dayIdx, shiftNo: k + 1, dayCount: dayEntries.length });
+            });
+          }
+        } else {
+          rows.push({ kind: 'entry', entry: dayEntries[0], dayIdx, shiftNo: 1, dayCount: 1 });
+        }
         dayIdx++;
-      } else if (cursor <= today && cursor >= data.epoch && (!hideBlankWeekends || !isWeekend(cursor))) {
-        rows.push({ kind: 'blank', date: cursor, dayIdx });
+      } else if (date <= today && date >= data.epoch && (!hideBlankWeekends || !isWeekend(date))) {
+        rows.push({ kind: 'blank', date, dayIdx });
         dayIdx++;
       }
-      cursor = addDays(cursor, -1);
     }
     return rows;
   });
@@ -639,25 +668,57 @@
   // uncontrolled: paste and fill write input values directly). Recomputed on
   // every input event and after any programmatic write.
   let weekTotals = $state<(number | null)[]>(Array(7).fill(null));
+  // Per-main-row break (parallel to weekTotals; 0 on unfilled/leave rows) so the
+  // week summary can total breaks without re-reading the DOM.
+  let weekBreaks = $state<number[]>(Array(7).fill(0));
   function recomputeWeekTotals() {
-    // Build into a local and assign once — recompute runs inside a tracking
+    // Build into locals and assign once — recompute runs inside a tracking
     // $effect, so reading weekTotals here would make the effect re-run on its
     // own write and loop. Sub-shifts carry their own per-row Worked fields
     // (subShiftWorked), so the main row shows only its own shift.
-    weekTotals = weekRowDates.map((_, i) => {
-      if (leaveRows.has(i)) return null;
+    const nets: (number | null)[] = [];
+    const breaks: number[] = [];
+    weekRowDates.forEach((_, i) => {
+      if (leaveRows.has(i)) {
+        nets.push(null);
+        breaks.push(0);
+        return;
+      }
       const brk = Number(inputByName(`break-${i}`)?.value) || 0;
+      let net: number | null = null;
       if (weekMode === 'clock') {
         const start = parseTimeInput(inputByName(`start-${i}`)?.value ?? '');
         const end = parseTimeInput(inputByName(`end-${i}`)?.value ?? '');
-        if (!start || !end) return null;
-        return Math.max(0, hoursBetween(start, end) - brk);
+        if (start && end) net = Math.max(0, hoursBetween(start, end) - brk);
+      } else {
+        const h = Number(inputByName(`hours-${i}`)?.value);
+        if (h) net = Math.max(0, h - brk);
       }
-      const h = Number(inputByName(`hours-${i}`)?.value);
-      if (!h) return null;
-      return Math.max(0, h - brk);
+      nets.push(net);
+      breaks.push(net === null ? 0 : brk);
     });
+    weekTotals = nets;
+    weekBreaks = breaks;
   }
+
+  // Week-wide worked/break totals across main rows and every extra shift, shown
+  // in the grid footer so the running tally is visible before saving.
+  const weekSummary = $derived.by(() => {
+    let worked = 0;
+    let breakHrs = 0;
+    for (const n of weekTotals) if (n !== null) worked += n;
+    for (const b of weekBreaks) breakHrs += b;
+    for (const list of subShifts) {
+      for (const sh of list) {
+        const net = subShiftWorked(sh);
+        if (net !== null) {
+          worked += net;
+          breakHrs += Number(sh.brk) || 0;
+        }
+      }
+    }
+    return { worked, breakHrs };
+  });
 
   // Per-sub-shift Worked, computed from the controlled state.
   function subShiftWorked(sh: SubShift): number | null {
@@ -1443,6 +1504,19 @@
             </div>
           {/each}
         </div>
+        <div
+          class="mt-1 flex flex-wrap items-center justify-end gap-x-4 gap-y-1 border-t border-border/40 px-2 pt-2 font-mono text-sm tabular-nums"
+        >
+          <span class="mr-auto text-xs font-medium uppercase tracking-wider text-muted-foreground">Week total</span>
+          <span>
+            <span class="text-xs uppercase tracking-wider text-muted-foreground">Break</span>
+            {hrs(weekSummary.breakHrs)}
+          </span>
+          <span class="font-medium">
+            <span class="text-xs uppercase tracking-wider text-muted-foreground">Worked</span>
+            {hrs(weekSummary.worked)}
+          </span>
+        </div>
         <div class="mt-1 flex flex-wrap items-center gap-3">
           <Button type="button" variant="destructive" onclick={clearWeek} class="w-24">
             <X class="size-4" /> Clear
@@ -1682,7 +1756,21 @@
         <Table.Root class="table-fixed">
           <Table.Header class="sticky top-0 z-10 bg-background">
             <Table.Row>
-              <Table.Head class="w-32">Date</Table.Head>
+              <Table.Head class="w-32 p-0">
+                <button
+                  type="button"
+                  onclick={() => (ledgerAsc = !ledgerAsc)}
+                  title={ledgerAsc ? 'Sorted earliest first — click for latest first' : 'Sorted latest first — click for earliest first'}
+                  class="flex h-full w-full items-center gap-1 px-2 py-2 text-left font-medium transition-colors outline-none hover:text-foreground focus-visible:text-foreground"
+                >
+                  Date
+                  {#if ledgerAsc}
+                    <ChevronUp class="size-3.5 text-muted-foreground" />
+                  {:else}
+                    <ChevronDown class="size-3.5 text-muted-foreground" />
+                  {/if}
+                </button>
+              </Table.Head>
               <Table.Head class="w-24 font-mono">In</Table.Head>
               <Table.Head class="w-20 font-mono">Out</Table.Head>
               <Table.Head class="w-16 font-mono">Break</Table.Head>
@@ -1693,14 +1781,19 @@
             </Table.Row>
           </Table.Header>
           <Table.Body>
-            {#each visibleRows as row, idx (row.kind === 'entry' ? row.entry.id : `blank-${row.date}`)}
+            {#each visibleRows as row, idx (row.kind === 'entry' ? row.entry.id : `${row.kind}-${row.date}`)}
               {#if row.kind === 'blank'}
                 <Table.Row
                   class={`text-muted-foreground/60 ${isWeekend(row.date) ? 'bg-amber-500/10' : row.dayIdx % 2 === 1 ? 'bg-muted/70' : ''}`}
                 >
                   <Table.Cell class="font-mono text-sm uppercase tabular-nums">
-                    <span>{weekdayShort(row.date)}</span>
-                    <span class="ml-1">{formatDay(row.date).replace(/^\w+,\s/, '')}</span>
+                    <span class="flex items-center gap-1">
+                      <span class="size-3.5 shrink-0"></span>
+                      <span>
+                        <span>{weekdayShort(row.date)}</span>
+                        <span class="ml-1">{formatDay(row.date).replace(/^\w+,\s/, '')}</span>
+                      </span>
+                    </span>
                   </Table.Cell>
                   <Table.Cell class="font-mono text-sm tabular-nums">—</Table.Cell>
                   <Table.Cell class="font-mono text-sm tabular-nums">—</Table.Cell>
@@ -1711,6 +1804,47 @@
                   <Table.Cell class="pr-4 text-right">
                     <div class="flex justify-end gap-1">{@render blankActions(row.date)}</div>
                   </Table.Cell>
+                </Table.Row>
+              {:else if row.kind === 'daytotal'}
+                {@const dayOT = dayTotals[row.date] > data.dailyHours}
+                <Table.Row class={row.dayIdx % 2 === 1 ? 'bg-muted/70 hover:bg-muted!' : 'hover:bg-muted/30!'}>
+                  <Table.Cell class="p-0 font-mono text-sm font-medium tabular-nums">
+                    <button
+                      type="button"
+                      onclick={() => toggleDay(row.date)}
+                      aria-expanded={row.expanded ? 'true' : 'false'}
+                      title={row.expanded ? 'Collapse shifts' : 'Show shifts'}
+                      class="flex h-full min-h-12 w-full items-center gap-1 px-2 text-left uppercase outline-none hover:text-foreground focus-visible:text-foreground"
+                    >
+                      {#if row.expanded}
+                        <ChevronDown class="size-3.5 shrink-0 text-muted-foreground" />
+                      {:else}
+                        <ChevronRight class="size-3.5 shrink-0 text-muted-foreground" />
+                      {/if}
+                      <span>
+                        <span class="text-muted-foreground">{weekdayShort(row.date)}</span>
+                        <span class="ml-1">{formatDay(row.date).replace(/^\w+,\s/, '')}</span>
+                      </span>
+                      <span class="text-xs font-normal normal-case text-muted-foreground">· {row.shifts} shifts</span>
+                    </button>
+                  </Table.Cell>
+                  <Table.Cell class="font-mono text-sm tabular-nums text-muted-foreground">—</Table.Cell>
+                  <Table.Cell class="font-mono text-sm tabular-nums text-muted-foreground">—</Table.Cell>
+                  <Table.Cell class="font-mono text-sm tabular-nums text-muted-foreground">
+                    {row.breakHrs > 0 ? hrs(row.breakHrs) : '—'}
+                  </Table.Cell>
+                  <Table.Cell class="text-right font-mono font-medium tabular-nums">{hrs(row.worked)}</Table.Cell>
+                  <Table.Cell class="text-center">
+                    {#if dayOT}
+                      <span
+                        title="Worked past the daily baseline" class="inline-flex items-center rounded-md bg-amber-500/15 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400"
+                      >
+                        OT
+                      </span>
+                    {/if}
+                  </Table.Cell>
+                  <Table.Cell class="text-center"></Table.Cell>
+                  <Table.Cell class="pr-4 text-right"></Table.Cell>
                 </Table.Row>
               {:else}
                 {@const entry = row.entry}
@@ -1724,14 +1858,19 @@
                       : 'hover:bg-muted/30!'}
                 >
                 <Table.Cell class="font-mono text-sm uppercase tabular-nums">
-                  {#if row.shiftNo === 1}
-                    <span class="text-muted-foreground">{weekdayShort(entry.date)}</span>
-                    <span class="ml-1">{formatDay(entry.date).replace(/^\w+,\s/, '')}</span>
-                  {:else}
-                    <span class="text-xs text-muted-foreground" title="Another shift on {entry.date}">
-                      ↳ shift {row.shiftNo}
-                    </span>
-                  {/if}
+                  <span class="flex items-center gap-1">
+                    <span class="size-3.5 shrink-0"></span>
+                    {#if row.dayCount === 1}
+                      <span>
+                        <span class="text-muted-foreground">{weekdayShort(entry.date)}</span>
+                        <span class="ml-1">{formatDay(entry.date).replace(/^\w+,\s/, '')}</span>
+                      </span>
+                    {:else}
+                      <span class="text-xs text-muted-foreground" title="Shift {row.shiftNo} on {entry.date}">
+                        Shift {row.shiftNo}
+                      </span>
+                    {/if}
+                  </span>
                 </Table.Cell>
                 <Table.Cell class="font-mono text-sm tabular-nums">
                   {#if entry.startTime}
@@ -1757,7 +1896,7 @@
                   {hrs(entry.hours - entry.breakHours)}
                 </Table.Cell>
                 <Table.Cell class="text-center">
-                  {#if !entryLeave && dayTotals[entry.date] > data.dailyHours}
+                  {#if !entryLeave && row.dayCount === 1 && dayTotals[entry.date] > data.dailyHours}
                     <span
                       title="Worked past the daily baseline" class="inline-flex items-center rounded-md bg-amber-500/15 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400"
                     >
@@ -1813,12 +1952,24 @@
 
         <!-- mobile entries list: same rows, stacked layout -->
         {#if showEntriesList}
+        <button
+          type="button"
+          onclick={() => (ledgerAsc = !ledgerAsc)}
+          class="mb-2 inline-flex items-center gap-1 text-xs font-medium uppercase tracking-wider text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:text-foreground md:hidden"
+        >
+          {ledgerAsc ? 'Earliest first' : 'Latest first'}
+          {#if ledgerAsc}
+            <ChevronUp class="size-3.5" />
+          {:else}
+            <ChevronDown class="size-3.5" />
+          {/if}
+        </button>
         <div
           class="divide-y divide-input overflow-y-auto rounded-md border border-input md:hidden {entriesExpanded
             ? 'min-h-0 flex-1'
             : 'max-h-[calc(14*2.75rem+2.5rem)]'}"
         >
-          {#each visibleRows as row, idx (row.kind === 'entry' ? row.entry.id : `blank-${row.date}`)}
+          {#each visibleRows as row, idx (row.kind === 'entry' ? row.entry.id : `${row.kind}-${row.date}`)}
             {#if row.kind === 'blank'}
               <div
                 class="flex items-center justify-between px-3 py-2 text-muted-foreground/60 {isWeekend(row.date)
@@ -1827,12 +1978,45 @@
                     ? 'bg-muted/70'
                     : ''}"
               >
-                <span class="font-mono text-sm uppercase tabular-nums">
-                  <span>{weekdayShort(row.date)}</span>
-                  <span class="ml-1">{formatDay(row.date).replace(/^\w+,\s/, '')}</span>
+                <span class="flex items-center gap-2 font-mono text-sm uppercase tabular-nums">
+                  <span class="size-3.5 shrink-0"></span>
+                  <span>
+                    <span>{weekdayShort(row.date)}</span>
+                    <span class="ml-1">{formatDay(row.date).replace(/^\w+,\s/, '')}</span>
+                  </span>
                 </span>
                 <div class="flex gap-1">{@render blankActions(row.date)}</div>
               </div>
+            {:else if row.kind === 'daytotal'}
+              <button
+                type="button"
+                onclick={() => toggleDay(row.date)}
+                aria-expanded={row.expanded ? 'true' : 'false'}
+                class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left outline-none focus-visible:bg-muted/40 {row.dayIdx % 2 === 1 ? 'bg-muted/70' : ''}"
+              >
+                <span class="flex flex-wrap items-center gap-2 font-mono text-sm font-medium uppercase tabular-nums">
+                  {#if row.expanded}
+                    <ChevronDown class="size-3.5 shrink-0 text-muted-foreground" />
+                  {:else}
+                    <ChevronRight class="size-3.5 shrink-0 text-muted-foreground" />
+                  {/if}
+                  <span>
+                    <span class="text-muted-foreground">{weekdayShort(row.date)}</span>
+                    <span class="ml-1">{formatDay(row.date).replace(/^\w+,\s/, '')}</span>
+                  </span>
+                  <span class="text-xs font-normal normal-case text-muted-foreground">{row.shifts} shifts</span>
+                  {#if dayTotals[row.date] > data.dailyHours}
+                    <span
+                      title="Worked past the daily baseline" class="inline-flex items-center rounded-md bg-amber-500/15 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400"
+                    >
+                      OT
+                    </span>
+                  {/if}
+                </span>
+                <span class="shrink-0 font-mono text-sm font-medium tabular-nums">
+                  {hrs(row.worked)}{#if row.breakHrs > 0}<span class="ml-1 text-xs font-normal text-muted-foreground">· {hrs(row.breakHrs)} break</span>{/if}
+                </span>
+              </button>
             {:else}
               {@const entry = row.entry}
               {@const entryLeave = entry.entryKind !== 'work' ? (entry.entryKind as LeaveKind) : null}
@@ -1847,15 +2031,16 @@
                 <div class="flex items-center justify-between gap-3 px-3 py-2">
                 <div class="flex min-w-0 flex-col gap-1">
                   <div class="flex flex-wrap items-center gap-2 font-mono text-sm uppercase tabular-nums">
-                    {#if row.shiftNo === 1}
+                    <span class="size-3.5 shrink-0"></span>
+                    {#if row.dayCount === 1}
                       <span>
                         <span class="text-muted-foreground">{weekdayShort(entry.date)}</span>
                         <span class="ml-1">{formatDay(entry.date).replace(/^\w+,\s/, '')}</span>
                       </span>
                     {:else}
-                      <span class="text-xs text-muted-foreground">↳ shift {row.shiftNo}</span>
+                      <span class="text-xs text-muted-foreground">Shift {row.shiftNo}</span>
                     {/if}
-                    {#if !entryLeave && dayTotals[entry.date] > data.dailyHours}
+                    {#if !entryLeave && row.dayCount === 1 && dayTotals[entry.date] > data.dailyHours}
                       <span
                         title="Worked past the daily baseline" class="inline-flex items-center rounded-md bg-amber-500/15 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400"
                       >
