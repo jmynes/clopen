@@ -419,6 +419,10 @@
   // expands the per-shift breakdown. Collapsed by default (date absent from set).
   let expandedDays = $state<Set<string>>(new Set());
   function toggleDay(date: string) {
+    // The date sits inside this toggle button but is `select-text`; if the click
+    // ended a text selection (highlighting the date), don't also toggle.
+    const sel = typeof window !== 'undefined' ? window.getSelection() : null;
+    if (sel && !sel.isCollapsed && sel.toString().trim().length > 0) return;
     const next = new Set(expandedDays);
     if (next.has(date)) next.delete(date);
     else next.add(date);
@@ -1821,14 +1825,13 @@
                       {:else}
                         <ChevronRight class="size-3.5 shrink-0 text-muted-foreground" />
                       {/if}
-                      <span>
+                      <span class="cursor-text select-text">
                         <span class="text-muted-foreground">{weekdayShort(row.date)}</span>
                         <span class="ml-1">{formatDay(row.date).replace(/^\w+,\s/, '')}</span>
                       </span>
-                      <span class="text-xs font-normal normal-case text-muted-foreground">· {row.shifts} shifts</span>
                     </button>
                   </Table.Cell>
-                  <Table.Cell class="font-mono text-sm tabular-nums text-muted-foreground">—</Table.Cell>
+                  <Table.Cell class="font-mono text-sm tabular-nums text-muted-foreground">{row.shifts} shifts</Table.Cell>
                   <Table.Cell class="font-mono text-sm tabular-nums text-muted-foreground">—</Table.Cell>
                   <Table.Cell class="font-mono text-sm tabular-nums text-muted-foreground">
                     {row.breakHrs > 0 ? hrs(row.breakHrs) : '—'}
@@ -2000,7 +2003,7 @@
                   {:else}
                     <ChevronRight class="size-3.5 shrink-0 text-muted-foreground" />
                   {/if}
-                  <span>
+                  <span class="cursor-text select-text">
                     <span class="text-muted-foreground">{weekdayShort(row.date)}</span>
                     <span class="ml-1">{formatDay(row.date).replace(/^\w+,\s/, '')}</span>
                   </span>
