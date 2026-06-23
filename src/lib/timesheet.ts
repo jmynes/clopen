@@ -296,8 +296,13 @@ export function bucketBreakdown(params: {
   settings: WorkSettings;
   weekStartsOn?: number;
   granularity: BucketGranularity;
+  /**
+   * Upper bound for TARGET counting (defaults to `asOf`). Lets the dashboard
+   * drop an in-progress today from the target while logged still counts it.
+   */
+  expectedAsOf?: string;
 }): BucketSummary[] {
-  const { entries, rangeStart, asOf, settings, weekStartsOn = 7, granularity } = params;
+  const { entries, rangeStart, asOf, settings, weekStartsOn = 7, granularity, expectedAsOf } = params;
   const rangeStartMs = parseISO(rangeStart);
   const asOfMs = parseISO(asOf);
   if (asOfMs < rangeStartMs) return [];
@@ -308,7 +313,11 @@ export function bucketBreakdown(params: {
     const fromISO = toISO(Math.max(start, rangeStartMs));
     const toRangeISO = toISO(Math.min(next - DAY_MS, asOfMs));
 
-    const target = round2(countWorkdays(fromISO, toRangeISO, settings.workdays) * settings.dailyHours);
+    // Target counts through expectedAsOf when it clips earlier than the bucket's
+    // logged window; logged always sums through toRangeISO.
+    const targetEnd = expectedAsOf && expectedAsOf < toRangeISO ? expectedAsOf : toRangeISO;
+    const target =
+      targetEnd >= fromISO ? round2(countWorkdays(fromISO, targetEnd, settings.workdays) * settings.dailyHours) : 0;
     const logged = loggedHours(entries.filter((e) => e.date >= fromISO && e.date <= toRangeISO));
 
     buckets.push({ start: toISO(start), end: toRangeISO, logged, target, net: round2(logged - target) });

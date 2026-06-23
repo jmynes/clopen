@@ -480,6 +480,38 @@ describe('bucketBreakdown', () => {
     // Jan bucket spans the 15th–31st: 12 workdays, none of the Jan entries (1/2, 1/5) inside.
     expect(buckets[0]).toMatchObject({ start: '2026-01-01', logged: 0, target: 96 });
   });
+
+  it('expectedAsOf drops an in-progress day from target but keeps it in logged', () => {
+    const buckets = bucketBreakdown({
+      entries: [
+        { date: '2026-06-22', hours: 8 }, // Mon, completed
+        { date: '2026-06-23', hours: 8 }, // Tue, completed
+        { date: '2026-06-24', hours: 2 }, // Wed = today, logged partial
+      ],
+      rangeStart: '2026-06-22',
+      asOf: '2026-06-24', // Wed
+      expectedAsOf: '2026-06-23', // today's baseline excluded
+      settings,
+      weekStartsOn: 1,
+      granularity: 'week',
+    });
+    expect(buckets).toHaveLength(1);
+    expect(buckets[0].target).toBe(16); // Mon+Tue only (today dropped)
+    expect(buckets[0].logged).toBe(18); // Mon 8 + Tue 8 + Wed 2 (today kept)
+    expect(buckets[0].net).toBe(2);
+  });
+
+  it('without expectedAsOf, target counts through asOf as before', () => {
+    const buckets = bucketBreakdown({
+      entries: [{ date: '2026-06-22', hours: 8 }],
+      rangeStart: '2026-06-22',
+      asOf: '2026-06-24',
+      settings,
+      weekStartsOn: 1,
+      granularity: 'week',
+    });
+    expect(buckets[0].target).toBe(24); // Mon+Tue+Wed
+  });
 });
 
 describe('bucketBreakdown · biweek', () => {
