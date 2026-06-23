@@ -9,7 +9,7 @@ import type { z } from 'zod';
 import { parseCsv } from '$lib/csv';
 import type { Settings, TimeEntry } from '$lib/db/schema';
 import { isLeaveKind } from '$lib/leave-kinds';
-import { clockEntryInput, type EntryInput, entryInput, leaveEntryInput } from '$lib/schemas/entry';
+import { clockEntryInput, type EntryInput, entryInput, leaveEntryInput, openEntryInput } from '$lib/schemas/entry';
 import { addDays } from '$lib/timesheet';
 import { type Repo, toWorkSettings } from './repo';
 
@@ -34,7 +34,7 @@ export type ActionOutcome =
   | { ok: true; data: Record<string, unknown> }
   | { ok: false; status: number; data: Record<string, unknown> };
 
-// One entry, from "hours", "clock", or "leave" mode (leave kind passed in `kind`).
+// One entry, from "hours", "clock", "open", or "leave" mode (leave kind passed in `kind`).
 function parseEntry(form: FormData, dailyHours = 8) {
   const date = form.get('date');
   const note = form.get('note') ?? undefined;
@@ -42,6 +42,9 @@ function parseEntry(form: FormData, dailyHours = 8) {
   if (mode === 'leave') {
     const kind = String(form.get('kind') ?? '');
     return leaveEntryInput.safeParse({ date, note, kind, dailyHours });
+  }
+  if (mode === 'open') {
+    return openEntryInput.safeParse({ date, startTime: form.get('startTime'), note });
   }
   const common = { date, breakHours: form.get('breakHours') || undefined, note };
   if (mode === 'clock') {
