@@ -41,6 +41,7 @@
     goalRateOf,
     loggedHours,
     overtimeHours,
+    todayBaselineCounts,
     weekDates,
   } from '$lib/timesheet';
   import type { ActionData, PageData } from './$types';
@@ -141,9 +142,17 @@
     return lo > hi ? null : { start: lo, end: hi };
   });
 
-  const expectedHours = $derived(
-    window ? countWorkdays(window.start, window.end, data.workdays) * data.dailyHours : 0,
-  );
+  // Today's baseline is excluded from the expected/elapsed side until today has
+  // a completed entry (a clock shift with both times, or any non-open row).
+  // Logged still counts today, so an in-progress day reads On pace, not behind.
+  const todayCounts = $derived(todayBaselineCounts(data.entries, data.today));
+  const heroExpectedAsOf = $derived(todayCounts ? data.today : addDays(data.today, -1));
+  const expectedEnd = $derived(window ? minStr(window.end, heroExpectedAsOf) : null);
+
+  const expectedHours = $derived.by(() => {
+    if (!window || !expectedEnd || expectedEnd < window.start) return 0;
+    return countWorkdays(window.start, expectedEnd, data.workdays) * data.dailyHours;
+  });
   const inRange = $derived(
     window ? data.entries.filter((e) => e.date >= window.start && e.date <= window.end) : [],
   );
@@ -200,7 +209,10 @@
 
   // Days elapsed (workdays only) inside the period vs total workdays it has.
   const totalWorkdaysInPeriod = $derived(countWorkdays(bucket.start, bucket.end, data.workdays));
-  const workdaysElapsed = $derived(window ? countWorkdays(window.start, window.end, data.workdays) : 0);
+  const workdaysElapsed = $derived.by(() => {
+    if (!window || !expectedEnd || expectedEnd < window.start) return 0;
+    return countWorkdays(window.start, expectedEnd, data.workdays);
+  });
 
   function shiftPage(dir: -1 | 1) {
     switch (period) {
@@ -265,11 +277,15 @@
   // Initial-only read; the select mutates independently after first render.
   // svelte-ignore state_referenced_locally
   let chartGranularity = $state<BucketGranularity>(CYCLE_GRANULARITY[data.payCycle]);
+  const chartExpectedAsOf = $derived(
+    data.asOf === data.today && !todayCounts ? addDays(data.today, -1) : data.asOf,
+  );
   const chartBuckets = $derived(
     bucketBreakdown({
       entries: data.entries,
       rangeStart: maxStr(`${data.year}-01-01`, data.epoch),
       asOf: data.asOf,
+      expectedAsOf: chartExpectedAsOf,
       settings: { hourlyRate: data.hourlyRate, dailyHours: data.dailyHours, workdays: data.workdays },
       weekStartsOn: data.weekStartsOn,
       granularity: chartGranularity,
