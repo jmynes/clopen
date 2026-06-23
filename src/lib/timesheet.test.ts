@@ -6,10 +6,12 @@ import {
   expectedHours,
   goalRateOf,
   hoursBetween,
+  isOpenEntry,
   loggedHours,
   makeWholeStatus,
   overtimeHours,
   parseTimeInput,
+  todayBaselineCounts,
   type WorkSettings,
   weekDates,
   weeklyBreakdown,
@@ -499,5 +501,46 @@ describe('bucketBreakdown · biweek', () => {
     expect(buckets[1].end).toBe('2026-01-24');
     // Target of a clipped first bucket counts only in-range workdays (Jan 1–10 → 7 workdays).
     expect(buckets[0].target).toBe(56);
+  });
+});
+
+describe('isOpenEntry / todayBaselineCounts', () => {
+  const T = '2026-06-23';
+
+  it('treats an arrival with no departure as open', () => {
+    expect(isOpenEntry({ startTime: '09:00', endTime: null })).toBe(true);
+  });
+  it('a completed clock shift is not open', () => {
+    expect(isOpenEntry({ startTime: '09:00', endTime: '17:00' })).toBe(false);
+  });
+  it('an hours-mode / leave entry (no times) is not open', () => {
+    expect(isOpenEntry({ startTime: null, endTime: null })).toBe(false);
+  });
+
+  it("today doesn't count with no entries", () => {
+    expect(todayBaselineCounts([], T)).toBe(false);
+  });
+  it("today doesn't count when its only row is open", () => {
+    expect(todayBaselineCounts([{ date: T, startTime: '09:00', endTime: null }], T)).toBe(false);
+  });
+  it('today counts once a shift is completed', () => {
+    expect(todayBaselineCounts([{ date: T, startTime: '09:00', endTime: '17:00' }], T)).toBe(true);
+  });
+  it('today counts for an hours-mode entry', () => {
+    expect(todayBaselineCounts([{ date: T, startTime: null, endTime: null }], T)).toBe(true);
+  });
+  it('counts when any of several shifts is complete', () => {
+    expect(
+      todayBaselineCounts(
+        [
+          { date: T, startTime: '09:00', endTime: '11:00' },
+          { date: T, startTime: '13:00', endTime: null },
+        ],
+        T,
+      ),
+    ).toBe(true);
+  });
+  it('ignores other days', () => {
+    expect(todayBaselineCounts([{ date: '2026-06-22', startTime: '09:00', endTime: '17:00' }], T)).toBe(false);
   });
 });

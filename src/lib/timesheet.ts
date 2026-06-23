@@ -156,6 +156,27 @@ export function loggedHours(entries: EntryLike[]): number {
 }
 
 /**
+ * An entry is "open" — a started-but-unfinished shift — when it has a clock-in
+ * but no clock-out. Open rows carry 0 hours and never grant credit.
+ */
+export function isOpenEntry(e: { startTime: string | null; endTime: string | null }): boolean {
+  return e.startTime !== null && e.endTime === null;
+}
+
+/**
+ * Whether today's baseline should count toward "expected so far". It counts once
+ * today has a completed entry — for a clock shift, both times filled; an
+ * hours-mode or leave entry is inherently complete. An arrival-only open row
+ * keeps today excluded, so an in-progress day never reads as a deficit.
+ */
+export function todayBaselineCounts(
+  entries: { date: string; startTime: string | null; endTime: string | null }[],
+  today: string,
+): boolean {
+  return entries.some((e) => e.date === today && !isOpenEntry(e));
+}
+
+/**
  * Net hours beyond `dailyHours` summed per calendar day. Short days never
  * offset over days — this measures premium-eligible hours, not the running
  * make-whole balance.
