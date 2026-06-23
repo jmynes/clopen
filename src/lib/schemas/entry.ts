@@ -110,3 +110,26 @@ export const clockEntryInput = z
       entryKind: 'work',
     }),
   );
+
+/**
+ * Open mode: an arrival with no departure yet — a started, unfinished shift.
+ * Records the clock-in, 0 worked hours, and no break (a break needs a span;
+ * it's captured when the out is filled and the row becomes a clock entry).
+ */
+export const openEntryInput = z
+  .object({
+    date,
+    startTime: clockTime,
+    note,
+  })
+  .transform(
+    (v): EntryInput => ({
+      date: v.date,
+      hours: 0,
+      breakHours: 0,
+      note: v.note,
+      startTime: v.startTime,
+      endTime: null,
+      entryKind: 'work',
+    }),
+  );
