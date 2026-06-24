@@ -1752,11 +1752,6 @@
                           <Tooltip.Content>Add a shift</Tooltip.Content>
                         </Tooltip.Root>
                       </div>
-                      {#if rowMeta[i].save === 'saving'}
-                        <span class="text-xs text-muted-foreground" aria-live="polite">saving…</span>
-                      {:else if rowMeta[i].save === 'error'}
-                        <span class="text-xs text-destructive" title={rowMeta[i].error}>{rowMeta[i].error}</span>
-                      {/if}
                     </div>
                     <div class="col-span-6 flex flex-col gap-1 lg:flex-1">
                       <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Note</span>
@@ -1869,11 +1864,6 @@
                             <Tooltip.Content>Remove this shift</Tooltip.Content>
                           </Tooltip.Root>
                         </div>
-                        {#if subMeta[i][j]?.save === 'saving'}
-                          <span class="text-xs text-muted-foreground" aria-live="polite">saving…</span>
-                        {:else if subMeta[i][j]?.save === 'error'}
-                          <span class="text-xs text-destructive" title={subMeta[i][j]?.error}>{subMeta[i][j]?.error}</span>
-                        {/if}
                       </div>
                       <div class="col-span-6 flex flex-col gap-1 lg:flex-1">
                         <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Note</span>
