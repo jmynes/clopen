@@ -435,49 +435,55 @@
   </div>
 
   <!-- period nav -->
-  <div class="flex flex-col gap-1.5">
-    <div
-      class="flex h-4 items-center justify-center text-[10px] font-semibold uppercase leading-none tracking-wider {periodState === 'future' ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}"
+  <div class="flex flex-wrap items-center gap-2 rounded-lg border border-input bg-card p-2">
+    <select
+      aria-label="Period"
+      value={period}
+      onchange={(e) => {
+        period = e.currentTarget.value as Period;
+      }}
+      class="h-9 shrink-0 basis-full rounded-md border border-input bg-transparent px-2 text-sm focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none md:basis-auto"
     >
-      {#if periodState === 'future'}Future{:else if periodState === 'done'}Past{/if}
+      {#each Object.entries(PERIOD_LABELS) as [v, label] (v)}
+        <option value={v}>{label}</option>
+      {/each}
+    </select>
+    <Button variant="outline" size="icon-lg" class="shrink-0" title="Previous period" aria-label="Previous period" disabled={atEpochEdge} onclick={() => shiftPage(-1)}>
+      <ChevronLeft class="size-4" />
+    </Button>
+    <!-- Tag stacked above the date so the two stay mutually centered; only the
+         in-progress period has no tag, leaving the date vertically centered. -->
+    <div class="flex flex-1 flex-col items-center justify-center gap-0.5">
+      {#if periodState !== 'progress'}
+        <span
+          class="text-[10px] font-semibold uppercase leading-none tracking-wider {periodState === 'future'
+            ? 'text-amber-600 dark:text-amber-400'
+            : 'text-sky-600 dark:text-sky-400'}"
+        >
+          {periodState === 'future' ? 'Future' : 'Past'}
+        </span>
+      {/if}
+      <span class="font-mono text-sm font-medium uppercase tabular-nums">{bucket.label}</span>
     </div>
-    <div class="flex flex-wrap items-center gap-2 rounded-lg border border-input bg-card p-2">
-      <select
-        aria-label="Period"
-        value={period}
-        onchange={(e) => {
-          period = e.currentTarget.value as Period;
-        }}
-        class="h-9 shrink-0 basis-full rounded-md border border-input bg-transparent px-2 text-sm focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none md:basis-auto"
-      >
-        {#each Object.entries(PERIOD_LABELS) as [v, label] (v)}
-          <option value={v}>{label}</option>
-        {/each}
-      </select>
-      <Button variant="outline" size="icon-lg" class="shrink-0" title="Previous period" aria-label="Previous period" disabled={atEpochEdge} onclick={() => shiftPage(-1)}>
-        <ChevronLeft class="size-4" />
-      </Button>
-      <span class="flex-1 text-center font-mono text-sm font-medium uppercase tabular-nums">{bucket.label}</span>
-      <Button variant="outline" size="icon-lg" class="shrink-0" title="Next period" aria-label="Next period" onclick={() => shiftPage(1)}>
-        <ChevronRight class="size-4" />
-      </Button>
-      <Tooltip.Root>
-        <Tooltip.Trigger>
-          {#snippet child({ props })}
-            <Button {...props} variant="outline" size="lg" class="shrink-0" onclick={() => (anchor = data.today)}>
-              <CalendarCheck class="size-4" /> Today
-            </Button>
-          {/snippet}
-        </Tooltip.Trigger>
-        <Tooltip.Content>Jump back to the current period</Tooltip.Content>
-      </Tooltip.Root>
-      <DateJump
-        value={anchor}
-        min={data.epoch}
-        label="Jump to date"
-        onpick={(iso) => (anchor = iso < data.epoch ? data.epoch : iso)}
-      />
-    </div>
+    <Button variant="outline" size="icon-lg" class="shrink-0" title="Next period" aria-label="Next period" onclick={() => shiftPage(1)}>
+      <ChevronRight class="size-4" />
+    </Button>
+    <Tooltip.Root>
+      <Tooltip.Trigger>
+        {#snippet child({ props })}
+          <Button {...props} variant="outline" size="lg" class="shrink-0" onclick={() => (anchor = data.today)}>
+            <CalendarCheck class="size-4" /> Today
+          </Button>
+        {/snippet}
+      </Tooltip.Trigger>
+      <Tooltip.Content>Jump back to the current period</Tooltip.Content>
+    </Tooltip.Root>
+    <DateJump
+      value={anchor}
+      min={data.epoch}
+      label="Jump to date"
+      onpick={(iso) => (anchor = iso < data.epoch ? data.epoch : iso)}
+    />
   </div>
 
   <!-- hero -->
