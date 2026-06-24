@@ -99,3 +99,12 @@ describe('addAction — open mode', () => {
     expect(rows).toHaveLength(0);
   });
 });
+
+describe('addAction — returns ids', () => {
+  it('surfaces the created entry id so the grid can switch to update', async () => {
+    const { repo } = memRepo();
+    const out = await addAction(repo, fd({ mode: 'clock', date: '2026-06-23', startTime: '09:00', endTime: '17:00' }));
+    expect(out.ok).toBe(true);
+    if (out.ok) expect(out.data.ids).toEqual(['e1']);
+  });
+});

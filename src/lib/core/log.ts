@@ -173,8 +173,12 @@ export async function addAction(repo: Repo, form: FormData): Promise<ActionOutco
   const strategy = parseStrategy(form.get('conflictStrategy'));
   const resolved = await applyConflictStrategy(repo, [parsed.data], strategy);
   if (!resolved.ok) return { ok: false, status: 409, data: { conflict: true, conflicts: resolved.conflicts } };
-  for (const e of resolved.toInsert) await repo.addEntry(e);
-  return { ok: true, data: { added: resolved.toInsert.length, overwrote: resolved.overwroteCount } };
+  const ids: string[] = [];
+  for (const e of resolved.toInsert) {
+    const created = await repo.addEntry(e);
+    ids.push(created.id);
+  }
+  return { ok: true, data: { added: resolved.toInsert.length, overwrote: resolved.overwroteCount, ids } };
 }
 
 export async function updateAction(repo: Repo, form: FormData): Promise<ActionOutcome> {
