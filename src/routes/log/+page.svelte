@@ -1538,7 +1538,7 @@
         <div
           class="hidden items-center gap-3 px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground lg:flex"
         >
-          <span class="w-24 shrink-0">Day</span>
+          <span class="w-24 shrink-0 text-sky-600 dark:text-sky-400">Day</span>
           {#if weekMode === 'clock'}
             <span class="w-28 shrink-0">In</span>
             <span class="w-28 shrink-0">Out</span>
@@ -1546,7 +1546,7 @@
             <span class="w-20 shrink-0">Hours</span>
           {/if}
           <span class="w-20 shrink-0">Break</span>
-          <span class="w-28 shrink-0">Worked</span>
+          <span class="w-28 shrink-0 text-sky-600 dark:text-sky-400">Worked</span>
           <span class="flex-1">Note</span>
           <span class="w-40 shrink-0">Type</span>
         </div>
@@ -1569,7 +1569,7 @@
               <!-- card header below lg: day + entry-type select; dissolves into the flat row at lg -->
               <div class="flex items-center justify-between gap-2 border-b border-border/40 bg-muted/40 px-2.5 py-1.5 lg:contents">
                 <div
-                  class="flex h-8 items-center font-mono text-sm uppercase tabular-nums lg:w-24 lg:shrink-0 {isFuture
+                  class="flex h-8 items-center font-mono text-sm uppercase tabular-nums lg:w-24 lg:shrink-0 lg:rounded-md lg:bg-sky-500/10 lg:px-2 {isFuture
                     ? 'opacity-50'
                     : ''}"
                   title={isFuture ? 'Future date' : undefined}
@@ -1714,7 +1714,7 @@
                       <div class="flex items-center gap-1">
                         <output
                           aria-label="Worked hours for {weekdayShort(date)}"
-                          class="flex h-8 min-w-0 flex-1 items-center rounded-lg bg-muted/60 px-2.5 font-mono text-sm tabular-nums text-muted-foreground"
+                          class="flex h-8 min-w-0 flex-1 items-center rounded-lg bg-sky-500/10 px-2.5 font-mono text-sm tabular-nums text-sky-700 dark:text-sky-300"
                         >
                           {rowWorked === null ? '—' : hrs(rowWorked)}
                         </output>
@@ -1831,7 +1831,7 @@
                         <div class="flex items-center gap-1">
                           <output
                             aria-label="Worked hours for {weekdayShort(date)} shift {j + 2}"
-                            class="flex h-8 min-w-0 flex-1 items-center rounded-lg bg-muted/60 px-2.5 font-mono text-sm tabular-nums text-muted-foreground"
+                            class="flex h-8 min-w-0 flex-1 items-center rounded-lg bg-sky-500/10 px-2.5 font-mono text-sm tabular-nums text-sky-700 dark:text-sky-300"
                           >
                             {shiftWorked === null ? '—' : hrs(shiftWorked)}
                           </output>
