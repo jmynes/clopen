@@ -256,14 +256,16 @@
               : 'border-input',
   );
 
+  // A short, fixed-length supporting line — the hours/target/net numbers live in
+  // the stat grid below and the big number above, so this only carries the
+  // period's progress. Uniform shape keeps the hero's height stable across
+  // periods (no wrapping prose).
+  const startFmt = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
   const subtitle = $derived.by(() => {
-    if (periodState === 'future') return `This period hasn't started yet. ${hrs(targetHours)} expected when it does.`;
-    if (periodState === 'done') {
-      if (beat) return `Logged ${hrs(logged)} against the ${hrs(targetHours)} target — +${hrs(net)} overtime banked.`;
-      if (made) return `Logged ${hrs(logged)} against the ${hrs(targetHours)} target.`;
-      return `Short by ${hrs(Math.abs(net))}. Logged ${hrs(logged)} of ${hrs(targetHours)} target.`;
-    }
-    return `${hrs(logged)} logged, ${hrs(targetHours)} expected so far. ${workdaysElapsed} of ${totalWorkdaysInPeriod} workdays elapsed.`;
+    const unit = totalWorkdaysInPeriod === 1 ? 'workday' : 'workdays';
+    if (periodState === 'future') return `Starts ${startFmt.format(new Date(`${bucket.start}T00:00:00Z`))}`;
+    if (periodState === 'done') return `All ${totalWorkdaysInPeriod} ${unit} elapsed`;
+    return `${workdaysElapsed} of ${totalWorkdaysInPeriod} ${unit} elapsed`;
   });
 
   // ── Hours chart ──────────────────────────────────────────────────────────
@@ -511,7 +513,7 @@
         >
           {net >= 0 ? '+' : '−'}{hrs(Math.abs(net))}
         </div>
-        <p class="mt-2 max-w-md text-sm text-muted-foreground max-md:mx-auto">{subtitle}</p>
+        <p class="mt-2 text-sm text-muted-foreground">{subtitle}</p>
       </div>
       <div class="border-t border-border/60 pt-4 max-md:text-center md:border-t-0 md:pt-0 md:text-right">
         <p class="text-xs uppercase tracking-wider text-muted-foreground">
