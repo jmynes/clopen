@@ -1548,7 +1548,7 @@
           <span class="w-20 shrink-0">Break</span>
           <span class="w-28 shrink-0">Worked</span>
           <span class="flex-1">Note</span>
-          <span class="w-40 shrink-0">Leave</span>
+          <span class="w-40 shrink-0">Type</span>
         </div>
         <div class="grid gap-3 md:grid-cols-2 lg:contents">
           {#each weekRows as { date, i }, idx (date)}
@@ -1586,7 +1586,7 @@
                   }}
                 >
                   <Select.Trigger
-                    aria-label="Leave kind for {weekdayShort(date)}"
+                    aria-label="Entry type for {weekdayShort(date)}"
                     class="h-8 w-44 lg:order-last lg:w-40 lg:shrink-0 lg:self-center {isLeave ? KIND_CLASSES[leaveKind].button : ''}"
                   >
                     {#if isLeave}
@@ -2538,7 +2538,7 @@
 
         <!-- entry kind chooser -->
         <div class="flex flex-col gap-1.5">
-          <span class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Entry type</span>
+          <span class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Type</span>
           <div class="flex flex-col gap-2 sm:flex-row sm:items-stretch">
             <Button
               type="button"
