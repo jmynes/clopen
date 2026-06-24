@@ -29,6 +29,7 @@
   import * as Select from '$lib/components/ui/select';
   import * as Tooltip from '$lib/components/ui/tooltip';
   import { runSavingsGoalAction, type SavingsGoalActionName } from '$lib/core/savings-goals';
+  import { chartWindow } from '$lib/dashboard-period';
   import { formatDay, formatRangeISO, formatWeekRange, todayISO } from '$lib/date';
   import type { SavingsGoal } from '$lib/db/schema';
   import { isDemo } from '$lib/demo/flag';
@@ -214,7 +215,13 @@
     return countWorkdays(window.start, expectedEnd, data.workdays);
   });
 
+  // The earliest viewable period is the one containing the tracking epoch —
+  // there's no data before it, so the back arrow stops there (DateJump already
+  // floors at the epoch).
+  const atEpochEdge = $derived(bucket.start <= data.epoch);
+
   function shiftPage(dir: -1 | 1) {
+    if (dir === -1 && atEpochEdge) return;
     switch (period) {
       case 'week':
         anchor = addDays(anchor, 7 * dir);
@@ -277,14 +284,17 @@
   // Initial-only read; the select mutates independently after first render.
   // svelte-ignore state_referenced_locally
   let chartGranularity = $state<BucketGranularity>(CYCLE_GRANULARITY[data.payCycle]);
+  // The chart respects the year the selector is browsed to (not a fixed
+  // this-year view), without shortening to the sub-period; see chartWindow.
+  const chartView = $derived(chartWindow({ bucketStart: bucket.start, today: data.today, epoch: data.epoch }));
   const chartExpectedAsOf = $derived(
-    data.asOf === data.today && !todayCounts ? addDays(data.today, -1) : data.asOf,
+    chartView.asOf === data.today && !todayCounts ? addDays(data.today, -1) : chartView.asOf,
   );
   const chartBuckets = $derived(
     bucketBreakdown({
       entries: data.entries,
-      rangeStart: maxStr(`${data.year}-01-01`, data.epoch),
-      asOf: data.asOf,
+      rangeStart: chartView.rangeStart,
+      asOf: chartView.asOf,
       expectedAsOf: chartExpectedAsOf,
       settings: { hourlyRate: data.hourlyRate, dailyHours: data.dailyHours, workdays: data.workdays },
       weekStartsOn: data.weekStartsOn,
@@ -422,7 +432,7 @@
         <option value={v}>{label}</option>
       {/each}
     </select>
-    <Button variant="outline" size="icon-lg" class="shrink-0" title="Previous period" aria-label="Previous period" onclick={() => shiftPage(-1)}>
+    <Button variant="outline" size="icon-lg" class="shrink-0" title="Previous period" aria-label="Previous period" disabled={atEpochEdge} onclick={() => shiftPage(-1)}>
       <ChevronLeft class="size-4" />
     </Button>
     <span class="flex-1 text-center font-mono text-sm font-medium uppercase tabular-nums">
@@ -698,7 +708,7 @@
   <Card.Root>
     <Card.Header class="flex flex-row flex-wrap items-center justify-between gap-2">
       <div>
-        <Card.Title>{GRANULARITY_LABELS[chartGranularity]} hours · {data.year}</Card.Title>
+        <Card.Title>{GRANULARITY_LABELS[chartGranularity]} hours · {chartView.year}</Card.Title>
         <Card.Description>Logged vs. target, {GRANULARITY_LABELS[chartGranularity].toLowerCase()}</Card.Description>
       </div>
       <div class="flex items-center gap-2">
