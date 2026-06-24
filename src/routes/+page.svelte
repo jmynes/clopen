@@ -29,7 +29,7 @@
   import * as Select from '$lib/components/ui/select';
   import * as Tooltip from '$lib/components/ui/tooltip';
   import { runSavingsGoalAction, type SavingsGoalActionName } from '$lib/core/savings-goals';
-  import { chartWindow } from '$lib/dashboard-period';
+  import { type ChartScope, chartWindow } from '$lib/dashboard-period';
   import { formatDay, formatRangeISO, formatWeekRange, todayISO } from '$lib/date';
   import type { SavingsGoal } from '$lib/db/schema';
   import { isDemo } from '$lib/demo/flag';
@@ -284,9 +284,21 @@
   // Initial-only read; the select mutates independently after first render.
   // svelte-ignore state_referenced_locally
   let chartGranularity = $state<BucketGranularity>(CYCLE_GRANULARITY[data.payCycle]);
-  // The chart respects the year the selector is browsed to (not a fixed
-  // this-year view), without shortening to the sub-period; see chartWindow.
-  const chartView = $derived(chartWindow({ bucketStart: bucket.start, today: data.today, epoch: data.epoch }));
+  // Chart scope: 'follow' the browsed year (default), a pinned year, or 'all'
+  // tracked years. Independent of granularity; chart-only (never moves the
+  // top date / hero). See chartWindow.
+  let chartScope = $state<ChartScope>('follow');
+  // Years with data, newest first — epoch year through the current year.
+  const chartYears = $derived.by(() => {
+    const lo = Number(data.epoch.slice(0, 4));
+    const hi = Number(data.today.slice(0, 4));
+    const years: string[] = [];
+    for (let y = hi; y >= lo; y--) years.push(String(y));
+    return years;
+  });
+  const chartView = $derived(
+    chartWindow({ scope: chartScope, bucketStart: bucket.start, today: data.today, epoch: data.epoch }),
+  );
   const chartExpectedAsOf = $derived(
     chartView.asOf === data.today && !todayCounts ? addDays(data.today, -1) : chartView.asOf,
   );
@@ -714,10 +726,24 @@
   <Card.Root>
     <Card.Header class="flex flex-row flex-wrap items-center justify-between gap-2">
       <div>
-        <Card.Title>{GRANULARITY_LABELS[chartGranularity]} hours · {chartView.year}</Card.Title>
+        <Card.Title>{GRANULARITY_LABELS[chartGranularity]} hours · {chartView.label}</Card.Title>
         <Card.Description>Logged vs. target, {GRANULARITY_LABELS[chartGranularity].toLowerCase()}</Card.Description>
       </div>
       <div class="flex items-center gap-2">
+        <select
+          aria-label="Chart scope"
+          value={chartScope}
+          onchange={(e) => {
+            chartScope = e.currentTarget.value;
+          }}
+          class="h-8 rounded-md border border-input bg-transparent px-2 text-sm focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+        >
+          <option value="follow">Follow date</option>
+          {#each chartYears as y (y)}
+            <option value={y}>{y}</option>
+          {/each}
+          <option value="all">All-time</option>
+        </select>
         <select
           aria-label="Chart granularity"
           value={chartGranularity}
