@@ -8,9 +8,9 @@
 import type { z } from 'zod';
 import { parseCsv } from '$lib/csv';
 import type { Settings, TimeEntry } from '$lib/db/schema';
-import { isLeaveKind } from '$lib/leave-kinds';
+
 import { clockEntryInput, type EntryInput, entryInput, leaveEntryInput, openEntryInput } from '$lib/schemas/entry';
-import { addDays } from '$lib/timesheet';
+
 import { type Repo, toWorkSettings } from './repo';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -197,92 +197,6 @@ export async function deleteAction(repo: Repo, form: FormData): Promise<ActionOu
   return { ok: true, data: { deleted: true } };
 }
 
-// Bulk-insert a whole week: one row per day. Only filled rows are added,
-// each validated like a single entry in the chosen mode (clock or hours).
-export async function addWeekAction(repo: Repo, form: FormData): Promise<ActionOutcome> {
-  const weekStart = String(form.get('weekStart') ?? '');
-  if (!ISO_DATE.test(weekStart)) return { ok: false, status: 400, data: { weekError: 'Invalid week' } };
-  const clock = form.get('mode') === 'clock';
-
-  // Schema field name → form input name (per row, suffixed with -i later).
-  const FIELD_TO_INPUT: Record<string, string> = {
-    startTime: 'start',
-    endTime: 'end',
-    breakHours: 'break',
-    hours: 'hours',
-    note: 'note',
-  };
-
-  // weekStart is the first day of the grid; each row is the next day after it,
-  // so this is independent of which weekday the week starts on. Each day may
-  // carry extra inline shifts suffixed -1..-N (`start-3-1` = day 3, shift 2).
-  const MAX_EXTRA_SHIFTS = 5;
-  type RowResult = {
-    /** Error-key suffix: "3" for the main row, "3-1" for an extra shift. */
-    key: string;
-    parsed:
-      | ReturnType<typeof clockEntryInput.safeParse>
-      | ReturnType<typeof entryInput.safeParse>
-      | ReturnType<typeof leaveEntryInput.safeParse>;
-  };
-  const filled: RowResult[] = [];
-  for (let i = 0; i < 7; i++) {
-    const date = addDays(weekStart, i);
-    // Leave rows take precedence over the chosen clock/hours mode for that
-    // row, and a leave day has no shifts.
-    const leaveValue = String(form.get(`leave-${i}`) ?? '');
-    if (isLeaveKind(leaveValue)) {
-      const note = form.get(`note-${i}`) ?? undefined;
-      filled.push({
-        key: String(i),
-        parsed: leaveEntryInput.safeParse({ date, note, kind: leaveValue, dailyHours: 8 }),
-      });
-      continue;
-    }
-    for (let j = 0; j <= MAX_EXTRA_SHIFTS; j++) {
-      const sfx = j === 0 ? `-${i}` : `-${i}-${j}`;
-      const key = sfx.slice(1);
-      const breakHours = form.get(`break${sfx}`) || undefined;
-      const note = form.get(`note${sfx}`) ?? undefined;
-      if (clock) {
-        const startTime = String(form.get(`start${sfx}`) ?? '').trim();
-        const endTime = String(form.get(`end${sfx}`) ?? '').trim();
-        if (!startTime && !endTime) continue; // empty row/shift
-        filled.push({ key, parsed: clockEntryInput.safeParse({ date, startTime, endTime, breakHours, note }) });
-      } else {
-        const hours = String(form.get(`hours${sfx}`) ?? '').trim();
-        if (!hours) continue; // empty row/shift
-        filled.push({ key, parsed: entryInput.safeParse({ date, hours, breakHours, note }) });
-      }
-    }
-  }
-
-  if (filled.length === 0) return { ok: false, status: 400, data: { weekError: 'Fill in at least one day' } };
-
-  const weekFieldErrors: Record<string, string> = {};
-  for (const { key, parsed } of filled) {
-    if (parsed.success) continue;
-    for (const issue of parsed.error.issues) {
-      const schemaField = String(issue.path[0] ?? '_');
-      const inputName = FIELD_TO_INPUT[schemaField] ?? schemaField;
-      const errKey = `${inputName}-${key}`;
-      if (!weekFieldErrors[errKey]) weekFieldErrors[errKey] = issue.message;
-    }
-  }
-  if (Object.keys(weekFieldErrors).length > 0) {
-    return { ok: false, status: 400, data: { weekFieldErrors, weekError: 'Fix the highlighted fields' } };
-  }
-
-  const validInputs = filled
-    .map(({ parsed }) => (parsed.success ? parsed.data : null))
-    .filter((v): v is EntryInput => v !== null);
-  const strategy = parseStrategy(form.get('conflictStrategy'));
-  const resolved = await applyConflictStrategy(repo, validInputs, strategy);
-  if (!resolved.ok) return { ok: false, status: 409, data: { weekConflict: true, conflicts: resolved.conflicts } };
-  for (const e of resolved.toInsert) await repo.addEntry(e);
-  return { ok: true, data: { weekAdded: resolved.toInsert.length, weekOverwrote: resolved.overwroteCount } };
-}
-
 // Import arbitrarily many rows from a CSV file. Header columns are matched by
 // name; rows with both clock times use clock mode, otherwise the Hours column.
 export async function importCsvAction(repo: Repo, form: FormData): Promise<ActionOutcome> {
@@ -362,7 +276,7 @@ export async function clearPeriodAction(repo: Repo, form: FormData): Promise<Act
   return { ok: true, data: { cleared: true } };
 }
 
-export type LogActionName = 'add' | 'update' | 'delete' | 'addWeek' | 'importCsv' | 'clearAll' | 'clearPeriod';
+export type LogActionName = 'add' | 'update' | 'delete' | 'importCsv' | 'clearAll' | 'clearPeriod';
 
 /** Dispatch by SvelteKit action name ("?/add" → add). Demo mode's client router. */
 export function runLogAction(repo: Repo, action: LogActionName, form: FormData): Promise<ActionOutcome> {
@@ -373,8 +287,6 @@ export function runLogAction(repo: Repo, action: LogActionName, form: FormData):
       return updateAction(repo, form);
     case 'delete':
       return deleteAction(repo, form);
-    case 'addWeek':
-      return addWeekAction(repo, form);
     case 'importCsv':
       return importCsvAction(repo, form);
     case 'clearAll':

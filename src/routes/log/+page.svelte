@@ -68,7 +68,7 @@
     `${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}h`;
 
   // Inline field-error lookups for each form on this page.
-  function errorsFrom(key: 'fieldErrors' | 'editFieldErrors' | 'weekFieldErrors'): Record<string, string> {
+  function errorsFrom(key: 'fieldErrors' | 'editFieldErrors'): Record<string, string> {
     if (actionData && key in actionData) {
       const v = (actionData as Record<string, unknown>)[key];
       if (v && typeof v === 'object') return v as Record<string, string>;
@@ -77,7 +77,6 @@
   }
   const addErrors = $derived(errorsFrom('fieldErrors'));
   const editErrors = $derived(errorsFrom('editFieldErrors'));
-  const weekErrors = $derived(errorsFrom('weekFieldErrors'));
 
   // Reformat a free-typed time ("2pm", "230", "14:00") to a friendly label on blur.
   function normalizeTime(e: FocusEvent & { currentTarget: HTMLInputElement }) {
@@ -144,7 +143,7 @@
   let clearPeriodBtn = $state<HTMLElement | null>(null);
   let clearAllBtn = $state<HTMLElement | null>(null);
 
-  // Conflict-resolution state shared by the add/addWeek/importCsv forms.
+  // Conflict-resolution state shared by the add/importCsv forms.
   type ConflictEntry = {
     startTime: string | null;
     endTime: string | null;
@@ -813,7 +812,7 @@
 
   // First error message from a core-action failure payload (fieldErrors or a flat error).
   function firstError(data: Record<string, unknown>): string {
-    const fe = data.fieldErrors ?? data.editFieldErrors ?? data.weekFieldErrors;
+    const fe = data.fieldErrors ?? data.editFieldErrors;
     if (fe && typeof fe === 'object') {
       const first = Object.values(fe as Record<string, string>)[0];
       if (typeof first === 'string') return first;
@@ -1550,7 +1549,6 @@
         </div>
         <div class="grid gap-3 md:grid-cols-2 lg:contents">
           {#each weekRows as { date, i }, idx (date)}
-            {@const rowErr = (col: string) => weekErrors[`${col}-${i}`]}
             {@const isFuture = date > todayISO()}
             {@const rowWorked = weekTotals[i]}
             {@const leaveKind = leaveRows.get(i) ?? null}
@@ -1660,10 +1658,8 @@
                           placeholder={startPlaceholder}
                           onblur={normalizeTime}
                           aria-label="Clock in for {weekdayShort(date)}"
-                          aria-invalid={rowErr('start') ? 'true' : undefined}
                           class="font-mono tabular-nums"
                         />
-                        {#if rowErr('start')}<p class="text-xs text-destructive">{rowErr('start')}</p>{/if}
                       </div>
                       <div class="col-span-3 flex flex-col gap-1 lg:w-28 lg:shrink-0">
                         <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Out</span>
@@ -1675,10 +1671,8 @@
                           placeholder={endPlaceholder}
                           onblur={normalizeTime}
                           aria-label="Clock out for {weekdayShort(date)}"
-                          aria-invalid={rowErr('end') ? 'true' : undefined}
                           class="font-mono tabular-nums"
                         />
-                        {#if rowErr('end')}<p class="text-xs text-destructive">{rowErr('end')}</p>{/if}
                       </div>
                     {:else}
                       <div class="col-span-2 flex flex-col gap-1 lg:w-20 lg:shrink-0">
@@ -1691,10 +1685,8 @@
                           max="24"
                           placeholder={isWeekend(date) ? '—' : '0'}
                           aria-label="Hours for {weekdayShort(date)}"
-                          aria-invalid={rowErr('hours') ? 'true' : undefined}
                           class="font-mono tabular-nums"
                         />
-                        {#if rowErr('hours')}<p class="text-xs text-destructive">{rowErr('hours')}</p>{/if}
                       </div>
                     {/if}
                     <div class="{weekMode === 'clock' ? 'col-span-3' : 'col-span-2'} flex flex-col gap-1 lg:w-20 lg:shrink-0">
@@ -1707,10 +1699,8 @@
                         max="24"
                         placeholder="0.0h"
                         aria-label="Break for {weekdayShort(date)}"
-                        aria-invalid={rowErr('break') ? 'true' : undefined}
                         class="font-mono tabular-nums"
                       />
-                      {#if rowErr('break')}<p class="text-xs text-destructive">{rowErr('break')}</p>{/if}
                     </div>
                     <div class="{weekMode === 'clock' ? 'col-span-3' : 'col-span-2'} flex flex-col gap-1 lg:w-28 lg:shrink-0">
                       <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Worked</span>
@@ -1748,9 +1738,7 @@
                         name="note-{i}"
                         placeholder="Note (optional)"
                         aria-label="Note for {weekdayShort(date)}"
-                        aria-invalid={rowErr('note') ? 'true' : undefined}
                       />
-                      {#if rowErr('note')}<p class="text-xs text-destructive">{rowErr('note')}</p>{/if}
                     </div>
                   </div>
                 {/if}
@@ -1783,10 +1771,8 @@
                               if (parsed) shift.start = formatTime(parsed, data.timeFormat);
                             }}
                             aria-label="Clock in for {weekdayShort(date)} shift {j + 2}"
-                            aria-invalid={weekErrors[`start-${i}-${j + 1}`] ? 'true' : undefined}
                             class="font-mono tabular-nums"
                           />
-                          {#if weekErrors[`start-${i}-${j + 1}`]}<p class="text-xs text-destructive">{weekErrors[`start-${i}-${j + 1}`]}</p>{/if}
                         </div>
                         <div class="col-span-3 flex flex-col gap-1 lg:w-28 lg:shrink-0">
                           <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Out</span>
@@ -1802,10 +1788,8 @@
                               if (parsed) shift.end = formatTime(parsed, data.timeFormat);
                             }}
                             aria-label="Clock out for {weekdayShort(date)} shift {j + 2}"
-                            aria-invalid={weekErrors[`end-${i}-${j + 1}`] ? 'true' : undefined}
                             class="font-mono tabular-nums"
                           />
-                          {#if weekErrors[`end-${i}-${j + 1}`]}<p class="text-xs text-destructive">{weekErrors[`end-${i}-${j + 1}`]}</p>{/if}
                         </div>
                       {:else}
                         <div class="col-span-2 flex flex-col gap-1 lg:w-20 lg:shrink-0">
@@ -1819,10 +1803,8 @@
                             placeholder="0"
                             bind:value={shift.hours}
                             aria-label="Hours for {weekdayShort(date)} shift {j + 2}"
-                            aria-invalid={weekErrors[`hours-${i}-${j + 1}`] ? 'true' : undefined}
                             class="font-mono tabular-nums"
                           />
-                          {#if weekErrors[`hours-${i}-${j + 1}`]}<p class="text-xs text-destructive">{weekErrors[`hours-${i}-${j + 1}`]}</p>{/if}
                         </div>
                       {/if}
                       <div class="{weekMode === 'clock' ? 'col-span-3' : 'col-span-2'} flex flex-col gap-1 lg:w-20 lg:shrink-0">
@@ -1836,10 +1818,8 @@
                           placeholder="0.0h"
                           bind:value={shift.brk}
                           aria-label="Break for {weekdayShort(date)} shift {j + 2}"
-                          aria-invalid={weekErrors[`break-${i}-${j + 1}`] ? 'true' : undefined}
                           class="font-mono tabular-nums"
                         />
-                        {#if weekErrors[`break-${i}-${j + 1}`]}<p class="text-xs text-destructive">{weekErrors[`break-${i}-${j + 1}`]}</p>{/if}
                       </div>
                       <div class="{weekMode === 'clock' ? 'col-span-3' : 'col-span-2'} flex flex-col gap-1 lg:w-28 lg:shrink-0">
                         <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Worked</span>
@@ -1878,9 +1858,7 @@
                           placeholder="Note (optional)"
                           bind:value={shift.note}
                           aria-label="Note for {weekdayShort(date)} shift {j + 2}"
-                          aria-invalid={weekErrors[`note-${i}-${j + 1}`] ? 'true' : undefined}
                         />
-                        {#if weekErrors[`note-${i}-${j + 1}`]}<p class="text-xs text-destructive">{weekErrors[`note-${i}-${j + 1}`]}</p>{/if}
                       </div>
                     </div>
                   </div>
@@ -1906,11 +1884,6 @@
           <Button type="button" variant="destructive" onclick={clearWeek} class="w-24">
             <X class="size-4" /> Clear
           </Button>
-          {#if actionData?.weekAdded}
-            <span class="text-sm text-success">Added {actionData.weekAdded} {actionData.weekAdded === 1 ? 'entry' : 'entries'}.</span>
-          {:else if actionData && 'weekError' in actionData && actionData.weekError}
-            <span class="text-sm text-destructive">{actionData.weekError}</span>
-          {/if}
           <!-- The tip carries the right-push at lg (where it's visible); below
                lg it's hidden, so Fill takes over the ml-auto. -->
           <span class="hidden text-xs text-muted-foreground lg:ml-auto lg:inline">
