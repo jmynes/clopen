@@ -451,15 +451,16 @@
     <Button variant="outline" size="icon-lg" class="shrink-0" title="Previous period" aria-label="Previous period" disabled={atEpochEdge} onclick={() => shiftPage(-1)}>
       <ChevronLeft class="size-4" />
     </Button>
-    <span class="flex-1 text-center font-mono text-sm font-medium uppercase tabular-nums">
-      {bucket.label}
-      {#if periodState === 'future'}
-        <Badge
-          variant="outline"
-          class="ml-1.5 border-amber-500/50 align-middle text-amber-600 dark:text-amber-400"
-          title="This period is in the future">Future</Badge>
-      {/if}
-    </span>
+    <div class="flex flex-1 flex-col items-center justify-center gap-0.5">
+      <span
+        class="h-3.5 text-[10px] font-semibold uppercase leading-none tracking-wider {periodState === 'future'
+          ? 'text-amber-600 dark:text-amber-400'
+          : 'text-muted-foreground'}"
+      >
+        {#if periodState === 'future'}Future{:else if periodState === 'done'}Past{/if}
+      </span>
+      <span class="font-mono text-sm font-medium uppercase tabular-nums">{bucket.label}</span>
+    </div>
     <Button variant="outline" size="icon-lg" class="shrink-0" title="Next period" aria-label="Next period" onclick={() => shiftPage(1)}>
       <ChevronRight class="size-4" />
     </Button>
