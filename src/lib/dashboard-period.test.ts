@@ -5,9 +5,9 @@ const EPOCH = '2025-03-16';
 const TODAY = '2026-06-24';
 
 describe('chartWindow', () => {
-  describe("scope 'follow' (tracks the browsed year)", () => {
+  describe("scope 'auto' (tracks the browsed year)", () => {
     it('current period: spans the year up to today', () => {
-      expect(chartWindow({ scope: 'follow', bucketStart: '2026-06-01', today: TODAY, epoch: EPOCH })).toEqual({
+      expect(chartWindow({ scope: 'auto', bucketStart: '2026-06-01', today: TODAY, epoch: EPOCH })).toEqual({
         rangeStart: '2026-01-01',
         asOf: '2026-06-24',
         label: '2026',
@@ -16,7 +16,7 @@ describe('chartWindow', () => {
 
     it('a different period in the same year does NOT shorten the chart', () => {
       // Browsing back to April still shows the whole year-to-today, not Jan–April.
-      expect(chartWindow({ scope: 'follow', bucketStart: '2026-04-01', today: TODAY, epoch: EPOCH })).toEqual({
+      expect(chartWindow({ scope: 'auto', bucketStart: '2026-04-01', today: TODAY, epoch: EPOCH })).toEqual({
         rangeStart: '2026-01-01',
         asOf: '2026-06-24',
         label: '2026',
@@ -24,7 +24,7 @@ describe('chartWindow', () => {
     });
 
     it('prior year: follows the year, epoch floors the range start, full year as-of', () => {
-      expect(chartWindow({ scope: 'follow', bucketStart: '2025-09-01', today: TODAY, epoch: EPOCH })).toEqual({
+      expect(chartWindow({ scope: 'auto', bucketStart: '2025-09-01', today: TODAY, epoch: EPOCH })).toEqual({
         rangeStart: '2025-03-16', // epoch, not 2025-01-01
         asOf: '2025-12-31',
         label: '2025',

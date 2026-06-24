@@ -284,10 +284,10 @@
   // Initial-only read; the select mutates independently after first render.
   // svelte-ignore state_referenced_locally
   let chartGranularity = $state<BucketGranularity>(CYCLE_GRANULARITY[data.payCycle]);
-  // Chart scope: 'follow' the browsed year (default), a pinned year, or 'all'
-  // tracked years. Independent of granularity; chart-only (never moves the
-  // top date / hero). See chartWindow.
-  let chartScope = $state<ChartScope>('follow');
+  // Chart scope: 'auto' tracks the browsed year (default), a pinned year, or
+  // 'all' tracked years. Independent of granularity; chart-only (never moves
+  // the top date / hero). See chartWindow.
+  let chartScope = $state<ChartScope>('auto');
   // Years with data, newest first — epoch year through the current year.
   const chartYears = $derived.by(() => {
     const lo = Number(data.epoch.slice(0, 4));
@@ -738,7 +738,7 @@
           }}
           class="h-8 rounded-md border border-input bg-transparent px-2 text-sm focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
         >
-          <option value="follow">Follow date</option>
+          <option value="auto">Auto</option>
           {#each chartYears as y (y)}
             <option value={y}>{y}</option>
           {/each}
