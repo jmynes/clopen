@@ -1903,10 +1903,17 @@
                   {entry.breakHours > 0 ? hrs(entry.breakHours) : '—'}
                 </Table.Cell>
                 <Table.Cell class="text-right font-mono tabular-nums">
-                  {hrs(entry.hours - entry.breakHours)}
+                  {entry.startTime && !entry.endTime ? '—' : hrs(entry.hours - entry.breakHours)}
                 </Table.Cell>
                 <Table.Cell class="text-center">
-                  {#if !entryLeave && row.dayCount === 1 && dayTotals[entry.date] > data.dailyHours}
+                  {#if entry.entryKind === 'work' && entry.startTime && !entry.endTime}
+                    <span
+                      class="inline-flex items-center rounded-md border border-dashed border-amber-500/60 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400"
+                      title="Shift in progress — add a clock-out to finish it"
+                    >
+                      In progress
+                    </span>
+                  {:else if !entryLeave && row.dayCount === 1 && dayTotals[entry.date] > data.dailyHours}
                     <span
                       title="Worked past the daily baseline" class="inline-flex items-center rounded-md bg-amber-500/15 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400"
                     >
@@ -2081,12 +2088,19 @@
                         <span class="ml-1 text-xs">· {hrs(entry.breakHours)} break</span>
                       {/if}
                     </div>
+                  {:else if entry.startTime && !entry.endTime}
+                    <div class="font-mono text-sm tabular-nums text-amber-600 dark:text-amber-400">
+                      {@render clockTime(entry.startTime)}
+                      <span class="mx-0.5">→</span> … in progress
+                    </div>
                   {:else if entry.breakHours > 0}
                     <div class="font-mono text-sm tabular-nums text-muted-foreground">{hrs(entry.breakHours)} break</div>
                   {/if}
                 </div>
                 <div class="flex shrink-0 flex-col items-end gap-1">
-                  <span class="font-mono text-sm font-medium tabular-nums">{hrs(entry.hours - entry.breakHours)}</span>
+                  <span class="font-mono text-sm font-medium tabular-nums">
+                    {entry.startTime && !entry.endTime ? '—' : hrs(entry.hours - entry.breakHours)}
+                  </span>
                   <div class="flex gap-1">
                     {@render rowActions(entry)}
                   </div>
