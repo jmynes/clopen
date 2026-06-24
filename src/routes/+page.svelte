@@ -437,6 +437,12 @@
     </Button>
     <span class="flex-1 text-center font-mono text-sm font-medium uppercase tabular-nums">
       {bucket.label}
+      {#if periodState === 'future'}
+        <Badge
+          variant="outline"
+          class="ml-1.5 border-amber-500/50 align-middle text-amber-600 dark:text-amber-400"
+          title="This period is in the future">Future</Badge>
+      {/if}
     </span>
     <Button variant="outline" size="icon-lg" class="shrink-0" title="Next period" aria-label="Next period" onclick={() => shiftPage(1)}>
       <ChevronRight class="size-4" />
