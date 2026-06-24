@@ -21,8 +21,8 @@
   import X from '@lucide/svelte/icons/x';
   import { innerWidth } from 'svelte/reactivity/window';
   import { slide } from 'svelte/transition';
-  import { enhance } from '$app/forms';
-  import { invalidate } from '$app/navigation';
+  import { deserialize, enhance } from '$app/forms';
+  import { invalidate, invalidateAll } from '$app/navigation';
   import DateField from '$lib/components/DateField.svelte';
   import DateJump from '$lib/components/DateJump.svelte';
   import { Button } from '$lib/components/ui/button';
@@ -38,7 +38,7 @@
   import { formatDay, formatRangeISO, formatTime, formatTimestamp, formatWeekRange, isWeekend, todayISO, weekdayShort } from '$lib/date';
   import type { TimeEntry } from '$lib/db/schema';
   import { isDemo } from '$lib/demo/flag';
-  import { LEAVE_KINDS, LEAVE_META, type LeaveKind } from '$lib/leave-kinds';
+  import { isLeaveKind, LEAVE_KINDS, LEAVE_META, type LeaveKind } from '$lib/leave-kinds';
   import { addDays, hoursBetween, parseTimeInput, weekDates } from '$lib/timesheet';
   import type { ActionData, PageData } from './$types';
 
@@ -55,6 +55,12 @@
   async function runDemo(formElement: HTMLFormElement, formData: FormData) {
     const { demoRepo } = await import('$lib/demo/repo');
     return runLogAction(demoRepo, actionNameOf(formElement), formData);
+  }
+  // Programmatic demo dispatch for the grid's per-row auto-save (no <form> to
+  // read the action from — the caller names it), mirroring runDemo's lazy load.
+  async function runDemoAction(action: LogActionName, formData: FormData) {
+    const { demoRepo } = await import('$lib/demo/repo');
+    return runLogAction(demoRepo, action, formData);
   }
 
   const hrs = (n: number) =>
@@ -630,6 +636,7 @@
   $effect(() => {
     const id = requestAnimationFrame(() => {
       gridReady = true;
+      seedGrid();
     });
     return () => cancelAnimationFrame(id);
   });
@@ -667,18 +674,280 @@
   const emptySubShifts = (): SubShift[][] => Array.from({ length: 7 }, () => []);
   let subShifts = $state<SubShift[][]>(emptySubShifts());
   const MAX_EXTRA_SHIFTS = 5;
+
+  // Per-row save bookkeeping: the entry id once persisted, whether the last
+  // save left it "open" (arrival-only, the one kind of row auto-delete touches),
+  // and a small status for the inline indicator. `rowMeta` is the seven main
+  // rows; `subMeta` parallels `subShifts`.
+  type RowSave = { id: string | null; wasOpen: boolean; save: 'idle' | 'saving' | 'saved' | 'error'; error: string };
+  const emptyMeta = (): RowSave => ({ id: null, wasOpen: false, save: 'idle', error: '' });
+  let rowMeta = $state<RowSave[]>(Array.from({ length: 7 }, emptyMeta));
+  let subMeta = $state<RowSave[][]>(Array.from({ length: 7 }, () => []));
+  // Trailing sync: after saves settle, refresh the ledger/dashboard once.
+  let syncTimer: ReturnType<typeof setTimeout> | null = null;
+  function scheduleSync() {
+    if (syncTimer) clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => {
+      if (isDemo) void invalidate('demo:data');
+      else void invalidateAll();
+    }, 600);
+  }
+
   function addSubShift(i: number) {
     if (subShifts[i].length >= MAX_EXTRA_SHIFTS) return;
     subShifts[i].push({ start: '', end: '', hours: '', brk: '', note: '' });
+    subMeta[i].push(emptyMeta());
   }
   function removeSubShift(i: number, j: number) {
+    if (subMeta[i][j]?.id) void deleteSubShiftEntry(i, j);
     subShifts[i].splice(j, 1);
+    subMeta[i].splice(j, 1);
   }
-  // Navigating to another week discards the extra shift rows along with
-  // everything the keyed inputs already drop.
+
+  // Programmatic POST to a route action, deserializing SvelteKit's reply into
+  // the same { ok, data } shape the demo path returns.
+  async function postAction(
+    action: 'add' | 'update' | 'delete',
+    body: FormData,
+  ): Promise<{ ok: boolean; data: Record<string, unknown> }> {
+    const res = await fetch(`?/${action}`, { method: 'POST', body });
+    const result = deserialize(await res.text());
+    if (result.type === 'success') return { ok: true, data: (result.data ?? {}) as Record<string, unknown> };
+    if (result.type === 'failure') return { ok: false, data: (result.data ?? {}) as Record<string, unknown> };
+    return { ok: false, data: { error: 'Could not reach the server' } };
+  }
+
+  // Read a main row's typed values from the uncontrolled inputs (same source as
+  // recomputeWeekTotals) and decide what to persist.
+  function buildRow(i: number): { mode: 'leave' | 'clock' | 'open' | 'hours'; form: FormData } | 'empty' | 'partial' {
+    const date = weekRowDates[i];
+    const leave = String(inputByName(`leave-${i}`)?.value ?? '');
+    const note = inputByName(`note-${i}`)?.value ?? '';
+    const form = new FormData();
+    form.set('date', date);
+    if (note.trim()) form.set('note', note.trim());
+
+    if (isLeaveKind(leave)) {
+      form.set('mode', 'leave');
+      form.set('kind', leave);
+      return { mode: 'leave', form };
+    }
+    const brk = inputByName(`break-${i}`)?.value ?? '';
+    if (brk.trim()) form.set('breakHours', brk.trim());
+
+    if (weekMode === 'clock') {
+      const start = parseTimeInput(inputByName(`start-${i}`)?.value ?? '');
+      const end = parseTimeInput(inputByName(`end-${i}`)?.value ?? '');
+      if (!start && !end) return 'empty';
+      if (start && end) {
+        form.set('mode', 'clock');
+        form.set('startTime', start);
+        form.set('endTime', end);
+        return { mode: 'clock', form };
+      }
+      if (start && !end) {
+        form.set('mode', 'open');
+        form.set('startTime', start);
+        return { mode: 'open', form };
+      }
+      return 'partial'; // end without start — wait for more input
+    }
+    const hours = inputByName(`hours-${i}`)?.value ?? '';
+    if (!hours.trim()) return 'empty';
+    form.set('mode', 'hours');
+    form.set('hours', hours.trim());
+    return { mode: 'hours', form };
+  }
+
+  async function saveRow(i: number): Promise<void> {
+    const meta = rowMeta[i];
+    const built = buildRow(i);
+    if (built === 'partial') return;
+    if (built === 'empty') {
+      // Cleared a row. Only auto-delete a throwaway open row; a logged day needs
+      // the explicit trash button.
+      if (meta.id && meta.wasOpen) {
+        await deleteRowEntry(i);
+      }
+      return;
+    }
+    meta.save = 'saving';
+    meta.error = '';
+    const action = meta.id ? 'update' : 'add';
+    if (meta.id) built.form.set('id', meta.id);
+    const out = isDemo ? await runDemoAction(action, built.form) : await postAction(action, built.form);
+    if (out.ok) {
+      if (!meta.id && Array.isArray(out.data.ids) && typeof out.data.ids[0] === 'string') {
+        meta.id = out.data.ids[0];
+      }
+      meta.wasOpen = built.mode === 'open';
+      meta.save = 'saved';
+      scheduleSync();
+    } else {
+      meta.save = 'error';
+      meta.error = firstError(out.data);
+    }
+  }
+
+  async function deleteRowEntry(i: number): Promise<void> {
+    const meta = rowMeta[i];
+    if (!meta.id) return;
+    const form = new FormData();
+    form.set('id', meta.id);
+    const out = isDemo ? await runDemoAction('delete', form) : await postAction('delete', form);
+    if (out.ok) {
+      meta.id = null;
+      meta.wasOpen = false;
+      meta.save = 'idle';
+      scheduleSync();
+    }
+  }
+
+  // First error message from a core-action failure payload (fieldErrors or a flat error).
+  function firstError(data: Record<string, unknown>): string {
+    const fe = data.fieldErrors ?? data.editFieldErrors ?? data.weekFieldErrors;
+    if (fe && typeof fe === 'object') {
+      const first = Object.values(fe as Record<string, string>)[0];
+      if (typeof first === 'string') return first;
+    }
+    return typeof data.error === 'string' ? data.error : 'Could not save';
+  }
+
+  async function saveSubShift(i: number, j: number): Promise<void> {
+    const shift = subShifts[i][j];
+    const meta = subMeta[i][j];
+    if (!shift || !meta) return;
+    const date = weekRowDates[i];
+    const form = new FormData();
+    form.set('date', date);
+    if (shift.note.trim()) form.set('note', shift.note.trim());
+    if (shift.brk.trim()) form.set('breakHours', shift.brk.trim());
+
+    let mode: 'clock' | 'open' | 'hours' | null = null;
+    if (weekMode === 'clock') {
+      const start = parseTimeInput(shift.start);
+      const end = parseTimeInput(shift.end);
+      if (start && end) {
+        mode = 'clock';
+        form.set('startTime', start);
+        form.set('endTime', end);
+      } else if (start && !end) {
+        mode = 'open';
+        form.set('startTime', start);
+      } else if (!start && !end) {
+        if (meta.id && meta.wasOpen) await deleteSubShiftEntry(i, j);
+        return;
+      } else {
+        return; // partial
+      }
+    } else {
+      if (!shift.hours.trim()) {
+        if (meta.id && meta.wasOpen) await deleteSubShiftEntry(i, j);
+        return;
+      }
+      mode = 'hours';
+      form.set('hours', shift.hours.trim());
+    }
+    form.set('mode', mode);
+    meta.save = 'saving';
+    meta.error = '';
+    const action = meta.id ? 'update' : 'add';
+    if (meta.id) form.set('id', meta.id);
+    const out = isDemo ? await runDemoAction(action, form) : await postAction(action, form);
+    if (out.ok) {
+      if (!meta.id && Array.isArray(out.data.ids) && typeof out.data.ids[0] === 'string') meta.id = out.data.ids[0];
+      meta.wasOpen = mode === 'open';
+      meta.save = 'saved';
+      scheduleSync();
+    } else {
+      meta.save = 'error';
+      meta.error = firstError(out.data);
+    }
+  }
+
+  async function deleteSubShiftEntry(i: number, j: number): Promise<void> {
+    const meta = subMeta[i][j];
+    if (!meta?.id) return;
+    const form = new FormData();
+    form.set('id', meta.id);
+    const out = isDemo ? await runDemoAction('delete', form) : await postAction('delete', form);
+    if (out.ok) {
+      meta.id = null;
+      meta.wasOpen = false;
+      meta.save = 'idle';
+      scheduleSync();
+    }
+  }
+
+  // Populate the (uncontrolled) main rows + (controlled) sub-shifts from saved
+  // entries for the visible week, recording ids so blur-saves become updates.
+  function seedGrid(): void {
+    const byDate = new Map<string, TimeEntry[]>();
+    for (const e of data.entries) {
+      const list = byDate.get(e.date) ?? [];
+      list.push(e);
+      byDate.set(e.date, list);
+    }
+    const nextSub: SubShift[][] = Array.from({ length: 7 }, () => []);
+    const nextSubMeta: RowSave[][] = Array.from({ length: 7 }, () => []);
+    const nextRowMeta: RowSave[] = Array.from({ length: 7 }, emptyMeta);
+    const nextLeave = new Map<number, LeaveKind>();
+
+    weekRowDates.forEach((date, i) => {
+      const dayEntries = (byDate.get(date) ?? []).slice().sort((a, b) => (a.startTime ?? '').localeCompare(b.startTime ?? ''));
+      const setVal = (name: string, v: string) => {
+        const el = inputByName(name);
+        if (el) el.value = v;
+      };
+      // Reset main-row inputs for this offset first.
+      setVal(`start-${i}`, '');
+      setVal(`end-${i}`, '');
+      setVal(`hours-${i}`, '');
+      setVal(`break-${i}`, '');
+      setVal(`note-${i}`, '');
+
+      const [main, ...extras] = dayEntries;
+      if (main) {
+        nextRowMeta[i] = { id: main.id, wasOpen: main.startTime !== null && main.endTime === null, save: 'saved', error: '' };
+        if (main.entryKind !== 'work') {
+          // Leave row — drive the leave Select state for this offset (the hidden
+          // leave-{i} input is bound to leaveRows, so buildRow reads it too).
+          nextLeave.set(i, main.entryKind);
+        } else if (main.startTime) {
+          setVal(`start-${i}`, formatTime(main.startTime, data.timeFormat));
+          if (main.endTime) setVal(`end-${i}`, formatTime(main.endTime, data.timeFormat));
+        } else {
+          setVal(`hours-${i}`, String(main.hours));
+        }
+        if (main.breakHours > 0) setVal(`break-${i}`, String(main.breakHours));
+        if (main.note) setVal(`note-${i}`, main.note);
+      }
+      extras.forEach((e) => {
+        nextSub[i].push({
+          start: e.startTime ? formatTime(e.startTime, data.timeFormat) : '',
+          end: e.endTime ? formatTime(e.endTime, data.timeFormat) : '',
+          hours: e.startTime ? '' : String(e.hours),
+          brk: e.breakHours > 0 ? String(e.breakHours) : '',
+          note: e.note ?? '',
+        });
+        nextSubMeta[i].push({ id: e.id, wasOpen: e.startTime !== null && e.endTime === null, save: 'saved', error: '' });
+      });
+    });
+
+    subShifts = nextSub;
+    subMeta = nextSubMeta;
+    rowMeta = nextRowMeta;
+    leaveRows = nextLeave;
+    recomputeWeekTotals();
+  }
+
+  // Re-seed when the week changes or the saved entries refresh (the trailing
+  // invalidateAll). A row mid-edit has focus, so its blur-save runs before this
+  // re-write; seeding only fills cells the user has already committed.
   $effect(() => {
     void weekStart;
-    subShifts = emptySubShifts();
+    void data.entries;
+    if (gridReady) seedGrid();
   });
 
   // Per-row computed Worked totals, read from the DOM (the grid is deliberately
@@ -786,6 +1055,11 @@
     });
     leaveRows = new Map();
     subShifts = emptySubShifts();
+    // Wiping the visible cells also clears their save indicators; saved entries
+    // stay in the ledger (the Ledger's Clear is the destructive path) and a
+    // later refresh re-seeds from them.
+    subMeta = Array.from({ length: 7 }, () => []);
+    rowMeta = Array.from({ length: 7 }, emptyMeta);
     recomputeWeekTotals();
   }
 
@@ -883,6 +1157,41 @@
     if (!(t instanceof HTMLInputElement)) return;
     const m = t.name.match(/^(start|end|break|hours|note)-(\d)(?:-(\d))?$/);
     if (m) lastTouched = { col: m[1], row: Number(m[2]), shift: m[3] ? Number(m[3]) : undefined };
+  }
+
+  // Per-cell debounce: blurring a cell schedules its row's save, coalescing
+  // rapid tab-throughs into one POST per row.
+  const rowSaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  function scheduleRowSave(i: number): void {
+    const key = `m${i}`;
+    const t = rowSaveTimers.get(key);
+    if (t) clearTimeout(t);
+    rowSaveTimers.set(key, setTimeout(() => void saveRow(i), 500));
+  }
+  function scheduleSubSave(i: number, j: number): void {
+    const key = `s${i}.${j}`;
+    const t = rowSaveTimers.get(key);
+    if (t) clearTimeout(t);
+    rowSaveTimers.set(key, setTimeout(() => void saveSubShift(i, j), 500));
+  }
+  function onGridFocusOut(e: FocusEvent): void {
+    const el = e.target;
+    if (!(el instanceof HTMLInputElement)) return;
+    const m = el.name.match(/^(?:start|end|hours|break|note)-(\d+)(?:-(\d+))?$/);
+    if (!m) return;
+    const i = Number(m[1]);
+    if (m[2]) scheduleSubSave(i, Number(m[2]) - 1);
+    else scheduleRowSave(i);
+  }
+  // Save-week button: persist every filled row/shift now, skipping the debounce
+  // (auto-save already handles blur; this is the explicit "commit it all" path).
+  function flushGridSaves(): void {
+    for (const t of rowSaveTimers.values()) clearTimeout(t);
+    rowSaveTimers.clear();
+    weekRowDates.forEach((_, i) => {
+      void saveRow(i);
+      subShifts[i].forEach((_, j) => void saveSubShift(i, j));
+    });
   }
 
   // Fill = copy the last touched field to every other visible row (same
@@ -1163,21 +1472,15 @@
       </div>
 
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+      <!-- Each cell auto-saves on blur (onGridFocusOut → saveRow/saveSubShift);
+           the form no longer submits as a unit, so it carries no action. -->
       <form
         bind:this={weekForm}
-        method="POST"
-        action="?/addWeek"
         onpaste={onGridPaste}
         onfocusin={onGridFocusIn}
+        onfocusout={onGridFocusOut}
         oninput={recomputeWeekTotals}
         onkeydown={onGridKeydown}
-        use:enhance={conflictAwareEnhance({
-          resetOnSuccess: true,
-          onSuccess: () => {
-            subShifts = emptySubShifts();
-            recomputeWeekTotals();
-          },
-        })}
         class="flex flex-col gap-3"
       >
         <input type="hidden" name="weekStart" value={weekStart} />
@@ -1228,7 +1531,10 @@
                 <Select.Root
                   type="single"
                   value={leaveKind ?? 'work'}
-                  onValueChange={(v) => setLeaveRow(i, v === 'work' ? '' : (v as LeaveKind))}
+                  onValueChange={(v) => {
+                    setLeaveRow(i, v === 'work' ? '' : (v as LeaveKind));
+                    scheduleRowSave(i);
+                  }}
                 >
                   <Select.Trigger
                     aria-label="Leave kind for {weekdayShort(date)}"
@@ -1379,6 +1685,13 @@
                           <Tooltip.Content>Add a shift</Tooltip.Content>
                         </Tooltip.Root>
                       </div>
+                      {#if rowMeta[i].save === 'saving'}
+                        <span class="text-xs text-muted-foreground" aria-live="polite">saving…</span>
+                      {:else if rowMeta[i].save === 'saved'}
+                        <span class="text-xs text-success" aria-live="polite">✓ saved</span>
+                      {:else if rowMeta[i].save === 'error'}
+                        <span class="text-xs text-destructive" title={rowMeta[i].error}>{rowMeta[i].error}</span>
+                      {/if}
                     </div>
                     <div class="col-span-6 flex flex-col gap-1 lg:flex-1">
                       <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Note</span>
@@ -1501,6 +1814,13 @@
                             <Tooltip.Content>Remove this shift</Tooltip.Content>
                           </Tooltip.Root>
                         </div>
+                        {#if subMeta[i][j]?.save === 'saving'}
+                          <span class="text-xs text-muted-foreground" aria-live="polite">saving…</span>
+                        {:else if subMeta[i][j]?.save === 'saved'}
+                          <span class="text-xs text-success" aria-live="polite">✓ saved</span>
+                        {:else if subMeta[i][j]?.save === 'error'}
+                          <span class="text-xs text-destructive" title={subMeta[i][j]?.error}>{subMeta[i][j]?.error}</span>
+                        {/if}
                       </div>
                       <div class="col-span-6 flex flex-col gap-1 lg:flex-1">
                         <span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground lg:hidden">Note</span>
@@ -1561,10 +1881,10 @@
           <Tooltip.Root>
             <Tooltip.Trigger>
               {#snippet child({ props })}
-                <Button {...props} type="submit" class="hover:bg-primary/75"><Plus class="size-4" /> Add week</Button>
+                <Button {...props} type="button" onclick={flushGridSaves} class="hover:bg-primary/75"><Plus class="size-4" /> Save week</Button>
               {/snippet}
             </Tooltip.Trigger>
-            <Tooltip.Content side="bottom">Save every filled day as ledger entries</Tooltip.Content>
+            <Tooltip.Content side="bottom">Save every filled day to the ledger now</Tooltip.Content>
           </Tooltip.Root>
         </div>
       </form>
