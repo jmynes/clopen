@@ -19,6 +19,7 @@
   import Thermometer from '@lucide/svelte/icons/thermometer';
   import Upload from '@lucide/svelte/icons/upload';
   import X from '@lucide/svelte/icons/x';
+  import { untrack } from 'svelte';
   import { innerWidth } from 'svelte/reactivity/window';
   import { slide } from 'svelte/transition';
   import { deserialize, enhance } from '$app/forms';
@@ -762,12 +763,19 @@
   async function doSaveRow(i: number): Promise<void> {
     const meta = rowMeta[i];
     const built = buildRow(i);
-    if (built === 'partial') return;
+    if (built === 'partial') {
+      meta.save = 'idle';
+      meta.error = '';
+      return;
+    }
     if (built === 'empty') {
       // Cleared a row. Only auto-delete a throwaway open row; a logged day needs
       // the explicit trash button.
       if (meta.id && meta.wasOpen) {
         await deleteRowEntry(i);
+      } else {
+        meta.save = 'idle';
+        meta.error = '';
       }
       return;
     }
@@ -835,14 +843,26 @@
         mode = 'open';
         form.set('startTime', start);
       } else if (!start && !end) {
-        if (meta.id && meta.wasOpen) await deleteSubShiftEntry(i, j);
+        if (meta.id && meta.wasOpen) {
+          await deleteSubShiftEntry(i, j);
+        } else {
+          meta.save = 'idle';
+          meta.error = '';
+        }
         return;
       } else {
+        meta.save = 'idle';
+        meta.error = '';
         return; // partial
       }
     } else {
       if (!shift.hours.trim()) {
-        if (meta.id && meta.wasOpen) await deleteSubShiftEntry(i, j);
+        if (meta.id && meta.wasOpen) {
+          await deleteSubShiftEntry(i, j);
+        } else {
+          meta.save = 'idle';
+          meta.error = '';
+        }
         return;
       }
       mode = 'hours';
@@ -972,7 +992,7 @@
   // independently.
   $effect(() => {
     void weekStart;
-    if (gridReady) seedGrid();
+    if (gridReady) untrack(() => seedGrid());
   });
 
   // Per-row computed Worked totals, read from the DOM (the grid is deliberately
