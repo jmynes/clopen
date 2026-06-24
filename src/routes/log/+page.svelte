@@ -1732,8 +1732,6 @@
                       </div>
                       {#if rowMeta[i].save === 'saving'}
                         <span class="text-xs text-muted-foreground" aria-live="polite">saving…</span>
-                      {:else if rowMeta[i].save === 'saved'}
-                        <span class="text-xs text-success" aria-live="polite">✓ saved</span>
                       {:else if rowMeta[i].save === 'error'}
                         <span class="text-xs text-destructive" title={rowMeta[i].error}>{rowMeta[i].error}</span>
                       {/if}
@@ -1851,8 +1849,6 @@
                         </div>
                         {#if subMeta[i][j]?.save === 'saving'}
                           <span class="text-xs text-muted-foreground" aria-live="polite">saving…</span>
-                        {:else if subMeta[i][j]?.save === 'saved'}
-                          <span class="text-xs text-success" aria-live="polite">✓ saved</span>
                         {:else if subMeta[i][j]?.save === 'error'}
                           <span class="text-xs text-destructive" title={subMeta[i][j]?.error}>{subMeta[i][j]?.error}</span>
                         {/if}
