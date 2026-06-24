@@ -680,8 +680,14 @@
   // save left it "open" (arrival-only, the one kind of row auto-delete touches),
   // and a small status for the inline indicator. `rowMeta` is the seven main
   // rows; `subMeta` parallels `subShifts`.
-  type RowSave = { id: string | null; wasOpen: boolean; save: 'idle' | 'saving' | 'saved' | 'error'; error: string };
-  const emptyMeta = (): RowSave => ({ id: null, wasOpen: false, save: 'idle', error: '' });
+  type RowSave = {
+    id: string | null;
+    wasOpen: boolean;
+    wasLeave: boolean;
+    save: 'idle' | 'saving' | 'saved' | 'error';
+    error: string;
+  };
+  const emptyMeta = (): RowSave => ({ id: null, wasOpen: false, wasLeave: false, save: 'idle', error: '' });
   let rowMeta = $state<RowSave[]>(Array.from({ length: 7 }, emptyMeta));
   let subMeta = $state<RowSave[][]>(Array.from({ length: 7 }, () => []));
   // Trailing sync: after saves settle, refresh the ledger/dashboard once.
@@ -770,9 +776,10 @@
       return;
     }
     if (built === 'empty') {
-      // Cleared a row. Only auto-delete a throwaway open row; a logged day needs
-      // the explicit trash button.
-      if (meta.id && meta.wasOpen) {
+      // Cleared a row. Auto-delete a throwaway open row, or a leave entry whose
+      // type was just switched back to Work (a deliberate change). A logged work
+      // day still needs the explicit trash button.
+      if (meta.id && (meta.wasOpen || meta.wasLeave)) {
         await deleteRowEntry(i);
       } else {
         meta.save = 'idle';
@@ -790,6 +797,7 @@
         meta.id = out.data.ids[0];
       }
       meta.wasOpen = built.mode === 'open';
+      meta.wasLeave = built.mode === 'leave';
       meta.save = 'saved';
       scheduleSync();
     } else {
@@ -807,6 +815,7 @@
     if (out.ok) {
       meta.id = null;
       meta.wasOpen = false;
+      meta.wasLeave = false;
       meta.save = 'idle';
       scheduleSync();
     }
@@ -896,6 +905,7 @@
     if (out.ok) {
       meta.id = null;
       meta.wasOpen = false;
+      meta.wasLeave = false;
       meta.save = 'idle';
       scheduleSync();
     }
@@ -952,7 +962,13 @@
 
       const [main, ...extras] = dayEntries;
       if (main) {
-        nextRowMeta[i] = { id: main.id, wasOpen: main.startTime !== null && main.endTime === null, save: 'saved', error: '' };
+        nextRowMeta[i] = {
+          id: main.id,
+          wasOpen: main.startTime !== null && main.endTime === null,
+          wasLeave: main.entryKind !== 'work',
+          save: 'saved',
+          error: '',
+        };
         if (main.entryKind !== 'work') {
           // Leave row — drive the leave Select state for this offset (the hidden
           // leave-{i} input is bound to leaveRows, so buildRow reads it too).
@@ -974,7 +990,13 @@
           brk: e.breakHours > 0 ? String(e.breakHours) : '',
           note: e.note ?? '',
         });
-        nextSubMeta[i].push({ id: e.id, wasOpen: e.startTime !== null && e.endTime === null, save: 'saved', error: '' });
+        nextSubMeta[i].push({
+          id: e.id,
+          wasOpen: e.startTime !== null && e.endTime === null,
+          wasLeave: false,
+          save: 'saved',
+          error: '',
+        });
       });
     });
 
