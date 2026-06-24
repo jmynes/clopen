@@ -759,7 +759,7 @@
     return { mode: 'hours', form };
   }
 
-  async function saveRow(i: number): Promise<void> {
+  async function doSaveRow(i: number): Promise<void> {
     const meta = rowMeta[i];
     const built = buildRow(i);
     if (built === 'partial') return;
@@ -813,7 +813,7 @@
     return typeof data.error === 'string' ? data.error : 'Could not save';
   }
 
-  async function saveSubShift(i: number, j: number): Promise<void> {
+  async function doSaveSubShift(i: number, j: number): Promise<void> {
     const shift = subShifts[i][j];
     const meta = subMeta[i][j];
     if (!shift || !meta) return;
@@ -879,6 +879,28 @@
     }
   }
 
+  // Serialize saves per row so a second save for the same key awaits the first.
+  // Without this, two adds for a still-id-less row could both run before the
+  // first returns its id — a duplicate ledger entry (or a 409 that overwrites
+  // "saved"). The chain guarantees the first add captures `meta.id` before the
+  // next save runs, so it becomes an update. A plain (non-reactive) Map holds
+  // the promise chain; storing Promises in $state would be a reactivity hazard.
+  const rowSavePromises = new Map<string, Promise<void>>();
+  function saveRow(i: number): Promise<void> {
+    const key = `m${i}`;
+    const prev = rowSavePromises.get(key) ?? Promise.resolve();
+    const run = prev.then(() => doSaveRow(i)).catch(() => {});
+    rowSavePromises.set(key, run);
+    return run;
+  }
+  function saveSubShift(i: number, j: number): Promise<void> {
+    const key = `s${i}.${j}`;
+    const prev = rowSavePromises.get(key) ?? Promise.resolve();
+    const run = prev.then(() => doSaveSubShift(i, j)).catch(() => {});
+    rowSavePromises.set(key, run);
+    return run;
+  }
+
   // Populate the (uncontrolled) main rows + (controlled) sub-shifts from saved
   // entries for the visible week, recording ids so blur-saves become updates.
   function seedGrid(): void {
@@ -941,12 +963,15 @@
     recomputeWeekTotals();
   }
 
-  // Re-seed when the week changes or the saved entries refresh (the trailing
-  // invalidateAll). A row mid-edit has focus, so its blur-save runs before this
-  // re-write; seeding only fills cells the user has already committed.
+  // Re-seed only when the visible week changes (plus the initial gridReady
+  // mount, handled where gridReady flips true). It deliberately does NOT depend
+  // on data.entries: the trailing invalidateAll after any save would otherwise
+  // rerun this and blank a DIFFERENT row the user has since focused and is
+  // typing in. The grid tracks ids locally in rowMeta/subMeta, so it needs no
+  // reseed on data refresh; the Ledger table below updates from data.entries
+  // independently.
   $effect(() => {
     void weekStart;
-    void data.entries;
     if (gridReady) seedGrid();
   });
 
@@ -1183,17 +1208,6 @@
     if (m[2]) scheduleSubSave(i, Number(m[2]) - 1);
     else scheduleRowSave(i);
   }
-  // Save-week button: persist every filled row/shift now, skipping the debounce
-  // (auto-save already handles blur; this is the explicit "commit it all" path).
-  function flushGridSaves(): void {
-    for (const t of rowSaveTimers.values()) clearTimeout(t);
-    rowSaveTimers.clear();
-    weekRowDates.forEach((_, i) => {
-      void saveRow(i);
-      subShifts[i].forEach((_, j) => void saveSubShift(i, j));
-    });
-  }
-
   // Fill = copy the last touched field to every other visible row (same
   // shift slot for extra-shift cells, adding rows where missing; blanks
   // propagate but never conjure rows). Fallback with nothing touched: the
@@ -1263,6 +1277,10 @@
 
   function applyFill() {
     const subShiftFill = lastTouched?.shift !== undefined;
+    // Main-row offsets the fill wrote, so their auto-save can be scheduled (the
+    // grid is uncontrolled — without this, filled cells wouldn't persist until a
+    // manual blur). Sub-shift changes are handled by removeSubShift/blur, not here.
+    const touchedRows = new Set<number>();
     for (const ch of fillPlan ?? []) {
       if (ch.shift) {
         while (subShifts[ch.i].length < ch.shift) {
@@ -1271,6 +1289,7 @@
         subShifts[ch.i][ch.shift - 1][subKey(ch.field)] = ch.to;
       } else {
         setCell(ch.field, ch.i, ch.to);
+        touchedRows.add(ch.i);
       }
     }
     // When a sub-shift fill blanks a section out entirely, retract the
@@ -1283,6 +1302,7 @@
       }
     }
     recomputeWeekTotals();
+    for (const i of touchedRows) scheduleRowSave(i);
     fillPlan = null;
   }
 
@@ -1321,15 +1341,23 @@
       .replace(/\n+$/, '')
       .split('\n')
       .map((line) => line.split('\t'));
+    // Track which main rows the paste wrote so each gets an auto-save scheduled;
+    // the grid is uncontrolled, so without this pasted cells wouldn't persist
+    // until a manual blur. Paste anchors and writes main rows only (no sub-shifts).
+    const touchedRows = new Set<number>();
     matrix.forEach((cells, r) => {
       const row = startRow + r;
       if (row > 6) return;
       cells.forEach((value, c) => {
         const col = gridCols[startCol + c];
-        if (col) setCell(col, row, value);
+        if (col) {
+          setCell(col, row, value);
+          touchedRows.add(row);
+        }
       });
     });
     recomputeWeekTotals();
+    for (const i of touchedRows) scheduleRowSave(i);
   }
 </script>
 
@@ -1877,14 +1905,6 @@
               {/snippet}
             </Tooltip.Trigger>
             <Tooltip.Content side="bottom">Copy the last touched field to the whole week</Tooltip.Content>
-          </Tooltip.Root>
-          <Tooltip.Root>
-            <Tooltip.Trigger>
-              {#snippet child({ props })}
-                <Button {...props} type="button" onclick={flushGridSaves} class="hover:bg-primary/75"><Plus class="size-4" /> Save week</Button>
-              {/snippet}
-            </Tooltip.Trigger>
-            <Tooltip.Content side="bottom">Save every filled day to the ledger now</Tooltip.Content>
           </Tooltip.Root>
         </div>
       </form>
