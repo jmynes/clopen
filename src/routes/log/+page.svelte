@@ -39,6 +39,7 @@
   import { formatDay, formatRangeISO, formatTime, formatTimestamp, formatWeekRange, isWeekend, todayISO, weekdayShort } from '$lib/date';
   import type { TimeEntry } from '$lib/db/schema';
   import { isDemo } from '$lib/demo/flag';
+  import { classifyGridRow } from '$lib/grid-row';
   import { isLeaveKind, LEAVE_KINDS, LEAVE_META, type LeaveKind } from '$lib/leave-kinds';
   import { addDays, hoursBetween, parseTimeInput, weekDates } from '$lib/timesheet';
   import type { ActionData, PageData } from './$types';
@@ -735,28 +736,29 @@
     const brk = inputByName(`break-${i}`)?.value ?? '';
     if (brk.trim()) form.set('breakHours', brk.trim());
 
-    if (weekMode === 'clock') {
-      const start = parseTimeInput(inputByName(`start-${i}`)?.value ?? '');
-      const end = parseTimeInput(inputByName(`end-${i}`)?.value ?? '');
-      if (!start && !end) return 'empty';
-      if (start && end) {
-        form.set('mode', 'clock');
-        form.set('startTime', start);
-        form.set('endTime', end);
-        return { mode: 'clock', form };
-      }
-      if (start && !end) {
-        form.set('mode', 'open');
-        form.set('startTime', start);
-        return { mode: 'open', form };
-      }
-      return 'partial'; // end without start — wait for more input
-    }
+    const startParsed = parseTimeInput(inputByName(`start-${i}`)?.value ?? '');
+    const endParsed = parseTimeInput(inputByName(`end-${i}`)?.value ?? '');
     const hours = inputByName(`hours-${i}`)?.value ?? '';
-    if (!hours.trim()) return 'empty';
-    form.set('mode', 'hours');
-    form.set('hours', hours.trim());
-    return { mode: 'hours', form };
+
+    switch (classifyGridRow({ mode: weekMode, leave, startParsed, endParsed, hours })) {
+      case 'clock':
+        form.set('mode', 'clock');
+        if (startParsed) form.set('startTime', startParsed);
+        if (endParsed) form.set('endTime', endParsed);
+        return { mode: 'clock', form };
+      case 'open':
+        form.set('mode', 'open');
+        if (startParsed) form.set('startTime', startParsed);
+        return { mode: 'open', form };
+      case 'hours':
+        form.set('mode', 'hours');
+        form.set('hours', hours.trim());
+        return { mode: 'hours', form };
+      case 'partial':
+        return 'partial'; // end without start — wait for more input
+      default:
+        return 'empty';
+    }
   }
 
   async function doSaveRow(i: number): Promise<void> {
@@ -830,18 +832,32 @@
     if (shift.note.trim()) form.set('note', shift.note.trim());
     if (shift.brk.trim()) form.set('breakHours', shift.brk.trim());
 
-    let mode: 'clock' | 'open' | 'hours' | null = null;
-    if (weekMode === 'clock') {
-      const start = parseTimeInput(shift.start);
-      const end = parseTimeInput(shift.end);
-      if (start && end) {
+    const startParsed = parseTimeInput(shift.start);
+    const endParsed = parseTimeInput(shift.end);
+    const kind = classifyGridRow({
+      mode: weekMode,
+      leave: '',
+      startParsed,
+      endParsed,
+      hours: shift.hours,
+    });
+    let mode: 'clock' | 'open' | 'hours';
+    switch (kind) {
+      case 'clock':
         mode = 'clock';
-        form.set('startTime', start);
-        form.set('endTime', end);
-      } else if (start && !end) {
+        if (startParsed) form.set('startTime', startParsed);
+        if (endParsed) form.set('endTime', endParsed);
+        break;
+      case 'open':
         mode = 'open';
-        form.set('startTime', start);
-      } else if (!start && !end) {
+        if (startParsed) form.set('startTime', startParsed);
+        break;
+      case 'hours':
+        mode = 'hours';
+        form.set('hours', shift.hours.trim());
+        break;
+      case 'empty':
+        // Cleared sub-shift: auto-delete only a throwaway open row.
         if (meta.id && meta.wasOpen) {
           await deleteSubShiftEntry(i, j);
         } else {
@@ -849,23 +865,10 @@
           meta.error = '';
         }
         return;
-      } else {
+      default:
         meta.save = 'idle';
         meta.error = '';
-        return; // partial
-      }
-    } else {
-      if (!shift.hours.trim()) {
-        if (meta.id && meta.wasOpen) {
-          await deleteSubShiftEntry(i, j);
-        } else {
-          meta.save = 'idle';
-          meta.error = '';
-        }
-        return;
-      }
-      mode = 'hours';
-      form.set('hours', shift.hours.trim());
+        return; // partial — end without start
     }
     form.set('mode', mode);
     meta.save = 'saving';
@@ -1199,7 +1202,7 @@
   function onGridFocusIn(e: FocusEvent) {
     const t = e.target;
     if (!(t instanceof HTMLInputElement)) return;
-    const m = t.name.match(/^(start|end|break|hours|note)-(\d)(?:-(\d))?$/);
+    const m = t.name.match(/^(start|end|break|hours|note)-(\d+)(?:-(\d+))?$/);
     if (m) lastTouched = { col: m[1], row: Number(m[2]), shift: m[3] ? Number(m[3]) : undefined };
   }
 
@@ -1658,6 +1661,7 @@
                           placeholder={startPlaceholder}
                           onblur={normalizeTime}
                           aria-label="Clock in for {weekdayShort(date)}"
+                          aria-invalid={rowMeta[i].save === 'error' ? 'true' : undefined}
                           class="font-mono tabular-nums"
                         />
                       </div>
@@ -1671,6 +1675,7 @@
                           placeholder={endPlaceholder}
                           onblur={normalizeTime}
                           aria-label="Clock out for {weekdayShort(date)}"
+                          aria-invalid={rowMeta[i].save === 'error' ? 'true' : undefined}
                           class="font-mono tabular-nums"
                         />
                       </div>
@@ -1685,6 +1690,7 @@
                           max="24"
                           placeholder={isWeekend(date) ? '—' : '0'}
                           aria-label="Hours for {weekdayShort(date)}"
+                          aria-invalid={rowMeta[i].save === 'error' ? 'true' : undefined}
                           class="font-mono tabular-nums"
                         />
                       </div>
@@ -1699,6 +1705,7 @@
                         max="24"
                         placeholder="0.0h"
                         aria-label="Break for {weekdayShort(date)}"
+                        aria-invalid={rowMeta[i].save === 'error' ? 'true' : undefined}
                         class="font-mono tabular-nums"
                       />
                     </div>
