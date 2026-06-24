@@ -209,7 +209,9 @@
   const behind = $derived(net < 0 && periodState === 'progress');
 
   // Days elapsed (workdays only) inside the period vs total workdays it has.
-  const totalWorkdaysInPeriod = $derived(countWorkdays(bucket.start, bucket.end, data.workdays));
+  // Floored at the epoch like workdaysElapsed, so a period straddling the epoch
+  // (e.g. the start year) counts only the tracked workdays, not the whole year.
+  const totalWorkdaysInPeriod = $derived(countWorkdays(maxStr(bucket.start, data.epoch), bucket.end, data.workdays));
   const workdaysElapsed = $derived.by(() => {
     if (!window || !expectedEnd || expectedEnd < window.start) return 0;
     return countWorkdays(window.start, expectedEnd, data.workdays);
