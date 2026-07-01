@@ -1579,11 +1579,14 @@
             {@const leaveKind = leaveRows.get(i) ?? null}
             {@const isLeave = leaveKind !== null}
             {@const rowUnpaid = isLeave ? !LEAVE_META[leaveKind].paid : false}
+            {@const weekendHasData = isWeekend(date) && (isLeave || date in dayTotals)}
             <div
               class="flex flex-col rounded-md max-lg:overflow-hidden max-lg:rounded-lg lg:flex-row lg:flex-wrap lg:items-start lg:gap-3 lg:px-2 lg:py-1 {isLeave
                 ? KIND_CLASSES[leaveKind].row + (rowUnpaid ? ' unpaid-hatch' : '')
                 : isWeekend(date)
-                  ? 'bg-amber-500/5 ring-1 ring-inset ring-amber-500/20'
+                  ? weekendHasData
+                    ? 'bg-amber-500/5 ring-1 ring-inset ring-amber-500/20'
+                    : 'opacity-50 transition-opacity focus-within:opacity-100 hover:opacity-100 max-lg:ring-1 max-lg:ring-inset max-lg:ring-border/50 lg:bg-muted/30'
                   : idx % 2 === 1
                     ? 'max-lg:ring-1 max-lg:ring-inset max-lg:ring-border lg:bg-muted/70'
                     : 'max-lg:ring-1 max-lg:ring-inset max-lg:ring-border'}"
