@@ -1553,6 +1553,60 @@
           <span class="flex-1">Note</span>
           <span class="w-40 shrink-0">Type</span>
         </div>
+        <!-- The entry-type picker is rendered twice per row from one snippet: in
+             the mobile header bar (lg:hidden) and, at lg, as the row's LAST flex
+             item (max-lg:hidden) so keyboard tab order ends each row on Type
+             instead of jumping to the next row's picker. Both drive the same
+             leaveRows[i] state, so they stay in lockstep. -->
+        {#snippet typeSelect(i: number, date: string, leaveKind: LeaveKind | null, triggerClass: string)}
+          {@const isLeave = leaveKind !== null}
+          <Select.Root
+            type="single"
+            value={leaveKind ?? 'work'}
+            onValueChange={(v) => {
+              setLeaveRow(i, v === 'work' ? '' : (v as LeaveKind));
+              scheduleRowSave(i);
+            }}
+          >
+            <Select.Trigger
+              aria-label="Entry type for {weekdayShort(date)}"
+              class="h-8 {triggerClass} {isLeave ? KIND_CLASSES[leaveKind].button : ''}"
+            >
+              {#if isLeave}
+                {@const Icon = LEAVE_ICON[leaveKind]}
+                {@const meta = LEAVE_META[leaveKind]}
+                <span class="inline-flex min-w-0 items-center gap-1.5">
+                  <Icon class="size-3.5 shrink-0" />
+                  <span class="min-w-0 truncate text-xs">{meta.short}{meta.paid ? '' : ' (unpaid)'}</span>
+                </span>
+              {:else}
+                <span class="inline-flex min-w-0 items-center gap-1.5 text-muted-foreground">
+                  <Briefcase class="size-3.5 shrink-0" />
+                  <span class="min-w-0 truncate text-xs">Work</span>
+                </span>
+              {/if}
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Item value="work">
+                <span
+                  class="inline-flex items-center gap-2 rounded-md bg-zinc-500/15 px-1 py-0.5 text-zinc-700 dark:text-zinc-300"
+                >
+                  <Briefcase class="size-3.5" />
+                  Work
+                </span>
+              </Select.Item>
+              {#each LEAVE_KINDS as k (k)}
+                {@const ItemIcon = LEAVE_ICON[k]}
+                <Select.Item value={k}>
+                  <span class="inline-flex items-center gap-2 rounded-md px-1 py-0.5 {KIND_CLASSES[k].badge}">
+                    <ItemIcon class="size-3.5" />
+                    {LEAVE_META[k].label}
+                  </span>
+                </Select.Item>
+              {/each}
+            </Select.Content>
+          </Select.Root>
+        {/snippet}
         <div class="grid gap-3 md:grid-cols-2 lg:contents">
           {#each weekRows as { date, i }, idx (date)}
             {@const isFuture = date > todayISO()}
@@ -1581,52 +1635,7 @@
                   <span class="font-medium">{weekdayShort(date)}</span>
                   <span class="ml-1 text-muted-foreground">{formatDay(date).replace(/^\w+,\s/, '')}</span>
                 </div>
-                <Select.Root
-                  type="single"
-                  value={leaveKind ?? 'work'}
-                  onValueChange={(v) => {
-                    setLeaveRow(i, v === 'work' ? '' : (v as LeaveKind));
-                    scheduleRowSave(i);
-                  }}
-                >
-                  <Select.Trigger
-                    aria-label="Entry type for {weekdayShort(date)}"
-                    class="h-8 w-44 lg:order-last lg:w-40 lg:shrink-0 lg:self-center {isLeave ? KIND_CLASSES[leaveKind].button : ''}"
-                  >
-                    {#if isLeave}
-                      {@const Icon = LEAVE_ICON[leaveKind]}
-                      {@const meta = LEAVE_META[leaveKind]}
-                      <span class="inline-flex min-w-0 items-center gap-1.5">
-                        <Icon class="size-3.5 shrink-0" />
-                        <span class="min-w-0 truncate text-xs">{meta.short}{meta.paid ? '' : ' (unpaid)'}</span>
-                      </span>
-                    {:else}
-                      <span class="inline-flex min-w-0 items-center gap-1.5 text-muted-foreground">
-                        <Briefcase class="size-3.5 shrink-0" />
-                        <span class="min-w-0 truncate text-xs">Work</span>
-                      </span>
-                    {/if}
-                  </Select.Trigger>
-                  <Select.Content>
-                    <Select.Item value="work">
-                      <span
-                        class="inline-flex items-center gap-2 rounded-md bg-zinc-500/15 px-1 py-0.5 text-zinc-700 dark:text-zinc-300"
-                      >
-                        <Briefcase class="size-3.5" />
-                        Work
-                      </span>
-                    </Select.Item>
-                    {#each LEAVE_KINDS as k (k)}
-                      {@const ItemIcon = LEAVE_ICON[k]}
-                      <Select.Item value={k}>
-                        <span class="inline-flex items-center gap-2 rounded-md px-1 py-0.5 {KIND_CLASSES[k].badge}">
-                          <ItemIcon class="size-3.5" />
-                          {LEAVE_META[k].label}
-                        </span>
-                      </Select.Item>
-                    {/each}
-                  </Select.Content>
-                </Select.Root>
+                {@render typeSelect(i, date, leaveKind, 'w-44 lg:hidden')}
               </div>
               <!-- card body below lg -->
               <div class="flex flex-col gap-2 p-2.5 lg:contents">
@@ -1747,6 +1756,8 @@
                   </div>
                 {/if}
               </div>
+              <!-- Desktop-only Type picker: last flex item on the row, so tab lands here after Note. -->
+              {@render typeSelect(i, date, leaveKind, 'max-lg:hidden lg:w-40 lg:shrink-0 lg:self-center')}
               {#if !isLeave}
                 {#each subShifts[i] as shift, j (j)}
                   {@const shiftWorked = subShiftWorked(shift)}
