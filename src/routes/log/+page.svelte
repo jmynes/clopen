@@ -1575,9 +1575,7 @@
               <!-- card header below lg: day + entry-type select; dissolves into the flat row at lg -->
               <div class="flex items-center justify-between gap-2 border-b border-border/40 bg-muted/40 px-2.5 py-1.5 lg:contents">
                 <div
-                  class="flex h-8 items-center font-mono text-sm uppercase tabular-nums lg:w-24 lg:shrink-0 lg:rounded-md lg:bg-sky-500/10 lg:px-2 {isFuture
-                    ? 'opacity-50'
-                    : ''}"
+                  class="flex h-8 items-center font-mono text-sm uppercase tabular-nums lg:w-24 lg:shrink-0 lg:rounded-md lg:bg-sky-500/10 lg:px-2"
                   title={isFuture ? 'Future date' : undefined}
                 >
                   <span class="font-medium">{weekdayShort(date)}</span>
