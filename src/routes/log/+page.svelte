@@ -32,6 +32,7 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import * as Select from '$lib/components/ui/select';
+  import { Separator } from '$lib/components/ui/separator';
   import * as Table from '$lib/components/ui/table';
   import * as Tooltip from '$lib/components/ui/tooltip';
   import { futureImportDates, type LogActionName, runLogAction } from '$lib/core/log';
@@ -1520,6 +1521,9 @@
       </div>
     </Card.Header>
     <Card.Content class="flex flex-col gap-4">
+      <!-- Rule where the Hours/Clock toggle used to sit, spacing the controls
+           off the column labels below. -->
+      <Separator />
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <!-- Each cell auto-saves on blur (onGridFocusOut → saveRow/saveSubShift);
            the form no longer submits as a unit, so it carries no action. -->
