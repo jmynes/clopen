@@ -368,8 +368,9 @@
   const weekRows = $derived(
     weekRowDates.map((date, i) => ({ date, i })).filter((r) => !data.hideWeekendsGrid || !isWeekend(r.date)),
   );
-  // The weekly grid shares the same modes, also defaulting to clock in/out.
-  let weekMode = $state<'hours' | 'clock'>('clock');
+  // The weekly grid is clock in/out only (no user-facing mode toggle); the
+  // union type is kept so the shared grid helpers still read a `mode`.
+  const weekMode: 'hours' | 'clock' = 'clock';
 
   // Month/year jump for the weekly grid, derived from the current anchor.
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -1088,11 +1089,9 @@
     if (!h) return null;
     return Math.max(0, h - brk);
   }
-  // Week navigation and mode switches recreate the inputs; re-read once the
-  // new DOM is in place.
+  // Week navigation recreates the inputs; re-read once the new DOM is in place.
   $effect(() => {
     void weekRowDates;
-    void weekMode;
     void leaveRows;
     recomputeWeekTotals();
   });
@@ -1521,28 +1520,6 @@
       </div>
     </Card.Header>
     <Card.Content class="flex flex-col gap-4">
-      <div class="flex w-full rounded-md border border-input p-0.5 text-sm md:inline-flex md:w-fit">
-        {#each MODE_OPTIONS as opt (opt.m)}
-          <Tooltip.Root>
-            <Tooltip.Trigger>
-              {#snippet child({ props })}
-                <button
-                  {...props}
-                  type="button"
-                  onclick={() => (weekMode = opt.m)}
-                  class="flex-1 rounded-[0.3rem] px-3 py-1.5 transition-colors md:flex-none md:py-1 {weekMode === opt.m
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground'}"
-                >
-                  {opt.label}
-                </button>
-              {/snippet}
-            </Tooltip.Trigger>
-            <Tooltip.Content>{opt.tip}</Tooltip.Content>
-          </Tooltip.Root>
-        {/each}
-      </div>
-
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <!-- Each cell auto-saves on blur (onGridFocusOut → saveRow/saveSubShift);
            the form no longer submits as a unit, so it carries no action. -->
