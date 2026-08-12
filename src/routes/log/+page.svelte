@@ -1136,13 +1136,23 @@
     });
     leaveRows = new Map();
     subShifts = emptySubShifts();
-    // Wiping the visible cells also clears their save indicators; saved entries
-    // stay in the ledger (the Ledger's Clear is the destructive path) and a
-    // later refresh re-seeds from them.
+    // Only ever called once the week's entries are actually gone from the
+    // ledger, so dropping the row ids is safe: the next thing typed into a row
+    // has nothing left to collide with. (Wiping cells while the entries
+    // survived used to strand every row — the save turned back into an `add`
+    // and the server answered 409 for the still-logged day.)
     subMeta = Array.from({ length: 7 }, () => []);
     rowMeta = Array.from({ length: 7 }, emptyMeta);
     recomputeWeekTotals();
   }
+
+  // The grid's Clear is destructive: it deletes the visible week's entries from
+  // the ledger (audit-logged, like every other deletion) and then wipes the
+  // cells. Guarded by a confirm dialog, and disabled when the week is empty.
+  let clearWeekOpen = $state(false);
+  let clearWeekBtn = $state<HTMLElement | null>(null);
+  const weekEnd = $derived(weekRowDates[6]);
+  const weekEntryCount = $derived(data.entries.filter((e) => e.date >= weekStart && e.date <= weekEnd).length);
 
   // Per-row leave selection. Rows present in this map render in leave mode
   // and submit a hidden leave-{i} value (one of LEAVE_KINDS) on form submit.
@@ -1901,7 +1911,13 @@
           </span>
         </div>
         <div class="mt-1 flex flex-wrap items-center gap-3">
-          <Button type="button" variant="destructive" onclick={clearWeek} class="w-24">
+          <Button
+            type="button"
+            variant="destructive"
+            onclick={() => (clearWeekOpen = true)}
+            disabled={weekEntryCount === 0}
+            class="w-24"
+          >
             <X class="size-4" /> Clear
           </Button>
           <!-- The tip carries the right-push at lg (where it's visible); below
@@ -2811,6 +2827,64 @@
     <Dialog.Footer class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
       <Button variant="outline" onclick={() => (futureConfirm = null)}>Cancel</Button>
       <Button bind:ref={futureConfirmBtn} onclick={confirmFuture}>Save anyway</Button>
+    </Dialog.Footer>
+  </Dialog.Content>
+</Dialog.Root>
+
+<!-- clear-week confirmation: the weekly grid's own destructive Clear -->
+<Dialog.Root bind:open={clearWeekOpen}>
+  <Dialog.Content
+    class="sm:max-w-md"
+    onOpenAutoFocus={(e) => {
+      e.preventDefault();
+      clearWeekBtn?.focus();
+    }}
+  >
+    <Dialog.Header>
+      <Dialog.Title>Clear this week?</Dialog.Title>
+      <Dialog.Description>
+        Delete every entry in {formatWeekRange(weekStart, true)} ({weekEntryCount}) and empty the grid.
+        Each deletion lands in the audit log, but this can't be undone.
+      </Dialog.Description>
+    </Dialog.Header>
+    <Dialog.Footer class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <Button variant="outline" onclick={() => (clearWeekOpen = false)}>Cancel</Button>
+      <form
+        method="POST"
+        action="?/clearPeriod"
+        class="contents"
+        use:enhance={({ formElement, formData, cancel }) => {
+          if (isDemo) {
+            cancel();
+            void (async () => {
+              const out = await runDemo(formElement, formData);
+              demoForm = out.data as ActionData;
+              clearWeekOpen = false;
+              clearWeek();
+              await invalidate('demo:data');
+            })();
+            return;
+          }
+          return async ({ update }) => {
+            await update();
+            clearWeekOpen = false;
+            // The grid deliberately doesn't re-seed on data.entries, so wipe the
+            // cells here — after the delete, never before.
+            clearWeek();
+          };
+        }}
+      >
+        <input type="hidden" name="start" value={weekStart} />
+        <input type="hidden" name="end" value={weekEnd} />
+        <Button
+          type="submit"
+          variant="destructive"
+          bind:ref={clearWeekBtn}
+          class="hover:bg-destructive/30 focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2"
+        >
+          Clear week
+        </Button>
+      </form>
     </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>
