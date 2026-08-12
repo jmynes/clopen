@@ -19,7 +19,7 @@ type Db = ReturnType<typeof drizzle<typeof schema>>;
 
 // Build a full EntryInput; hours mode (no clock times) unless overridden.
 function mk(partial: Partial<EntryInput> & { date: string; hours: number }): EntryInput {
-  return { breakHours: 0, note: null, startTime: null, endTime: null, entryKind: 'work', ...partial };
+  return { breakHours: 0, note: null, startTime: null, endTime: null, entryKind: 'work', kindLabel: null, ...partial };
 }
 
 let db: Db;
@@ -110,18 +110,60 @@ describe('entries CRUD', () => {
 
   it('updateEntry stamps updatedAt; addEntry leaves it null', async () => {
     const row = await addEntry(
-      { date: '2026-06-10', hours: 8, breakHours: 0, note: null, startTime: null, endTime: null, entryKind: 'work' },
+      {
+        date: '2026-06-10',
+        hours: 8,
+        breakHours: 0,
+        note: null,
+        startTime: null,
+        endTime: null,
+        entryKind: 'work',
+        kindLabel: null,
+      },
       db,
     );
     expect(row.updatedAt ?? null).toBeNull();
     const before = Math.floor(Date.now() / 1000);
     await updateEntry(
       row.id,
-      { date: '2026-06-10', hours: 7, breakHours: 0, note: null, startTime: null, endTime: null, entryKind: 'work' },
+      {
+        date: '2026-06-10',
+        hours: 7,
+        breakHours: 0,
+        note: null,
+        startTime: null,
+        endTime: null,
+        entryKind: 'work',
+        kindLabel: null,
+      },
       db,
     );
     const after = (await listEntries(db)).find((e) => e.id === row.id);
     expect(after?.updatedAt).toBeGreaterThanOrEqual(before);
+  });
+});
+
+describe('kindLabel', () => {
+  it('round-trips the free-text label on an "other" entry', async () => {
+    await addEntry(mk({ date: '2026-01-05', hours: 8, entryKind: 'other_paid', kindLabel: 'Jury duty' }), db);
+    const all = await listEntries(db);
+    expect(all[0].entryKind).toBe('other_paid');
+    expect(all[0].kindLabel).toBe('Jury duty');
+  });
+
+  it('defaults to null and clears on update', async () => {
+    const created = await addEntry(mk({ date: '2026-01-05', hours: 8 }), db);
+    expect(created.kindLabel).toBe(null);
+
+    await updateEntry(
+      created.id,
+      mk({ date: '2026-01-05', hours: 8, entryKind: 'other_paid', kindLabel: 'Jury duty' }),
+      db,
+    );
+    expect((await listEntries(db))[0].kindLabel).toBe('Jury duty');
+
+    await updateEntry(created.id, mk({ date: '2026-01-05', hours: 8, entryKind: 'sick_paid' }), db);
+    expect((await listEntries(db))[0].kindLabel).toBe(null);
   });
 });
 

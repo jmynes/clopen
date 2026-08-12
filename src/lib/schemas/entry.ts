@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { type EntryKind, LEAVE_KINDS, LEAVE_META } from '$lib/leave-kinds';
+import { type EntryKind, isOtherKind, KIND_LABEL_MAX, LEAVE_KINDS, LEAVE_META } from '$lib/leave-kinds';
 import { hoursBetween, parseTimeInput } from '$lib/timesheet';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -23,6 +23,11 @@ export type EntryInput = {
   startTime: string | null;
   endTime: string | null;
   entryKind: EntryKind;
+  /**
+   * Free-text badge label, only ever set on the `other_*` kinds. Every other
+   * kind wears its category name, so the field is scrubbed to null there.
+   */
+  kindLabel: string | null;
 };
 
 const date = z.string().regex(ISO_DATE, 'Date must be YYYY-MM-DD');
@@ -52,6 +57,7 @@ export const entryInput = z
       startTime: null,
       endTime: null,
       entryKind: 'work',
+      kindLabel: null,
     }),
   );
 
@@ -67,6 +73,12 @@ export const leaveEntryInput = z
     kind: leaveKind,
     dailyHours: z.coerce.number().positive().max(24).default(8),
     note,
+    kindLabel: z
+      .string()
+      .trim()
+      .max(KIND_LABEL_MAX, `Label cannot exceed ${KIND_LABEL_MAX} characters`)
+      .optional()
+      .transform((v) => v || null),
   })
   .transform((v): EntryInput => {
     const kind = v.kind as (typeof LEAVE_KINDS)[number];
@@ -79,6 +91,9 @@ export const leaveEntryInput = z
       startTime: null,
       endTime: null,
       entryKind: kind,
+      // The label belongs to the catch-all kinds alone; a stray one arriving
+      // with Sick or Holiday is dropped rather than quietly persisted.
+      kindLabel: isOtherKind(kind) ? v.kindLabel : null,
     };
   });
 
@@ -108,6 +123,7 @@ export const clockEntryInput = z
       startTime: v.startTime,
       endTime: v.endTime,
       entryKind: 'work',
+      kindLabel: null,
     }),
   );
 
@@ -131,5 +147,6 @@ export const openEntryInput = z
       startTime: v.startTime,
       endTime: null,
       entryKind: 'work',
+      kindLabel: null,
     }),
   );

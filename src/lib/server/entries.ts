@@ -47,6 +47,7 @@ export async function addEntry(input: EntryInput, database: Database = defaultDb
       endTime: input.endTime,
       note: input.note,
       entryKind: input.entryKind,
+      kindLabel: input.kindLabel,
     })
     .returning();
   await logEvent(database, 'add', created);
@@ -64,6 +65,7 @@ export async function updateEntry(id: string, input: EntryInput, database: Datab
       endTime: input.endTime,
       note: input.note,
       entryKind: input.entryKind,
+      kindLabel: input.kindLabel,
       updatedAt: Math.floor(Date.now() / 1000),
     })
     .where(eq(timeEntries.id, id))

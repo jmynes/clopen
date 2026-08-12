@@ -41,7 +41,8 @@ function parseEntry(form: FormData, dailyHours = 8) {
   const mode = form.get('mode');
   if (mode === 'leave') {
     const kind = String(form.get('kind') ?? '');
-    return leaveEntryInput.safeParse({ date, note, kind, dailyHours });
+    const kindLabel = form.get('kindLabel') ?? undefined;
+    return leaveEntryInput.safeParse({ date, note, kind, kindLabel, dailyHours });
   }
   if (mode === 'open') {
     return openEntryInput.safeParse({ date, startTime: form.get('startTime'), note });

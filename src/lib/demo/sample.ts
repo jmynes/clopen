@@ -115,6 +115,7 @@ function workEntry(date: string): TimeEntry {
     endTime: hhmm(startMin + Math.round(gross * 60)),
     note,
     entryKind: 'work',
+    kindLabel: null,
     createdAt: Math.floor(Date.parse(date) / 1000),
     updatedAt: null,
   };
@@ -130,6 +131,7 @@ function leaveEntry(date: string, kind: EntryKind, paid: boolean): TimeEntry {
     endTime: null,
     note: null,
     entryKind: kind,
+    kindLabel: null,
     createdAt: Math.floor(Date.parse(date) / 1000),
     updatedAt: null,
   };

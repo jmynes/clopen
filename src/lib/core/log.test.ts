@@ -108,3 +108,49 @@ describe('addAction — returns ids', () => {
     if (out.ok) expect(out.data.ids).toEqual(['e1']);
   });
 });
+
+describe('addAction — leave with an "other" kind', () => {
+  function form(fields: Record<string, string>): FormData {
+    const fd = new FormData();
+    for (const [k, v] of Object.entries(fields)) fd.set(k, v);
+    return fd;
+  }
+
+  it('carries the typed label from the form through to the row', async () => {
+    const { repo, rows } = memRepo();
+    const out = await addAction(
+      repo,
+      form({ date: '2026-06-23', mode: 'leave', kind: 'other_paid', kindLabel: '  Jury duty  ' }),
+    );
+    expect(out.ok).toBe(true);
+    expect(rows[0].entryKind).toBe('other_paid');
+    expect(rows[0].kindLabel).toBe('Jury duty');
+  });
+
+  it('scrubs a label posted alongside a named kind', async () => {
+    const { repo, rows } = memRepo();
+    await addAction(repo, form({ date: '2026-06-23', mode: 'leave', kind: 'sick_paid', kindLabel: 'Jury duty' }));
+    expect(rows[0].kindLabel).toBe(null);
+  });
+
+  it('rejects a label past the cap instead of silently dropping it', async () => {
+    const { repo, rows } = memRepo();
+    const out = await addAction(
+      repo,
+      form({ date: '2026-06-23', mode: 'leave', kind: 'other_paid', kindLabel: 'x'.repeat(41) }),
+    );
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.status).toBe(400);
+    expect(rows).toHaveLength(0);
+  });
+
+  it('keeps the label on update', async () => {
+    const { repo, rows } = memRepo();
+    await addAction(repo, form({ date: '2026-06-23', mode: 'leave', kind: 'other_unpaid', kindLabel: 'Moving day' }));
+    await updateAction(
+      repo,
+      form({ id: rows[0].id, date: '2026-06-23', mode: 'leave', kind: 'other_unpaid', kindLabel: 'Moving house' }),
+    );
+    expect(rows[0].kindLabel).toBe('Moving house');
+  });
+});

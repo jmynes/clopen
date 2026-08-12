@@ -35,6 +35,7 @@ function fakeRepo() {
         endTime: input.endTime,
         note: input.note,
         entryKind: input.entryKind,
+        kindLabel: input.kindLabel,
       } satisfies TimeEntry;
     },
     getOpenShift: async () => shift,
@@ -73,6 +74,7 @@ describe('accrue mode', () => {
         endTime: '17:30',
         note: null,
         entryKind: 'work',
+        kindLabel: null,
       },
     ]);
   });
@@ -105,6 +107,7 @@ describe('split mode', () => {
         endTime: '12:00',
         note: null,
         entryKind: 'work',
+        kindLabel: null,
       },
       {
         date: '2026-06-10',
@@ -114,6 +117,7 @@ describe('split mode', () => {
         endTime: '17:30',
         note: null,
         entryKind: 'work',
+        kindLabel: null,
       },
     ]);
   });

@@ -43,6 +43,7 @@ export function composeEntry(startMs: number, endMs: number, breakSeconds: numbe
     endTime: end.hhmm,
     note: null,
     entryKind: 'work',
+    kindLabel: null,
   };
 }
 

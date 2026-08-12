@@ -145,6 +145,7 @@ function rowFromInput(input: EntryInput, id: string, createdAt: number, updatedA
     endTime: input.endTime ?? null,
     note: input.note ?? null,
     entryKind: input.entryKind,
+    kindLabel: input.kindLabel ?? null,
     createdAt,
     updatedAt,
   };

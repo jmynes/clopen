@@ -14,9 +14,11 @@ workday (default Mon–Fri → 40h/week). Overtime is tracked and banks against 
 logged hours to *total* expected hours up to the as-of date; by default it is
 **not** paid at a premium, but an optional setting pays day-hours beyond the
 baseline at `otMultiplier` × rate (default 1.5×, toggled off). **Leave** is a first-class
-entry-kind taxonomy (8 kinds in paid/unpaid pairs: PTO/UPTO, Sick, Holiday,
-Vacation). Paid kinds credit the daily baseline (default 8h, no clock times);
-unpaid kinds record 0h with the same badge but a dashed outline. **No excused days** — any unlogged workday is a deficit.
+entry-kind taxonomy (10 kinds in paid/unpaid pairs: PTO/UPTO, Sick, Holiday,
+Vacation, Other). Paid kinds credit the daily baseline (default 8h, no clock
+times); unpaid kinds record 0h with the same badge but a dashed outline. The
+**Other** pair is the catch-all: it carries a free-text `kindLabel` that stands
+in for the badge text ("Jury duty"), falling back to "Other" when blank. **No excused days** — any unlogged workday is a deficit.
 The accrual lower bound is the **tracking epoch** in settings (defaults to the
 job start date) rather than Jan 1, so year-one isn't backfilled.
 **Expenses** (Uber/Lyft rides, extensible kinds) are tracked on their own tab
@@ -99,9 +101,10 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   day, partial weeks, year-boundary, Sunday-start weeks, overnight shifts).
 - `src/lib/db/schema.ts` — Drizzle tables:
   - `time_entries`: `id`, `date`, `hours`, `breakHours`, `startTime`, `endTime`,
-    `note`, `entryKind`, `createdAt`, `updatedAt` (epoch seconds, null until
-    first edit; the edit dialog shows "Added … · Edited …"). Multiple entries
-    per day are allowed.
+    `note`, `entryKind`, `kindLabel` (free-text badge text, `other_*` kinds
+    only — scrubbed to null on every other kind), `createdAt`, `updatedAt`
+    (epoch seconds, null until first edit; the edit dialog shows
+    "Added … · Edited …"). Multiple entries per day are allowed.
   - `settings` (single row, `id = 'default'`): `hourlyRate` (default 38.4615 =
     80k / 2080h), `dailyHours`, `workdays` (JSON `[1..7]`, ISO weekday numbers),
     `weekStartsOn` (1 = Mon, 7 = Sun; default 7), `epoch` (ISO date, default
@@ -217,8 +220,12 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   a settings row into the shape the math expects.
 - `src/lib/leave-kinds.ts` — single source of truth for the leave taxonomy:
   `ENTRY_KINDS` (`'work' | 'pto' | 'pto_unpaid' | …`), `LEAVE_KINDS` (the same
-  set minus 'work'), `LEAVE_META` (label / short / paid / color family), and
-  `leaveHours(kind, dailyHours)`.
+  set minus 'work', Other pinned last), `LEAVE_META` (label / short / paid /
+  color family — emerald PTO, rose sick, violet holiday, sky vacation, slate
+  other), `leaveHours(kind, dailyHours)`, `OTHER_KINDS` / `isOtherKind`, and
+  `leaveBadgeOf(kind, kindLabel)` — the one place the "typed label, else the
+  category's short name" fallback is decided, used by the grid, the Ledger
+  (table + cards) and the audit log. `KIND_LABEL_MAX` (40) caps the label.
 - `src/lib/expense-kinds.ts` — expense taxonomy: `EXPENSE_KINDS`
   (`'meal' | 'purchase' | 'ride' | 'other'`), `EXPENSE_META` (label / badge
   classes — ride amber, meal teal, purchase fuchsia), `EXPENSE_VENDORS` +
@@ -251,9 +258,11 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   - `clockEntryInput` — start + end times; computed hours via `hoursBetween`
     (wraps for overnight shifts); error `"Clock in and clock out can't match"`
     when start == end.
-  - `leaveEntryInput` — date + `kind` (LeaveKind) + optional note; produces an
-    `EntryInput` whose `entryKind` reflects the kind and whose `hours` is the
-    daily baseline for paid kinds, 0 for unpaid.
+  - `leaveEntryInput` — date + `kind` (LeaveKind) + optional note + optional
+    `kindLabel` (trimmed, blank → null, ≤ `KIND_LABEL_MAX`, and forced to null
+    unless the kind is `other_*`); produces an `EntryInput` whose `entryKind`
+    reflects the kind and whose `hours` is the daily baseline for paid kinds,
+    0 for unpaid.
   - `expenseInput` — ISO date + positive dollar amount (≤ 100k) + kind +
     optional vendor/direction/method (each scrubbed to null when it doesn't
     belong to the kind) + optional note (blank → null).
@@ -323,7 +332,10 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   The weekly grid uses a shadcn `Select` per row with icons and color
   badges so the chosen leave kind reads at a glance; selecting one hides the
   clock/break inputs and swaps the In column for a "Sick · 8.00h paid" /
-  "Vacation · unpaid" chip. Each non-leave day has a + (beside its Worked
+  "Vacation · unpaid" chip. On the `other_*` kinds the row's one text field
+  becomes the label (`kindLabel-{i}`, controlled via `otherLabels` so the chip
+  re-renders as you type) instead of the note; switching away from Other drops
+  the label with it. Each non-leave day has a + (beside its Worked
   field) that adds up to 5 inline extra shifts — controlled sub-rows named
   `start-{i}-{j}` (j ≥ 1; the server probes those suffixes and keys errors as
   `start-3-1`), each with its own read-only Worked and a − to remove it.

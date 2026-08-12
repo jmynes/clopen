@@ -5,7 +5,7 @@
   import { formatDay, formatTimeRange, formatTimestamp } from '$lib/date';
   import type { EntryEvent, Expense, ExpenseEvent, TimeEntry } from '$lib/db/schema';
   import { EXPENSE_META, MEAL_METHOD_LABELS, RIDE_DIRECTION_LABELS, VENDOR_LABELS } from '$lib/expense-kinds';
-  import { LEAVE_META } from '$lib/leave-kinds';
+  import { isOtherKind, LEAVE_META } from '$lib/leave-kinds';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -27,7 +27,12 @@
   // What the entry looked like at that moment: clock range, net hours, or kind.
   function summary(s: TimeEntry | null): string {
     if (!s) return '—';
-    if (s.entryKind !== 'work') return LEAVE_META[s.entryKind].label;
+    if (s.entryKind !== 'work') {
+      const meta = LEAVE_META[s.entryKind];
+      // An "other" entry is only identifiable by its label, so lead with it.
+      const label = isOtherKind(s.entryKind) ? s.kindLabel?.trim() : null;
+      return label ? `${label} (${meta.paid ? 'paid' : 'unpaid'})` : meta.label;
+    }
     if (s.startTime && s.endTime) return formatTimeRange(s.startTime, s.endTime, data.timeFormat);
     return `${(s.hours - s.breakHours).toFixed(2)}h`;
   }

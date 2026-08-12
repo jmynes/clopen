@@ -36,6 +36,12 @@ export const timeEntries = sqliteTable('time_entries', {
    * credit the daily baseline; unpaid kinds record 0h.
    */
   entryKind: text('entry_kind', { enum: ENTRY_KINDS }).notNull().default('work'),
+  /**
+   * Free-text badge label for the `other_paid` / `other_unpaid` kinds — what
+   * the day actually was ("Jury duty"). Null on every other kind, and on an
+   * "other" entry left unlabeled (the badge falls back to "Other").
+   */
+  kindLabel: text('kind_label'),
   createdAt: integer('created_at').notNull().default(sql`(unixepoch())`),
   /** Epoch seconds of the last edit; null = never edited since creation. */
   updatedAt: integer('updated_at'),

@@ -7,6 +7,7 @@
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import ChevronUp from '@lucide/svelte/icons/chevron-up';
+  import CircleEllipsis from '@lucide/svelte/icons/circle-ellipsis';
   import Download from '@lucide/svelte/icons/download';
   import Eraser from '@lucide/svelte/icons/eraser';
   import Maximize2 from '@lucide/svelte/icons/maximize-2';
@@ -41,7 +42,15 @@
   import type { TimeEntry } from '$lib/db/schema';
   import { isDemo } from '$lib/demo/flag';
   import { classifyGridRow } from '$lib/grid-row';
-  import { isLeaveKind, LEAVE_KINDS, LEAVE_META, type LeaveKind } from '$lib/leave-kinds';
+  import {
+    isLeaveKind,
+    isOtherKind,
+    KIND_LABEL_MAX,
+    LEAVE_KINDS,
+    LEAVE_META,
+    type LeaveKind,
+    leaveBadgeOf,
+  } from '$lib/leave-kinds';
   import { addDays, hoursBetween, parseTimeInput, weekDates } from '$lib/timesheet';
   import type { ActionData, PageData } from './$types';
 
@@ -120,6 +129,7 @@
     editing = null;
     creatingDate = date;
     editKind = 'work';
+    editKindLabel = '';
     editMode = 'clock';
     editOpen = true;
   }
@@ -348,11 +358,14 @@
   let editMode = $state<'hours' | 'clock'>('hours');
   // Editable entry kind. 'work' shows the clock/hours fields; leave kinds hide them.
   let editKind = $state<'work' | LeaveKind>('work');
+  // Free-text label, shown only while an `other_*` kind is selected.
+  let editKindLabel = $state('');
 
   function openEdit(entry: TimeEntry) {
     editing = entry;
     creatingDate = null;
     editKind = entry.entryKind as 'work' | LeaveKind;
+    editKindLabel = entry.kindLabel ?? '';
     editMode = entry.startTime && entry.endTime ? 'clock' : 'hours';
     editOpen = true;
   }
@@ -739,6 +752,10 @@
     if (isLeaveKind(leave)) {
       form.set('mode', 'leave');
       form.set('kind', leave);
+      if (isOtherKind(leave)) {
+        const label = inputByName(`kindLabel-${i}`)?.value ?? '';
+        if (label.trim()) form.set('kindLabel', label.trim());
+      }
       return { mode: 'leave', form };
     }
     const brk = inputByName(`break-${i}`)?.value ?? '';
@@ -948,6 +965,7 @@
     const nextSubMeta: RowSave[][] = Array.from({ length: 7 }, () => []);
     const nextRowMeta: RowSave[] = Array.from({ length: 7 }, emptyMeta);
     const nextLeave = new Map<number, LeaveKind>();
+    const nextOtherLabels = new Map<number, string>();
 
     // Main-row cell writes are collected, not applied: a row that renders as
     // leave has no start/end/hours/break inputs at all, so writing before
@@ -981,6 +999,7 @@
           // Leave row — drive the leave Select state for this offset (the hidden
           // leave-{i} input is bound to leaveRows, so buildRow reads it too).
           nextLeave.set(i, main.entryKind);
+          if (isOtherKind(main.entryKind)) nextOtherLabels.set(i, main.kindLabel ?? '');
         } else if (main.startTime) {
           setVal(`start-${i}`, formatTime(main.startTime, data.timeFormat));
           if (main.endTime) setVal(`end-${i}`, formatTime(main.endTime, data.timeFormat));
@@ -1012,6 +1031,7 @@
     subMeta = nextSubMeta;
     rowMeta = nextRowMeta;
     leaveRows = nextLeave;
+    otherLabels = nextOtherLabels;
     // Let the rows re-render for the new leave/work shape, then fill the cells.
     await tick();
     for (const [name, value] of cellWrites) {
@@ -1135,6 +1155,7 @@
       if (/^(start|end|break|hours|note)-\d$/.test(el.name)) el.value = '';
     });
     leaveRows = new Map();
+    otherLabels = new Map();
     subShifts = emptySubShifts();
     // Only ever called once the week's entries are actually gone from the
     // ledger, so dropping the row ids is safe: the next thing typed into a row
@@ -1162,6 +1183,23 @@
     if (kind === '') next.delete(i);
     else next.set(i, kind);
     leaveRows = next;
+    // Leaving the catch-all kinds drops the label with them, so switching back
+    // doesn't resurrect a name for a day that no longer has one.
+    if ((kind === '' || !isOtherKind(kind)) && otherLabels.has(i)) {
+      const labels = new Map(otherLabels);
+      labels.delete(i);
+      otherLabels = labels;
+    }
+  }
+
+  // Free-text labels for the `other_*` rows. Controlled (unlike the rest of the
+  // grid) so the row's badge can re-render as the label is typed; the input
+  // still carries a `kindLabel-{i}` name so buildRow reads it the usual way.
+  let otherLabels = $state<Map<number, string>>(new Map());
+  function setOtherLabel(i: number, value: string) {
+    const next = new Map(otherLabels);
+    next.set(i, value);
+    otherLabels = next;
   }
 
   // Lucide icon per leave kind (paid/unpaid share the same icon).
@@ -1174,6 +1212,8 @@
     holiday_unpaid: PartyPopper,
     vacation_paid: Plane,
     vacation_unpaid: Plane,
+    other_paid: CircleEllipsis,
+    other_unpaid: CircleEllipsis,
   } satisfies Record<LeaveKind, typeof Palmtree>;
 
   // All class strings are spelled out so Tailwind's JIT picks them up. Paid
@@ -1238,6 +1278,20 @@
       button:
         'border-dashed border-sky-500/50 bg-sky-500/5 text-sky-700 hover:bg-sky-500/15 dark:text-sky-400',
       activeButton: 'bg-sky-500/15 ring-2 ring-inset ring-sky-500/50',
+    },
+    other_paid: {
+      badge: 'bg-slate-500/15 text-slate-700 dark:text-slate-300',
+      row: 'bg-slate-500/10 hover:bg-slate-500/20! ring-1 ring-inset ring-slate-500/30',
+      button: 'border-slate-500/40 bg-slate-500/10 text-slate-700 hover:bg-slate-500/20 dark:text-slate-400',
+      activeButton: 'bg-slate-500/25 ring-2 ring-inset ring-slate-500/60',
+    },
+    other_unpaid: {
+      badge:
+        'bg-slate-500/10 text-slate-700 border border-dashed border-slate-500/60 dark:text-slate-300',
+      row: 'bg-slate-500/5 hover:bg-slate-500/15! ring-1 ring-inset ring-slate-500/25',
+      button:
+        'border-dashed border-slate-500/50 bg-slate-500/5 text-slate-700 hover:bg-slate-500/15 dark:text-slate-400',
+      activeButton: 'bg-slate-500/15 ring-2 ring-inset ring-slate-500/50',
     },
   };
 
@@ -1663,19 +1717,37 @@
               <div class="flex flex-col gap-2 p-2.5 lg:contents">
                 {#if isLeave}
                   {@const meta = LEAVE_META[leaveKind]}
+                  {@const isOther = isOtherKind(leaveKind)}
                   <input type="hidden" name="leave-{i}" value={leaveKind} />
                   <div
                     class="flex min-h-8 items-center justify-center rounded-md px-2 font-mono text-xs font-medium uppercase tracking-wider lg:h-8 lg:w-40 lg:shrink-0 {KIND_CLASSES[leaveKind].badge}"
                   >
-                    {meta.short} · {meta.paid ? '8.00h paid' : 'unpaid'}
+                    <span class="min-w-0 truncate">{leaveBadgeOf(leaveKind, otherLabels.get(i))}</span>
+                    <span class="shrink-0">&nbsp;· {meta.paid ? '8.00h paid' : 'unpaid'}</span>
                   </div>
-                  <Input
-                    type="text"
-                    name="note-{i}"
-                    placeholder="Reason (optional)"
-                    aria-label="Leave note for {weekdayShort(date)}"
-                    class="lg:flex-1"
-                  />
+                  {#if isOther}
+                    <!-- On the catch-all kinds the row's one text field names the
+                         day rather than annotating it: it drives the badge. -->
+                    <Input
+                      type="text"
+                      name="kindLabel-{i}"
+                      maxlength={KIND_LABEL_MAX}
+                      bind:value={
+                        () => otherLabels.get(i) ?? '', (v) => setOtherLabel(i, v)
+                      }
+                      placeholder="What was it? (e.g. Jury duty)"
+                      aria-label="Label for {weekdayShort(date)}"
+                      class="lg:flex-1"
+                    />
+                  {:else}
+                    <Input
+                      type="text"
+                      name="note-{i}"
+                      placeholder="Reason (optional)"
+                      aria-label="Leave note for {weekdayShort(date)}"
+                      class="lg:flex-1"
+                    />
+                  {/if}
                 {:else}
                   {#if subShifts[i].length > 0}
                     <span
@@ -2298,7 +2370,7 @@
                       class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide {KIND_CLASSES[entryLeave].badge}"
                       title={meta.label}
                     >
-                      <Icon class="size-3" /> {meta.short}{meta.paid ? '' : ' (Unpaid)'}
+                      <Icon class="size-3" /> {leaveBadgeOf(entryLeave, entry.kindLabel)}{meta.paid ? '' : ' (Unpaid)'}
                     </span>
                   {/if}
                 </Table.Cell>
@@ -2441,7 +2513,7 @@
                         class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide {KIND_CLASSES[entryLeave].badge}"
                         title={meta.label}
                       >
-                        <Icon class="size-3" /> {meta.short}{meta.paid ? '' : ' (Unpaid)'}
+                        <Icon class="size-3" /> {leaveBadgeOf(entryLeave, entry.kindLabel)}{meta.paid ? '' : ' (Unpaid)'}
                       </span>
                     {/if}
                   </div>
@@ -2601,6 +2673,25 @@
             </div>
           </div>
         </div>
+
+        {#if editKind !== 'work' && isOtherKind(editKind)}
+          <div class="flex flex-col gap-1.5">
+            <Label for="edit-kind-label">Label</Label>
+            <Input
+              id="edit-kind-label"
+              name="kindLabel"
+              maxlength={KIND_LABEL_MAX}
+              bind:value={editKindLabel}
+              placeholder="What was it? (e.g. Jury duty)"
+              aria-invalid={dialogErrors.kindLabel ? 'true' : undefined}
+            />
+            {#if dialogErrors.kindLabel}
+              <p class="text-xs text-destructive">{dialogErrors.kindLabel}</p>
+            {:else}
+              <p class="text-xs text-muted-foreground">Shown on the badge. Left blank it reads “Other”.</p>
+            {/if}
+          </div>
+        {/if}
 
         {#if editKind === 'work'}
           <div class="inline-flex w-fit rounded-md border border-input p-0.5 text-sm">
