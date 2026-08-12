@@ -19,7 +19,7 @@
   import Thermometer from '@lucide/svelte/icons/thermometer';
   import Upload from '@lucide/svelte/icons/upload';
   import X from '@lucide/svelte/icons/x';
-  import { untrack } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { innerWidth } from 'svelte/reactivity/window';
   import { slide } from 'svelte/transition';
   import { deserialize, enhance } from '$app/forms';
@@ -639,7 +639,7 @@
   $effect(() => {
     const id = requestAnimationFrame(() => {
       gridReady = true;
-      seedGrid();
+      void seedGrid();
     });
     return () => cancelAnimationFrame(id);
   });
@@ -937,7 +937,7 @@
 
   // Populate the (uncontrolled) main rows + (controlled) sub-shifts from saved
   // entries for the visible week, recording ids so blur-saves become updates.
-  function seedGrid(): void {
+  async function seedGrid(): Promise<void> {
     const byDate = new Map<string, TimeEntry[]>();
     for (const e of data.entries) {
       const list = byDate.get(e.date) ?? [];
@@ -949,11 +949,17 @@
     const nextRowMeta: RowSave[] = Array.from({ length: 7 }, emptyMeta);
     const nextLeave = new Map<number, LeaveKind>();
 
+    // Main-row cell writes are collected, not applied: a row that renders as
+    // leave has no start/end/hours/break inputs at all, so writing before
+    // `leaveRows` is updated (and the DOM re-rendered) would silently no-op —
+    // blanking every work row that happened to be a leave row in the week we
+    // just navigated away from.
+    const cellWrites = new Map<string, string>();
+
     weekRowDates.forEach((date, i) => {
       const dayEntries = (byDate.get(date) ?? []).slice().sort((a, b) => (a.startTime ?? '').localeCompare(b.startTime ?? ''));
       const setVal = (name: string, v: string) => {
-        const el = inputByName(name);
-        if (el) el.value = v;
+        cellWrites.set(name, v);
       };
       // Reset main-row inputs for this offset first.
       setVal(`start-${i}`, '');
@@ -1006,6 +1012,12 @@
     subMeta = nextSubMeta;
     rowMeta = nextRowMeta;
     leaveRows = nextLeave;
+    // Let the rows re-render for the new leave/work shape, then fill the cells.
+    await tick();
+    for (const [name, value] of cellWrites) {
+      const el = inputByName(name);
+      if (el) el.value = value;
+    }
     recomputeWeekTotals();
   }
 
@@ -1018,7 +1030,7 @@
   // independently.
   $effect(() => {
     void weekStart;
-    if (gridReady) untrack(() => seedGrid());
+    if (gridReady) untrack(() => void seedGrid());
   });
 
   // Per-row computed Worked totals, read from the DOM (the grid is deliberately
