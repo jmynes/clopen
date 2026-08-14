@@ -903,6 +903,10 @@
     meta.error = '';
     const action = meta.id ? 'update' : 'add';
     if (meta.id) form.set('id', meta.id);
+    // An extra shift is by definition a second entry on a day that already has
+    // one, so a bare `add` always comes back 409. "Keep both" is exactly what
+    // this row means — say so rather than tripping the conflict flow.
+    else form.set('conflictStrategy', 'append');
     const out = isDemo ? await runDemoAction(action, form) : await postAction(action, form);
     if (out.ok) {
       if (!meta.id && Array.isArray(out.data.ids) && typeof out.data.ids[0] === 'string') meta.id = out.data.ids[0];

@@ -110,17 +110,11 @@ describe('addAction — returns ids', () => {
 });
 
 describe('addAction — leave with an "other" kind', () => {
-  function form(fields: Record<string, string>): FormData {
-    const fd = new FormData();
-    for (const [k, v] of Object.entries(fields)) fd.set(k, v);
-    return fd;
-  }
-
   it('carries the typed label from the form through to the row', async () => {
     const { repo, rows } = memRepo();
     const out = await addAction(
       repo,
-      form({ date: '2026-06-23', mode: 'leave', kind: 'other_paid', kindLabel: '  Jury duty  ' }),
+      fd({ date: '2026-06-23', mode: 'leave', kind: 'other_paid', kindLabel: '  Jury duty  ' }),
     );
     expect(out.ok).toBe(true);
     expect(rows[0].entryKind).toBe('other_paid');
@@ -129,7 +123,7 @@ describe('addAction — leave with an "other" kind', () => {
 
   it('scrubs a label posted alongside a named kind', async () => {
     const { repo, rows } = memRepo();
-    await addAction(repo, form({ date: '2026-06-23', mode: 'leave', kind: 'sick_paid', kindLabel: 'Jury duty' }));
+    await addAction(repo, fd({ date: '2026-06-23', mode: 'leave', kind: 'sick_paid', kindLabel: 'Jury duty' }));
     expect(rows[0].kindLabel).toBe(null);
   });
 
@@ -137,7 +131,7 @@ describe('addAction — leave with an "other" kind', () => {
     const { repo, rows } = memRepo();
     const out = await addAction(
       repo,
-      form({ date: '2026-06-23', mode: 'leave', kind: 'other_paid', kindLabel: 'x'.repeat(41) }),
+      fd({ date: '2026-06-23', mode: 'leave', kind: 'other_paid', kindLabel: 'x'.repeat(41) }),
     );
     expect(out.ok).toBe(false);
     if (!out.ok) expect(out.status).toBe(400);
@@ -146,11 +140,34 @@ describe('addAction — leave with an "other" kind', () => {
 
   it('keeps the label on update', async () => {
     const { repo, rows } = memRepo();
-    await addAction(repo, form({ date: '2026-06-23', mode: 'leave', kind: 'other_unpaid', kindLabel: 'Moving day' }));
+    await addAction(repo, fd({ date: '2026-06-23', mode: 'leave', kind: 'other_unpaid', kindLabel: 'Moving day' }));
     await updateAction(
       repo,
-      form({ id: rows[0].id, date: '2026-06-23', mode: 'leave', kind: 'other_unpaid', kindLabel: 'Moving house' }),
+      fd({ id: rows[0].id, date: '2026-06-23', mode: 'leave', kind: 'other_unpaid', kindLabel: 'Moving house' }),
     );
     expect(rows[0].kindLabel).toBe('Moving house');
+  });
+});
+
+describe('addAction — extra shifts on an already-logged day', () => {
+  const first = { date: '2026-06-23', mode: 'clock', startTime: '09:00', endTime: '17:00' };
+  const second = { date: '2026-06-23', mode: 'clock', startTime: '19:00', endTime: '21:00' };
+
+  it('conflicts without a strategy — the grid must not add blind', async () => {
+    const { repo, rows } = memRepo();
+    await addAction(repo, fd(first));
+    const out = await addAction(repo, fd(second));
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.status).toBe(409);
+    expect(rows).toHaveLength(1);
+  });
+
+  it('keeps both when the caller asks to append', async () => {
+    const { repo, rows } = memRepo();
+    await addAction(repo, fd(first));
+    const out = await addAction(repo, fd({ ...second, conflictStrategy: 'append' }));
+    expect(out.ok).toBe(true);
+    expect(rows).toHaveLength(2);
+    expect(rows.map((r) => r.startTime)).toEqual(['09:00', '19:00']);
   });
 });
