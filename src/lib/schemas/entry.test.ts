@@ -26,9 +26,47 @@ describe('openEntryInput', () => {
     expect(blank.success && blank.data.note).toBe(null);
   });
 
-  it('rejects a missing/unparseable start time', () => {
-    expect(openEntryInput.safeParse({ date: '2026-06-23', startTime: '' }).success).toBe(false);
+  it('keeps a break typed before the clock-out arrives', () => {
+    const parsed = openEntryInput.safeParse({ date: '2026-06-23', startTime: '09:00', breakHours: '0.5' });
+    expect(parsed.success && parsed.data.breakHours).toBe(0.5);
+    expect(parsed.success && parsed.data.hours).toBe(0);
+  });
+
+  it('parses a departure with no arrival into an open entry', () => {
+    const parsed = openEntryInput.safeParse({ date: '2026-06-23', endTime: '5pm' });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data).toEqual({
+        date: '2026-06-23',
+        hours: 0,
+        breakHours: 0,
+        note: null,
+        startTime: null,
+        endTime: '17:00',
+        entryKind: 'work',
+        kindLabel: null,
+      });
+    }
+  });
+
+  it('parses a lone break into an open entry with no punches', () => {
+    const parsed = openEntryInput.safeParse({ date: '2026-06-23', breakHours: '0.5' });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data).toMatchObject({ hours: 0, breakHours: 0.5, startTime: null, endTime: null });
+    }
+  });
+
+  it('rejects an unparseable time', () => {
     expect(openEntryInput.safeParse({ date: '2026-06-23', startTime: 'nope' }).success).toBe(false);
+    expect(openEntryInput.safeParse({ date: '2026-06-23', endTime: 'nope' }).success).toBe(false);
+  });
+
+  it('rejects a row with nothing in it at all', () => {
+    expect(openEntryInput.safeParse({ date: '2026-06-23' }).success).toBe(false);
+    expect(openEntryInput.safeParse({ date: '2026-06-23', startTime: '', endTime: '', breakHours: '0' }).success).toBe(
+      false,
+    );
   });
 
   it('rejects a bad date', () => {

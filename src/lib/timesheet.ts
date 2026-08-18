@@ -151,26 +151,44 @@ export function hoursBetween(start: string, end: string): number {
   return round2((diff < 0 ? diff + 24 * 60 : diff) / 60);
 }
 
+/**
+ * Net worked hours for one entry: gross minus its break, floored at 0. The
+ * floor matters for open (arrival-only) rows — they carry 0 hours but may
+ * already hold the break the user typed, and a break must never subtract
+ * credit from the rest of the week.
+ */
+export function netHours(e: { hours: number; breakHours?: number }): number {
+  return Math.max(0, e.hours - (e.breakHours ?? 0));
+}
+
 export function loggedHours(entries: EntryLike[]): number {
-  return round2(entries.reduce((sum, e) => sum + e.hours - (e.breakHours ?? 0), 0));
+  return round2(entries.reduce((sum, e) => sum + netHours(e), 0));
 }
 
 /**
- * An entry is "open" — a started-but-unfinished shift — when it has a clock-in
- * but no clock-out. Open rows carry 0 hours and never grant credit.
+ * An entry is "open" — a started-but-unfinished shift — when it's a work row
+ * that carries no worked hours yet: an arrival without a departure, a
+ * departure without an arrival, or just a break jotted down before either
+ * punch. Open rows never grant credit (a completed shift always has both
+ * times and positive hours; unpaid leave is 0h but isn't work).
  */
-export function isOpenEntry(e: { startTime: string | null; endTime: string | null }): boolean {
-  return e.startTime !== null && e.endTime === null;
+export function isOpenEntry(e: {
+  hours: number;
+  startTime: string | null;
+  endTime: string | null;
+  entryKind: string;
+}): boolean {
+  return e.entryKind === 'work' && e.hours === 0 && !(e.startTime !== null && e.endTime !== null);
 }
 
 /**
  * Whether today's baseline should count toward "expected so far". It counts once
  * today has a completed entry — for a clock shift, both times filled; an
- * hours-mode or leave entry is inherently complete. An arrival-only open row
- * keeps today excluded, so an in-progress day never reads as a deficit.
+ * hours-mode or leave entry is inherently complete. An open row (a lone punch
+ * or break) keeps today excluded, so an in-progress day never reads as a deficit.
  */
 export function todayBaselineCounts(
-  entries: { date: string; startTime: string | null; endTime: string | null }[],
+  entries: { date: string; hours: number; startTime: string | null; endTime: string | null; entryKind: string }[],
   today: string,
 ): boolean {
   return entries.some((e) => e.date === today && !isOpenEntry(e));
@@ -184,7 +202,7 @@ export function todayBaselineCounts(
 export function overtimeHours(entries: EntryLike[], dailyHours: number): number {
   const byDay = new Map<string, number>();
   for (const e of entries) {
-    byDay.set(e.date, (byDay.get(e.date) ?? 0) + e.hours - (e.breakHours ?? 0));
+    byDay.set(e.date, (byDay.get(e.date) ?? 0) + netHours(e));
   }
   let ot = 0;
   for (const net of byDay.values()) ot += Math.max(0, net - dailyHours);

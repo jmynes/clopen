@@ -51,7 +51,7 @@
     type LeaveKind,
     leaveBadgeOf,
   } from '$lib/leave-kinds';
-  import { addDays, hoursBetween, parseTimeInput, weekDates } from '$lib/timesheet';
+  import { addDays, hoursBetween, isOpenEntry, netHours, parseTimeInput, weekDates } from '$lib/timesheet';
   import type { ActionData, PageData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -110,7 +110,7 @@
   // Per-day totals of *net* worked hours (after breaks) drive the overtime badge.
   const dayTotals = $derived(
     data.entries.reduce<Record<string, number>>((acc, e) => {
-      acc[e.date] = (acc[e.date] ?? 0) + e.hours - e.breakHours;
+      acc[e.date] = (acc[e.date] ?? 0) + netHours(e);
       return acc;
     }, {}),
   );
@@ -366,7 +366,9 @@
     creatingDate = null;
     editKind = entry.entryKind as 'work' | LeaveKind;
     editKindLabel = entry.kindLabel ?? '';
-    editMode = entry.startTime && entry.endTime ? 'clock' : 'hours';
+    // An open row (one punch, or none but a break) edits in clock mode — the
+    // dialog is where the missing half gets filled in.
+    editMode = entry.startTime || entry.endTime || isOpenEntry(entry) ? 'clock' : 'hours';
     editOpen = true;
   }
 
@@ -553,7 +555,7 @@
     let worked = 0;
     let breakHrs = 0;
     for (const e of pagedEntries) {
-      worked += e.hours - e.breakHours;
+      worked += netHours(e);
       breakHrs += e.breakHours;
     }
     return { worked, breakHrs };
@@ -599,7 +601,7 @@
       const dayEntries = byDate.get(date);
       if (dayEntries && dayEntries.length > 0) {
         if (dayEntries.length > 1) {
-          const worked = dayEntries.reduce((s, e) => s + e.hours - e.breakHours, 0);
+          const worked = dayEntries.reduce((s, e) => s + netHours(e), 0);
           const breakHrs = dayEntries.reduce((s, e) => s + e.breakHours, 0);
           const expanded = expandedDays.has(date);
           rows.push({ kind: 'daytotal', date, dayIdx, shifts: dayEntries.length, worked, breakHrs, expanded });
@@ -741,7 +743,7 @@
 
   // Read a main row's typed values from the uncontrolled inputs (same source as
   // recomputeWeekTotals) and decide what to persist.
-  function buildRow(i: number): { mode: 'leave' | 'clock' | 'open' | 'hours'; form: FormData } | 'empty' | 'partial' {
+  function buildRow(i: number): { mode: 'leave' | 'clock' | 'open' | 'hours'; form: FormData } | 'empty' {
     const date = weekRowDates[i];
     const leave = String(inputByName(`leave-${i}`)?.value ?? '');
     const note = inputByName(`note-${i}`)?.value ?? '';
@@ -765,22 +767,23 @@
     const endParsed = parseTimeInput(inputByName(`end-${i}`)?.value ?? '');
     const hours = inputByName(`hours-${i}`)?.value ?? '';
 
-    switch (classifyGridRow({ mode: weekMode, leave, startParsed, endParsed, hours })) {
+    switch (classifyGridRow({ mode: weekMode, leave, startParsed, endParsed, hours, brk })) {
       case 'clock':
         form.set('mode', 'clock');
         if (startParsed) form.set('startTime', startParsed);
         if (endParsed) form.set('endTime', endParsed);
         return { mode: 'clock', form };
       case 'open':
+        // Whichever half exists — an in, an out, or just the break already on
+        // the form — goes up; the row lands in the Ledger as "In progress".
         form.set('mode', 'open');
         if (startParsed) form.set('startTime', startParsed);
+        if (endParsed) form.set('endTime', endParsed);
         return { mode: 'open', form };
       case 'hours':
         form.set('mode', 'hours');
         form.set('hours', hours.trim());
         return { mode: 'hours', form };
-      case 'partial':
-        return 'partial'; // end without start — wait for more input
       default:
         return 'empty';
     }
@@ -789,11 +792,6 @@
   async function doSaveRow(i: number): Promise<void> {
     const meta = rowMeta[i];
     const built = buildRow(i);
-    if (built === 'partial') {
-      meta.save = 'idle';
-      meta.error = '';
-      return;
-    }
     if (built === 'empty') {
       // Cleared a row. Auto-delete a throwaway open row, or a leave entry whose
       // type was just switched back to Work (a deliberate change). A logged work
@@ -868,6 +866,7 @@
       startParsed,
       endParsed,
       hours: shift.hours,
+      brk: shift.brk,
     });
     let mode: 'clock' | 'open' | 'hours';
     switch (kind) {
@@ -879,12 +878,13 @@
       case 'open':
         mode = 'open';
         if (startParsed) form.set('startTime', startParsed);
+        if (endParsed) form.set('endTime', endParsed);
         break;
       case 'hours':
         mode = 'hours';
         form.set('hours', shift.hours.trim());
         break;
-      case 'empty':
+      default:
         // Cleared sub-shift: auto-delete only a throwaway open row.
         if (meta.id && meta.wasOpen) {
           await deleteSubShiftEntry(i, j);
@@ -893,10 +893,6 @@
           meta.error = '';
         }
         return;
-      default:
-        meta.save = 'idle';
-        meta.error = '';
-        return; // partial — end without start
     }
     form.set('mode', mode);
     meta.save = 'saving';
@@ -994,7 +990,7 @@
       if (main) {
         nextRowMeta[i] = {
           id: main.id,
-          wasOpen: main.startTime !== null && main.endTime === null,
+          wasOpen: isOpenEntry(main),
           wasLeave: main.entryKind !== 'work',
           save: 'saved',
           error: '',
@@ -1004,10 +1000,11 @@
           // leave-{i} input is bound to leaveRows, so buildRow reads it too).
           nextLeave.set(i, main.entryKind);
           if (isOtherKind(main.entryKind)) nextOtherLabels.set(i, main.kindLabel ?? '');
-        } else if (main.startTime) {
-          setVal(`start-${i}`, formatTime(main.startTime, data.timeFormat));
+        } else if (main.startTime || main.endTime) {
+          // Either punch alone still belongs in the time cells (an open row).
+          if (main.startTime) setVal(`start-${i}`, formatTime(main.startTime, data.timeFormat));
           if (main.endTime) setVal(`end-${i}`, formatTime(main.endTime, data.timeFormat));
-        } else {
+        } else if (main.hours > 0) {
           setVal(`hours-${i}`, String(main.hours));
         }
         if (main.breakHours > 0) setVal(`break-${i}`, String(main.breakHours));
@@ -1017,13 +1014,13 @@
         nextSub[i].push({
           start: e.startTime ? formatTime(e.startTime, data.timeFormat) : '',
           end: e.endTime ? formatTime(e.endTime, data.timeFormat) : '',
-          hours: e.startTime ? '' : String(e.hours),
+          hours: e.startTime || e.endTime || e.hours === 0 ? '' : String(e.hours),
           brk: e.breakHours > 0 ? String(e.breakHours) : '',
           note: e.note ?? '',
         });
         nextSubMeta[i].push({
           id: e.id,
-          wasOpen: e.startTime !== null && e.endTime === null,
+          wasOpen: isOpenEntry(e),
           wasLeave: false,
           save: 'saved',
           error: '',
@@ -1088,7 +1085,9 @@
         if (h) net = Math.max(0, h - brk);
       }
       nets.push(net);
-      breaks.push(net === null ? 0 : brk);
+      // An open row has no Worked total yet, but any break typed on it is real
+      // and saved — count it so the footer matches the Ledger.
+      breaks.push(brk);
     });
     weekTotals = nets;
     weekBreaks = breaks;
@@ -2348,13 +2347,17 @@
                   {entry.breakHours > 0 ? hrs(entry.breakHours) : '—'}
                 </Table.Cell>
                 <Table.Cell class="text-right font-mono tabular-nums">
-                  {entry.startTime && !entry.endTime ? '—' : hrs(entry.hours - entry.breakHours)}
+                  {isOpenEntry(entry) ? '—' : hrs(netHours(entry))}
                 </Table.Cell>
                 <Table.Cell class="text-center">
-                  {#if entry.entryKind === 'work' && entry.startTime && !entry.endTime}
+                  {#if isOpenEntry(entry)}
                     <span
                       class="inline-flex items-center rounded-md border border-dashed border-amber-500/60 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400"
-                      title="Shift in progress — add a clock-out to finish it"
+                      title={entry.startTime
+                        ? 'Shift in progress — add a clock-out to finish it'
+                        : entry.endTime
+                          ? 'Shift in progress — add a clock-in to finish it'
+                          : 'Shift in progress — add clock times to finish it'}
                     >
                       In progress
                     </span>
@@ -2533,10 +2536,18 @@
                         <span class="ml-1 text-xs">· {hrs(entry.breakHours)} break</span>
                       {/if}
                     </div>
-                  {:else if entry.startTime && !entry.endTime}
+                  {:else if isOpenEntry(entry)}
                     <div class="font-mono text-sm tabular-nums text-amber-600 dark:text-amber-400">
-                      {@render clockTime(entry.startTime)}
-                      <span class="mx-0.5">→</span> … in progress
+                      {#if entry.startTime}
+                        {@render clockTime(entry.startTime)}<span class="mx-0.5">→</span> … in progress
+                      {:else if entry.endTime}
+                        … in progress <span class="mx-0.5">→</span>{@render clockTime(entry.endTime)}
+                      {:else}
+                        … in progress
+                      {/if}
+                      {#if entry.breakHours > 0}
+                        <span class="ml-1 text-xs">· {hrs(entry.breakHours)} break</span>
+                      {/if}
                     </div>
                   {:else if entry.breakHours > 0}
                     <div class="font-mono text-sm tabular-nums text-muted-foreground">{hrs(entry.breakHours)} break</div>
@@ -2544,7 +2555,7 @@
                 </div>
                 <div class="flex shrink-0 flex-col items-end gap-1">
                   <span class="font-mono text-sm font-medium tabular-nums">
-                    {entry.startTime && !entry.endTime ? '—' : hrs(entry.hours - entry.breakHours)}
+                    {isOpenEntry(entry) ? '—' : hrs(netHours(entry))}
                   </span>
                   <div class="flex gap-1">
                     {@render rowActions(entry)}
@@ -2841,7 +2852,7 @@
           {#if deleting.startTime && deleting.endTime}
             {formatTime(deleting.startTime, data.timeFormat)} → {formatTime(deleting.endTime, data.timeFormat)} ·
           {/if}
-          {hrs(deleting.hours - deleting.breakHours)} worked{#if deleting.note}
+          {hrs(netHours(deleting))} worked{#if deleting.note}
             <span class="ml-1">· {deleting.note}</span>
           {/if}
         </div>
@@ -3320,7 +3331,7 @@
     </div>
   {/if}
   <div class="font-mono text-sm tabular-nums text-muted-foreground">
-    {hrs(e.hours - e.breakHours)} worked{#if e.breakHours > 0}
+    {hrs(netHours(e))} worked{#if e.breakHours > 0}
       <span class="text-xs"> · {hrs(e.breakHours)} break</span>
     {/if}
   </div>

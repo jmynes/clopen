@@ -10,7 +10,7 @@ import { todayISO, zonedParts } from '$lib/date';
 import type { OpenShift, Settings, TimeEntry } from '$lib/db/schema';
 import type { EntryInput } from '$lib/schemas/entry';
 import { type ClockBreakMode, workdaysJson } from '$lib/schemas/settings';
-import { hoursBetween } from '$lib/timesheet';
+import { hoursBetween, netHours } from '$lib/timesheet';
 import type { ActionOutcome } from './log';
 import type { Repo } from './repo';
 
@@ -130,7 +130,7 @@ export async function resolveDiscard(repo: Repo): Promise<ActionOutcome> {
 export function computeClock(entries: TimeEntry[], row: Settings, openShift: OpenShift | null) {
   const today = todayISO();
   const todayEntries = entries.filter((e) => e.date === today);
-  const workedToday = round2(todayEntries.reduce((s, e) => s + e.hours - e.breakHours, 0));
+  const workedToday = round2(todayEntries.reduce((s, e) => s + netHours(e), 0));
   // ISO weekday of today (1 = Mon … 7 = Sun) for the day-off hint.
   const todayDow = new Date(`${today}T00:00:00Z`).getUTCDay() || 7;
   return {

@@ -1,7 +1,7 @@
 import { isLeaveKind } from '$lib/leave-kinds';
 
 /** Entry mode for a weekly-grid row, or a non-saving classification. */
-export type GridRowKind = 'leave' | 'clock' | 'open' | 'hours' | 'empty' | 'partial';
+export type GridRowKind = 'leave' | 'clock' | 'open' | 'hours' | 'empty';
 
 export type GridRowInputs = {
   /** The grid's current entry mode. */
@@ -14,22 +14,28 @@ export type GridRowInputs = {
   endParsed: string | null;
   /** Raw value of the hours cell (hours mode). */
   hours: string;
+  /** Raw value of the break cell. */
+  brk: string;
 };
 
 /**
  * Classify a weekly-grid row from its (already-parsed) field values:
  * - leave kind selected -> 'leave'
- * - clock mode: both times -> 'clock'; arrival only -> 'open'; neither -> 'empty';
- *   departure without arrival -> 'partial' (incomplete; don't save yet)
- * - hours mode: non-blank -> 'hours'; blank -> 'empty'
+ * - clock mode: both times -> 'clock'; one time alone -> 'open'
+ * - hours mode: non-blank hours -> 'hours'
+ * - anything else with a break typed -> 'open' (a break alone is a started day)
+ * - nothing at all -> 'empty'
+ *
+ * 'open' is the incomplete-but-real row: it saves, shows "In progress" in the
+ * Ledger, and carries 0 worked hours until the missing half arrives.
  */
 export function classifyGridRow(f: GridRowInputs): GridRowKind {
   if (isLeaveKind(f.leave)) return 'leave';
   if (f.mode === 'clock') {
-    if (!f.startParsed && !f.endParsed) return 'empty';
     if (f.startParsed && f.endParsed) return 'clock';
-    if (f.startParsed && !f.endParsed) return 'open';
-    return 'partial';
+    if (f.startParsed || f.endParsed) return 'open';
+  } else if (f.hours.trim()) {
+    return 'hours';
   }
-  return f.hours.trim() ? 'hours' : 'empty';
+  return f.brk.trim() ? 'open' : 'empty';
 }

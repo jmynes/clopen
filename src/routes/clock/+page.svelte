@@ -17,7 +17,7 @@
   import { effectiveZone, formatDay, formatTime, formatTimeRange, setAppTimeZone, zonedParts, zonedToMs } from '$lib/date';
   import type { TimeEntry } from '$lib/db/schema';
   import { isDemo } from '$lib/demo/flag';
-  import { parseTimeInput } from '$lib/timesheet';
+  import { netHours, parseTimeInput } from '$lib/timesheet';
   import type { ActionData, PageData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -156,8 +156,9 @@
     eBreak = String(entry.breakHours);
     eNote = entry.note ?? '';
   }
-  // Clock-mode edit when the shift has punch times; plain hours otherwise.
-  const editIsClock = $derived(!!(editingEntry?.startTime && editingEntry?.endTime));
+  // Clock-mode edit when the shift has (or is missing half of) its punch times;
+  // plain hours otherwise.
+  const editIsClock = $derived(!!(editingEntry?.startTime || editingEntry?.endTime));
   const editError = $derived.by(() => {
     if (!actionData || !('editFieldErrors' in actionData)) return null;
     const v = (actionData as Record<string, unknown>).editFieldErrors;
@@ -400,12 +401,21 @@
           {#each data.todayEntries as entry (entry.id)}
             <li class="flex items-center justify-between gap-3 py-1 font-mono tabular-nums">
               <span>
-                {entry.startTime && entry.endTime
-                  ? formatTimeRange(entry.startTime, entry.endTime, data.timeFormat)
-                  : '—'}
+                {#if entry.startTime && entry.endTime}
+                  {formatTimeRange(entry.startTime, entry.endTime, data.timeFormat)}
+                {:else}
+                  {@const punch = entry.startTime ?? entry.endTime}
+                  {#if punch}
+                    <span class="text-amber-600 dark:text-amber-400">
+                      {formatTime(punch, data.timeFormat)} · in progress
+                    </span>
+                  {:else}
+                    —
+                  {/if}
+                {/if}
               </span>
               <span class="flex items-center gap-1">
-                {hrs(entry.hours - entry.breakHours)}
+                {hrs(netHours(entry))}
                 <span class="-mr-2 ml-1 flex">
                   <Button
                     variant="ghost"
@@ -519,7 +529,7 @@
         <Dialog.Description>
           {deletingEntry.startTime && deletingEntry.endTime
             ? formatTimeRange(deletingEntry.startTime, deletingEntry.endTime, data.timeFormat)
-            : 'Untimed entry'} · {hrs(deletingEntry.hours - deletingEntry.breakHours)} worked. This can't be undone.
+            : 'Untimed entry'} · {hrs(netHours(deletingEntry))} worked. This can't be undone.
         </Dialog.Description>
       </Dialog.Header>
       <form

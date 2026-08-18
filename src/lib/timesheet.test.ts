@@ -189,6 +189,16 @@ describe('loggedHours', () => {
   it('treats a missing break as zero', () => {
     expect(loggedHours([{ date: '2026-01-05', hours: 8 }])).toBe(8);
   });
+
+  it("never lets an open row's break subtract credit (net floors at 0)", () => {
+    expect(loggedHours([{ date: '2026-01-05', hours: 0, breakHours: 0.5 }])).toBe(0);
+    expect(
+      loggedHours([
+        { date: '2026-01-05', hours: 8 },
+        { date: '2026-01-06', hours: 0, breakHours: 1 },
+      ]),
+    ).toBe(8);
+  });
 });
 
 describe('overtimeHours', () => {
@@ -199,6 +209,18 @@ describe('overtimeHours', () => {
 
   it('counts net hours beyond the daily baseline', () => {
     expect(overtimeHours([{ date: '2026-01-05', hours: 10 }], 8)).toBe(2);
+  });
+
+  it("ignores an open row's break when totalling a day", () => {
+    expect(
+      overtimeHours(
+        [
+          { date: '2026-01-05', hours: 10 },
+          { date: '2026-01-05', hours: 0, breakHours: 1 },
+        ],
+        8,
+      ),
+    ).toBe(2);
   });
 
   it('deducts breaks before comparing to the baseline', () => {
@@ -538,41 +560,62 @@ describe('bucketBreakdown · biweek', () => {
 
 describe('isOpenEntry / todayBaselineCounts', () => {
   const T = '2026-06-23';
+  const work = { hours: 0, entryKind: 'work' as const };
 
   it('treats an arrival with no departure as open', () => {
-    expect(isOpenEntry({ startTime: '09:00', endTime: null })).toBe(true);
+    expect(isOpenEntry({ ...work, startTime: '09:00', endTime: null })).toBe(true);
+  });
+  it('treats a departure with no arrival as open', () => {
+    expect(isOpenEntry({ ...work, startTime: null, endTime: '17:00' })).toBe(true);
+  });
+  it('treats a 0h work row with neither punch (a lone break) as open', () => {
+    expect(isOpenEntry({ ...work, startTime: null, endTime: null })).toBe(true);
   });
   it('a completed clock shift is not open', () => {
-    expect(isOpenEntry({ startTime: '09:00', endTime: '17:00' })).toBe(false);
+    expect(isOpenEntry({ ...work, hours: 8, startTime: '09:00', endTime: '17:00' })).toBe(false);
   });
-  it('an hours-mode / leave entry (no times) is not open', () => {
-    expect(isOpenEntry({ startTime: null, endTime: null })).toBe(false);
+  it('an hours-mode entry is not open', () => {
+    expect(isOpenEntry({ ...work, hours: 8, startTime: null, endTime: null })).toBe(false);
+  });
+  it('unpaid leave (0h, no times) is not open', () => {
+    expect(isOpenEntry({ hours: 0, entryKind: 'sick_unpaid', startTime: null, endTime: null })).toBe(false);
   });
 
   it("today doesn't count with no entries", () => {
     expect(todayBaselineCounts([], T)).toBe(false);
   });
   it("today doesn't count when its only row is open", () => {
-    expect(todayBaselineCounts([{ date: T, startTime: '09:00', endTime: null }], T)).toBe(false);
+    expect(todayBaselineCounts([{ date: T, hours: 0, entryKind: 'work', startTime: '09:00', endTime: null }], T)).toBe(
+      false,
+    );
   });
   it('today counts once a shift is completed', () => {
-    expect(todayBaselineCounts([{ date: T, startTime: '09:00', endTime: '17:00' }], T)).toBe(true);
+    expect(
+      todayBaselineCounts([{ date: T, hours: 8, entryKind: 'work', startTime: '09:00', endTime: '17:00' }], T),
+    ).toBe(true);
   });
   it('today counts for an hours-mode entry', () => {
-    expect(todayBaselineCounts([{ date: T, startTime: null, endTime: null }], T)).toBe(true);
+    expect(todayBaselineCounts([{ date: T, hours: 8, entryKind: 'work', startTime: null, endTime: null }], T)).toBe(
+      true,
+    );
   });
   it('counts when any of several shifts is complete', () => {
     expect(
       todayBaselineCounts(
         [
-          { date: T, startTime: '09:00', endTime: '11:00' },
-          { date: T, startTime: '13:00', endTime: null },
+          { date: T, hours: 2, entryKind: 'work', startTime: '09:00', endTime: '11:00' },
+          { date: T, hours: 0, entryKind: 'work', startTime: '13:00', endTime: null },
         ],
         T,
       ),
     ).toBe(true);
   });
   it('ignores other days', () => {
-    expect(todayBaselineCounts([{ date: '2026-06-22', startTime: '09:00', endTime: '17:00' }], T)).toBe(false);
+    expect(
+      todayBaselineCounts(
+        [{ date: '2026-06-22', hours: 8, entryKind: 'work', startTime: '09:00', endTime: '17:00' }],
+        T,
+      ),
+    ).toBe(false);
   });
 });

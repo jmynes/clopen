@@ -92,7 +92,39 @@ describe('addAction — open mode', () => {
     expect(rows[0]).toMatchObject({ startTime: '09:00', endTime: '17:00', hours: 8 });
   });
 
-  it('rejects an open row with no start time', async () => {
+  it('persists a break typed on an open row', async () => {
+    const { repo, rows } = memRepo();
+    const out = await addAction(repo, fd({ mode: 'open', date: '2026-06-23', startTime: '09:00', breakHours: '0.5' }));
+    expect(out.ok).toBe(true);
+    expect(rows[0]).toMatchObject({ startTime: '09:00', endTime: null, hours: 0, breakHours: 0.5 });
+  });
+
+  it('adds a clock-out with no clock-in as an open row', async () => {
+    const { repo, rows } = memRepo();
+    const out = await addAction(repo, fd({ mode: 'open', date: '2026-06-23', endTime: '5pm' }));
+    expect(out.ok).toBe(true);
+    expect(rows[0]).toMatchObject({ startTime: null, endTime: '17:00', hours: 0, entryKind: 'work' });
+  });
+
+  it('adds a lone break as an open row', async () => {
+    const { repo, rows } = memRepo();
+    const out = await addAction(repo, fd({ mode: 'open', date: '2026-06-23', breakHours: '0.5' }));
+    expect(out.ok).toBe(true);
+    expect(rows[0]).toMatchObject({ startTime: null, endTime: null, hours: 0, breakHours: 0.5 });
+  });
+
+  it('completes an out-only row once the clock-in arrives', async () => {
+    const { repo, rows } = memRepo();
+    await addAction(repo, fd({ mode: 'open', date: '2026-06-23', endTime: '17:00' }));
+    const out = await updateAction(
+      repo,
+      fd({ id: 'e1', mode: 'clock', date: '2026-06-23', startTime: '09:00', endTime: '17:00' }),
+    );
+    expect(out.ok).toBe(true);
+    expect(rows[0]).toMatchObject({ startTime: '09:00', endTime: '17:00', hours: 8 });
+  });
+
+  it('rejects an open row with nothing in it', async () => {
     const { repo, rows } = memRepo();
     const out = await addAction(repo, fd({ mode: 'open', date: '2026-06-23', startTime: '' }));
     expect(out.ok).toBe(false);

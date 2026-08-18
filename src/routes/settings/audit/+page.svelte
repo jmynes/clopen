@@ -6,6 +6,7 @@
   import type { EntryEvent, Expense, ExpenseEvent, TimeEntry } from '$lib/db/schema';
   import { EXPENSE_META, MEAL_METHOD_LABELS, RIDE_DIRECTION_LABELS, VENDOR_LABELS } from '$lib/expense-kinds';
   import { isOtherKind, LEAVE_META } from '$lib/leave-kinds';
+  import { netHours } from '$lib/timesheet';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -34,7 +35,7 @@
       return label ? `${label} (${meta.paid ? 'paid' : 'unpaid'})` : meta.label;
     }
     if (s.startTime && s.endTime) return formatTimeRange(s.startTime, s.endTime, data.timeFormat);
-    return `${(s.hours - s.breakHours).toFixed(2)}h`;
+    return `${netHours(s).toFixed(2)}h`;
   }
 
   const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });

@@ -14,6 +14,22 @@ const clockTime = z.string().transform((v, ctx) => {
   return parsed;
 });
 
+// Open mode's punches: blank/absent is a legitimate "not yet", anything else
+// must parse. Normalizes to HH:MM or null.
+const optionalClockTime = z
+  .string()
+  .optional()
+  .transform((v, ctx) => {
+    const raw = (v ?? '').trim();
+    if (!raw) return null;
+    const parsed = parseTimeInput(raw);
+    if (parsed === null) {
+      ctx.addIssue({ code: 'custom', message: 'Enter a time like 2:30pm' });
+      return z.NEVER;
+    }
+    return parsed;
+  });
+
 /** Canonical persisted shape. Every input mode (hours / clock / leave) produces this. */
 export type EntryInput = {
   date: string;
@@ -128,24 +144,35 @@ export const clockEntryInput = z
   );
 
 /**
- * Open mode: an arrival with no departure yet — a started, unfinished shift.
- * Records the clock-in, 0 worked hours, and no break (a break needs a span;
- * it's captured when the out is filled and the row becomes a clock entry).
+ * Open mode: a started but unfinished shift — an arrival with no departure, a
+ * departure with no arrival, or just a break noted before either punch. Any one
+ * of the three is enough to make a row; a row with none of them isn't an entry.
+ * Worked hours stay 0 until both punches exist (then it's a clock entry).
+ *
+ * The break is kept as typed — it can't be validated against a span that
+ * doesn't exist yet, and `netHours` floors the entry's credit at 0 so it never
+ * subtracts. The clock schema re-checks it once the shift is completed.
  */
 export const openEntryInput = z
   .object({
     date,
-    startTime: clockTime,
+    startTime: optionalClockTime,
+    endTime: optionalClockTime,
+    breakHours,
     note,
+  })
+  .refine((v) => v.startTime !== null || v.endTime !== null || v.breakHours > 0, {
+    error: 'Enter a clock in, a clock out, or a break',
+    path: ['startTime'],
   })
   .transform(
     (v): EntryInput => ({
       date: v.date,
       hours: 0,
-      breakHours: 0,
+      breakHours: v.breakHours,
       note: v.note,
       startTime: v.startTime,
-      endTime: null,
+      endTime: v.endTime,
       entryKind: 'work',
       kindLabel: null,
     }),

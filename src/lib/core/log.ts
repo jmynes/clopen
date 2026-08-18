@@ -44,10 +44,14 @@ function parseEntry(form: FormData, dailyHours = 8) {
     const kindLabel = form.get('kindLabel') ?? undefined;
     return leaveEntryInput.safeParse({ date, note, kind, kindLabel, dailyHours });
   }
-  if (mode === 'open') {
-    return openEntryInput.safeParse({ date, startTime: form.get('startTime'), note });
-  }
   const common = { date, breakHours: form.get('breakHours') || undefined, note };
+  if (mode === 'open') {
+    return openEntryInput.safeParse({
+      ...common,
+      startTime: form.get('startTime') ?? undefined,
+      endTime: form.get('endTime') ?? undefined,
+    });
+  }
   if (mode === 'clock') {
     return clockEntryInput.safeParse({ ...common, startTime: form.get('startTime'), endTime: form.get('endTime') });
   }
