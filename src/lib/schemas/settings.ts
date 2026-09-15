@@ -15,6 +15,15 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 export const LEDGER_PERIODS = ['week', 'biweek', 'month', 'quarter', 'year'] as const;
 export type LedgerPeriod = (typeof LEDGER_PERIODS)[number];
 
+/** Nouns for the period buckets, for prose like "This bi-week" / "in this month". */
+export const PERIOD_NOUNS: Record<LedgerPeriod, string> = {
+  week: 'week',
+  biweek: 'bi-week',
+  month: 'month',
+  quarter: 'quarter',
+  year: 'year',
+};
+
 export const CLOCK_BREAK_MODES = ['accrue', 'split'] as const;
 export type ClockBreakMode = (typeof CLOCK_BREAK_MODES)[number];
 

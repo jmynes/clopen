@@ -34,6 +34,7 @@
   import type { SavingsGoal } from '$lib/db/schema';
   import { isDemo } from '$lib/demo/flag';
   import { allocateGoals, GOAL_FUNDING_LABELS, GOAL_FUNDINGS, type GoalFunding } from '$lib/savings-goals';
+  import { PERIOD_NOUNS } from '$lib/schemas/settings';
   import {
     addDays,
     type BucketGranularity,
@@ -127,6 +128,10 @@
       }
     }
   });
+
+  // The period nav's jump-home button has nowhere to go when the browsed bucket
+  // already contains today.
+  const atCurrentPeriod = $derived(data.today >= bucket.start && data.today <= bucket.end);
 
   // Effective window: clamp lower bound to epoch (no expected hours before the
   // user started tracking) and upper bound to today (don't accrue expected for
@@ -471,12 +476,25 @@
     <Tooltip.Root>
       <Tooltip.Trigger>
         {#snippet child({ props })}
-          <Button {...props} variant="outline" size="lg" class="shrink-0" onclick={() => (anchor = data.today)}>
-            <CalendarCheck class="size-4" /> Today
+          <!-- aria-disabled, not disabled: a disabled button drops pointer events
+               and the explanatory tooltip could never show -->
+          <Button
+            {...props}
+            variant="outline"
+            size="lg"
+            class="shrink-0 {atCurrentPeriod ? 'opacity-50' : ''}"
+            aria-disabled={atCurrentPeriod}
+            onclick={() => {
+              if (!atCurrentPeriod) anchor = data.today;
+            }}
+          >
+            <CalendarCheck class="size-4" /> This {PERIOD_NOUNS[period]}
           </Button>
         {/snippet}
       </Tooltip.Trigger>
-      <Tooltip.Content>Jump back to the current period</Tooltip.Content>
+      <Tooltip.Content>
+        {atCurrentPeriod ? `Already on this ${PERIOD_NOUNS[period]}` : 'Jump back to the current period'}
+      </Tooltip.Content>
     </Tooltip.Root>
     <DateJump
       value={anchor}

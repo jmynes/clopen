@@ -51,6 +51,7 @@
     type LeaveKind,
     leaveBadgeOf,
   } from '$lib/leave-kinds';
+  import { PERIOD_NOUNS } from '$lib/schemas/settings';
   import { addDays, hoursBetween, isOpenEntry, netHours, parseTimeInput, weekDates } from '$lib/timesheet';
   import type { ActionData, PageData } from './$types';
 
@@ -406,6 +407,8 @@
     weekAnchor = target < data.epoch ? data.epoch : target;
   }
   const weekAtEpoch = $derived(weekStart <= data.epoch);
+  // "This week" has nowhere to jump when the grid already shows today's week.
+  const weekIsCurrent = $derived(weekStart === weekDates(todayISO(), data.weekStartsOn)[0]);
   const weekIsFuture = $derived(weekStart > todayISO());
 
   // Export every entry as CSV (gross hours + break + clock times round-trip).
@@ -564,6 +567,8 @@
   // The tracking epoch is the floor: once the current bucket reaches it there's
   // nothing older to page back to.
   const entriesAtEpoch = $derived(entriesBucket.start <= data.epoch);
+  // Same for the Ledger's jump-home button: today is already on screen.
+  const entriesAtCurrent = $derived(todayISO() >= entriesBucket.start && todayISO() <= entriesBucket.end);
   const entriesBucketIsFuture = $derived(entriesBucket.start > todayISO());
 
   // Pad missing days with blank rows for every period so unlogged days stand
@@ -1582,12 +1587,23 @@
           <Tooltip.Root>
             <Tooltip.Trigger>
               {#snippet child({ props })}
-                <Button {...props} variant="outline" size="lg" class="md:order-1" onclick={() => (weekAnchor = todayISO())}>
+                <!-- aria-disabled, not disabled: a disabled button drops pointer
+                     events and the explanatory tooltip could never show -->
+                <Button
+                  {...props}
+                  variant="outline"
+                  size="lg"
+                  class="md:order-1 {weekIsCurrent ? 'opacity-50' : ''}"
+                  aria-disabled={weekIsCurrent}
+                  onclick={() => {
+                    if (!weekIsCurrent) weekAnchor = todayISO();
+                  }}
+                >
                   <CalendarRange class="size-4" /> This week
                 </Button>
               {/snippet}
             </Tooltip.Trigger>
-            <Tooltip.Content>Jump back to the current week</Tooltip.Content>
+            <Tooltip.Content>{weekIsCurrent ? 'Already on this week' : 'Jump back to the current week'}</Tooltip.Content>
           </Tooltip.Root>
           <select
             aria-label="Month"
@@ -2145,12 +2161,25 @@
         <Tooltip.Root>
           <Tooltip.Trigger>
             {#snippet child({ props })}
-              <Button {...props} variant="outline" size="lg" class="shrink-0" onclick={() => (entriesAnchor = todayISO())}>
-                <CalendarCheck class="size-4" /> Today
+              <!-- aria-disabled, not disabled: a disabled button drops pointer
+                   events and the explanatory tooltip could never show -->
+              <Button
+                {...props}
+                variant="outline"
+                size="lg"
+                class="shrink-0 {entriesAtCurrent ? 'opacity-50' : ''}"
+                aria-disabled={entriesAtCurrent}
+                onclick={() => {
+                  if (!entriesAtCurrent) entriesAnchor = todayISO();
+                }}
+              >
+                <CalendarCheck class="size-4" /> This {PERIOD_NOUNS[entriesPeriod]}
               </Button>
             {/snippet}
           </Tooltip.Trigger>
-          <Tooltip.Content>Jump back to the current period</Tooltip.Content>
+          <Tooltip.Content>
+            {entriesAtCurrent ? `Already on this ${PERIOD_NOUNS[entriesPeriod]}` : 'Jump back to the current period'}
+          </Tooltip.Content>
         </Tooltip.Root>
         <Tooltip.Root>
           <Tooltip.Trigger>

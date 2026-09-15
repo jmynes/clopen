@@ -56,7 +56,7 @@
     VENDOR_LABELS,
     vendorMethods,
   } from '$lib/expense-kinds';
-  import type { LedgerPeriod } from '$lib/schemas/settings';
+  import { type LedgerPeriod, PERIOD_NOUNS } from '$lib/schemas/settings';
   import { addDays, weekDates } from '$lib/timesheet';
   import type { ActionData, PageData } from './$types';
 
@@ -150,6 +150,9 @@
         return;
     }
   }
+
+  // The jump-home button has nowhere to go once the browsed bucket holds today.
+  const atCurrentPeriod = $derived(todayISO() >= bucket.start && todayISO() <= bucket.end);
 
   const inBucket = $derived(data.expenses.filter((e) => e.date >= bucket.start && e.date <= bucket.end));
   const total = $derived(Math.round(inBucket.reduce((s, e) => s + e.amount, 0) * 100) / 100);
@@ -509,12 +512,25 @@
     <Tooltip.Root>
       <Tooltip.Trigger>
         {#snippet child({ props })}
-          <Button {...props} variant="outline" size="lg" class="shrink-0" onclick={() => (anchor = todayISO())}>
-            <CalendarCheck class="size-4" /> Today
+          <!-- aria-disabled, not disabled: a disabled button drops pointer events
+               and the explanatory tooltip could never show -->
+          <Button
+            {...props}
+            variant="outline"
+            size="lg"
+            class="shrink-0 {atCurrentPeriod ? 'opacity-50' : ''}"
+            aria-disabled={atCurrentPeriod}
+            onclick={() => {
+              if (!atCurrentPeriod) anchor = todayISO();
+            }}
+          >
+            <CalendarCheck class="size-4" /> This {PERIOD_NOUNS[period]}
           </Button>
         {/snippet}
       </Tooltip.Trigger>
-      <Tooltip.Content>Jump back to the current period</Tooltip.Content>
+      <Tooltip.Content>
+        {atCurrentPeriod ? `Already on this ${PERIOD_NOUNS[period]}` : 'Jump back to the current period'}
+      </Tooltip.Content>
     </Tooltip.Root>
     <DateJump
       value={anchor}
