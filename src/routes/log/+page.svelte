@@ -1170,6 +1170,17 @@
     recomputeWeekTotals();
   }
 
+  // The Ledger's Clear can delete entries the grid is showing. seedGrid
+  // deliberately ignores data.entries (see the re-seed $effect), so after a
+  // ledger clear refreshes the data we rebuild the grid explicitly: days the
+  // clear removed come back blank with their ids dropped, days it left alone
+  // keep their cells.
+  async function reseedGrid(): Promise<void> {
+    if (!gridReady) return;
+    await tick();
+    await seedGrid();
+  }
+
   // The grid's Clear is destructive: it deletes the visible week's entries from
   // the ledger (audit-logged, like every other deletion) and then wipes the
   // cells. Guarded by a confirm dialog, and disabled when the week is empty.
@@ -3025,12 +3036,14 @@
               demoForm = out.data as ActionData;
               clearOpen = false;
               await invalidate('demo:data');
+              await reseedGrid();
             })();
             return;
           }
           return async ({ update }) => {
             await update();
             clearOpen = false;
+            await reseedGrid();
           };
         }}
       >
@@ -3058,12 +3071,14 @@
               demoForm = out.data as ActionData;
               clearOpen = false;
               await invalidate('demo:data');
+              await reseedGrid();
             })();
             return;
           }
           return async ({ update }) => {
             await update();
             clearOpen = false;
+            await reseedGrid();
           };
         }}
       >
