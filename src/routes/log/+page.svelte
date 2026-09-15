@@ -629,6 +629,11 @@
   // bottom of the scroll container appends the next chunk as it comes into
   // view (the observer re-fires while it stays in view, so a yanked scrollbar
   // chains chunks without further input). Rows never scrolled to never mount.
+  // Week and bi-week periods are short enough to sit on the page whole, and the
+  // weekly grid above them doesn't scroll either — so only the periods that can
+  // run long (month and up) get a capped, scrolling container.
+  const entriesCapped = $derived(entriesPeriod !== 'week' && entriesPeriod !== 'biweek');
+
   const LEDGER_CHUNK = 28;
   let ledgerLimit = $state(LEDGER_CHUNK);
   const visibleRows = $derived(displayRows.slice(0, ledgerLimit));
@@ -2223,7 +2228,9 @@
         <div
           class="hidden overflow-y-auto rounded-md border border-input md:block {entriesExpanded
             ? 'min-h-0 flex-1'
-            : 'max-h-[calc(14*2.75rem+2.5rem)]'}"
+            : entriesCapped
+              ? 'max-h-[calc(14*2.75rem+2.5rem)]'
+              : ''}"
         >
         <Table.Root class="table-fixed">
           <Table.Header class="sticky top-0 z-10 bg-background">
@@ -2444,7 +2451,9 @@
         <div
           class="divide-y divide-input overflow-y-auto rounded-md border border-input md:hidden {entriesExpanded
             ? 'min-h-0 flex-1'
-            : 'max-h-[calc(14*2.75rem+2.5rem)]'}"
+            : entriesCapped
+              ? 'max-h-[calc(14*2.75rem+2.5rem)]'
+              : ''}"
         >
           {#each visibleRows as row, idx (row.kind === 'entry' ? row.entry.id : `${row.kind}-${row.date}`)}
             {#if row.kind === 'blank'}
