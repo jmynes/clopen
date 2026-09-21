@@ -408,12 +408,29 @@
     };
   }
 
+  // The first card's hours are the money-driven target, which only equals the
+  // schedule when the goal is off and no expenses fold in. Say so: rename it
+  // when the goal is on, and explain the gap whenever there is one.
+  const targetLabel = $derived(data.goalEnabled ? 'Goal pace' : 'Expected');
+  const targetHint = $derived.by(() => {
+    if (Math.abs(targetHours - expectedHours) < 0.005) return null;
+    const parts = [`${hrs(expectedHours)} scheduled`];
+    if (data.goalEnabled) {
+      parts.push(
+        `${money.format(data.yearlyGoal)}/yr goal paces at ${money.format(targetRate)}/h vs. your ${money.format(data.hourlyRate)}/h rate`,
+      );
+    }
+    if (includedExpenses > 0) parts.push(`${money.format(includedExpenses)} of expenses folded in`);
+    return parts.join(' · ');
+  });
+
   // Only the numbers carry color, and only when it means something:
   // Net and Earned mirror the hero's ahead/behind hues; the rest stay plain.
   const stats = $derived([
-    { label: 'Expected', value: hrs(targetHours), icon: CalendarCheck, valueClass: '' },
-    { label: 'Logged', value: hrs(logged), icon: Clock, valueClass: '' },
+    { label: targetLabel, value: hrs(targetHours), icon: CalendarCheck, valueClass: '', hint: targetHint },
+    { label: 'Logged', value: hrs(logged), icon: Clock, valueClass: '', hint: null },
     {
+      hint: null,
       label: 'Net',
       value: `${net >= 0 ? '+' : ''}${hrs(net)}`,
       icon: net >= 0 ? TrendingUp : TrendingDown,
@@ -423,6 +440,7 @@
     {
       // The dollar twin of Net: signed distance from the period's dollar
       // target, titled by which side of it the period sits on.
+      hint: null,
       label: dollarsDelta >= 0 ? 'Surplus' : 'Deficit',
       value: `${dollarsDelta >= 0 ? '+' : '−'}${money.format(Math.abs(dollarsDelta))}`,
       icon: Wallet,
@@ -576,10 +594,28 @@
       {@const StatIcon = stat.icon}
       <Card.Root>
         <Card.Content class="p-5">
-          <p class="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground">
-            <StatIcon class="size-3.5 shrink-0 text-foreground" />
-            {stat.label}
-          </p>
+          {#if stat.hint}
+            <Tooltip.Root>
+              <Tooltip.Trigger>
+                {#snippet child({ props })}
+                  <button
+                    {...props}
+                    type="button"
+                    class="flex cursor-help items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground"
+                  >
+                    <StatIcon class="size-3.5 shrink-0 text-foreground" />
+                    <span class="underline decoration-dotted underline-offset-4">{stat.label}</span>
+                  </button>
+                {/snippet}
+              </Tooltip.Trigger>
+              <Tooltip.Content>{stat.hint}</Tooltip.Content>
+            </Tooltip.Root>
+          {:else}
+            <p class="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground">
+              <StatIcon class="size-3.5 shrink-0 text-foreground" />
+              {stat.label}
+            </p>
+          {/if}
           <p class="mt-1 font-mono text-xl font-semibold tabular-nums {stat.valueClass}">{stat.value}</p>
         </Card.Content>
       </Card.Root>
