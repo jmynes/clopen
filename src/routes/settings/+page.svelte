@@ -618,7 +618,12 @@
                   </p>
                 </div>
                 <div class="flex flex-col gap-1.5">
-                  <span class="text-sm font-medium">Notes</span>
+                  <!-- Stands in for a <Label> (there's no single control to point
+                       `for` at), so it has to measure like one: shadcn's Label is
+                       `leading-none`, and a default text-sm line box is 6px taller,
+                       which would push this column's control below the select
+                       beside it. -->
+                  <span class="flex items-center text-sm font-medium leading-none">Notes</span>
                   <label
                     class="flex cursor-pointer items-start gap-2 rounded-md border border-input px-3 py-2 text-sm transition-colors has-checked:border-primary has-checked:bg-accent"
                   >
