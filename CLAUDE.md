@@ -219,7 +219,12 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   maps DST opt-out to the fixed `Etc/GMT±N` standard offset (sign inverted;
   fractional-offset zones pass through).
 - `src/lib/demo/` — demo mode (`PUBLIC_DEMO=1`, the Railway copy): `flag.ts`
-  reads the env; `repo.ts` is a localStorage `Repo`. Demo skips SSR
+  reads the env; `repo.ts` is a localStorage `Repo`. `sample.ts` seeds the
+  "sample timesheet" bucket — entries, settings, savings goals, expenses
+  (`sampleExpenses`, a deterministic commute-and-lunch habit from the same
+  date-seeded hash as the entries) and bonuses (`sampleBonuses`, a fixed list
+  clipped at today so nothing lands in the future). Each key is seeded
+  independently, so existing demo visitors pick up newly added ones. Demo skips SSR
   (`export const ssr = !isDemo` in `+layout.ts`) so the first browser render
   reads localStorage directly — no stub flash — and every `use:enhance`
   handler has a demo branch that cancels the POST and runs the core action

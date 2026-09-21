@@ -9,7 +9,7 @@
  * tracking epoch pinned to Jan 1, so the make-whole math accrues from there.
  */
 import { todayISO } from '$lib/date';
-import type { SavingsGoal, Settings, TimeEntry } from '$lib/db/schema';
+import type { Bonus, Expense, SavingsGoal, Settings, TimeEntry } from '$lib/db/schema';
 import type { EntryKind } from '$lib/leave-kinds';
 
 export const SAMPLE_START = '2026-01-01';
@@ -198,4 +198,129 @@ export function sampleEntries(): TimeEntry[] {
     }
   }
   return entries;
+}
+
+/**
+ * Sample bonuses: money that arrived without hours behind it, so the demo's
+ * dashboard shows the "includes $X in bonuses" line and the savings goals
+ * get a visible jump. Dated within the sample range and clipped at today, so
+ * nothing lands in the future however late in the year the demo is visited.
+ *
+ * The holiday bonus sits on Jan 2 rather than in December: the sample's epoch
+ * is Jan 1, 2026, and a Christmas bonus paid out with the first check of the
+ * new year is both realistic and actually inside the tracked range.
+ */
+const BONUSES: Array<{ date: string; label: string; amount: number; note: string | null }> = [
+  { date: '2026-01-02', label: 'Holiday bonus', amount: 1200, note: "Last year's, paid with the first check" },
+  { date: '2026-03-13', label: 'Q1 performance', amount: 1500, note: null },
+  { date: '2026-05-08', label: 'Referral', amount: 750, note: 'Referred a backend hire' },
+  { date: '2026-06-30', label: 'Q2 performance', amount: 1500, note: null },
+  { date: '2026-08-14', label: 'Spot bonus', amount: 400, note: 'Shipped the migration a week early' },
+  { date: '2026-09-30', label: 'Q3 performance', amount: 1500, note: null },
+  { date: '2026-12-18', label: 'Holiday bonus', amount: 1250, note: null },
+];
+
+export function sampleBonuses(): Bonus[] {
+  const today = todayISO();
+  return BONUSES.filter((b) => b.date <= today).map((b, i) => ({
+    id: `sample-bonus-${i}`,
+    date: b.date,
+    amount: b.amount,
+    label: b.label,
+    note: b.note,
+    createdAt: Math.floor(Date.parse(b.date) / 1000),
+    updatedAt: null,
+  }));
+}
+
+/**
+ * Sample expenses: a believable commute-and-lunch habit across the tracked
+ * range, so the Expenses tab and the dashboard's include-expenses toggle both
+ * have something to show. Deterministic from the same date-seeded hash as the
+ * entries, so re-seeding never reshuffles the list.
+ */
+export function sampleExpenses(): Expense[] {
+  const rows: Expense[] = [];
+  const end = Date.parse(todayISO());
+  const push = (date: string, n: number, row: Omit<Expense, 'id' | 'date' | 'createdAt' | 'updatedAt'>) => {
+    rows.push({
+      id: `sample-expense-${date}-${n}`,
+      date,
+      createdAt: Math.floor(Date.parse(date) / 1000) + n,
+      updatedAt: null,
+      ...row,
+    });
+  };
+
+  for (let t = Date.parse(SAMPLE_START); t <= end; t += 86_400_000) {
+    const date = new Date(t).toISOString().slice(0, 10);
+    const dow = new Date(t).getUTCDay();
+    // Commute costs and work lunches only happen on days worked.
+    if (dow === 0 || dow === 6) continue;
+    if (LEAVE[date]) continue;
+
+    const r = hash01(`${date}#ride`);
+    // Roughly one commute leg in four is expensed rather than driven.
+    if (r < 0.26) {
+      const lyft = hash01(`${date}#vendor`) < 0.35;
+      push(date, 0, {
+        amount: round2(11 + hash01(`${date}#fare`) * 18),
+        kind: 'ride',
+        vendor: lyft ? 'lyft' : 'uber',
+        direction: hash01(`${date}#leg`) < 0.6 ? 'to_work' : 'to_home',
+        method: null,
+        cadence: null,
+        note: null,
+      });
+    }
+
+    const m = hash01(`${date}#meal`);
+    if (m < 0.18) {
+      const pick = hash01(`${date}#mealv`);
+      const vendor = pick < 0.45 ? 'uber_eats' : pick < 0.75 ? 'grubhub' : 'restaurant';
+      push(date, 1, {
+        amount: round2(13 + hash01(`${date}#tab`) * 22),
+        kind: 'meal',
+        vendor,
+        direction: null,
+        method: vendor === 'restaurant' ? 'dine_in' : hash01(`${date}#how`) < 0.7 ? 'delivery' : 'pickup',
+        cadence: null,
+        note: vendor === 'restaurant' ? 'Team lunch' : null,
+      });
+    }
+
+    // One subscription charge a month, on the 3rd.
+    if (date.endsWith('-03')) {
+      push(date, 2, {
+        amount: 20,
+        kind: 'purchase',
+        vendor: 'subscription',
+        direction: null,
+        method: null,
+        cadence: 'monthly',
+        note: 'Editor licence',
+      });
+    }
+  }
+
+  // A couple of one-off hardware buys so the purchase kind isn't only
+  // subscriptions; dropped when the demo is visited before those dates.
+  const today = todayISO();
+  for (const [n, buy] of [
+    { date: '2026-02-10', amount: 149.99, note: 'Mechanical keyboard' },
+    { date: '2026-07-22', amount: 329.0, note: 'Second monitor' },
+  ].entries()) {
+    if (buy.date > today) continue;
+    push(buy.date, 3 + n, {
+      amount: buy.amount,
+      kind: 'purchase',
+      vendor: 'hardware',
+      direction: null,
+      method: null,
+      cadence: null,
+      note: buy.note,
+    });
+  }
+
+  return rows;
 }
