@@ -120,12 +120,8 @@ import Settings from '@lucide/svelte/icons/settings';
                 : 'text-muted-foreground'}"
               aria-current={isActive(link.href) ? 'page' : undefined}
             >
-              <!-- The label's flex box is its 20px line box, but the letters
-                   only occupy the cap-height band inside it, which sits ~1.5px
-                   above that box's centre. Box-centring the 16px icon therefore
-                   reads low; nudge it back onto the text's optical centre. -->
-              <Icon class="size-4 -translate-y-px {isActive(link.href) ? 'text-primary' : ''}" />
-              <span class="leading-none">{link.label}</span>
+              <Icon class="size-4 {isActive(link.href) ? 'text-primary' : ''}" />
+              {link.label}
               {#if link.href === '/clock' && clockRunning}
                 <span class="absolute top-1 right-1 size-1.5 rounded-full bg-success" aria-hidden="true"></span>
               {/if}
