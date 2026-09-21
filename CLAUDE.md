@@ -223,8 +223,15 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   "sample timesheet" bucket — entries, settings, savings goals, expenses
   (`sampleExpenses`, a deterministic commute-and-lunch habit from the same
   date-seeded hash as the entries) and bonuses (`sampleBonuses`, a fixed list
-  clipped at today so nothing lands in the future). Each key is seeded
-  independently, so existing demo visitors pick up newly added ones. Demo skips SSR
+  clipped at today so nothing lands in the future). `SAMPLE_START` (and so
+  the sample epoch) is **Jan 1 of the year before last**, giving the period
+  selectors a previous year to page into and putting the holiday bonus at an
+  actual holiday. Savings goals accrue from `SAMPLE_GOALS_START` (the current
+  year) instead, and their targets are sized against the overtime-plus-bonus
+  pool — bonuses fund goals, so growing the bonus list without re-sizing
+  targets maxes every progress bar and the demo stops showing progress. Each
+  key is seeded independently, so existing demo visitors pick up newly added
+  ones. Demo skips SSR
   (`export const ssr = !isDemo` in `+layout.ts`) so the first browser render
   reads localStorage directly — no stub flash — and every `use:enhance`
   handler has a demo branch that cancels the POST and runs the core action

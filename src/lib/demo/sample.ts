@@ -1,20 +1,32 @@
 /**
  * Seed data for the demo's "sample timesheet" toggle. Builds a believable
- * history of work from 2026-01-01 up to today so a first-time visitor lands on
+ * history of work from 2025-01-01 up to today so a first-time visitor lands on
  * Clopen mid-use — a populated dashboard and ledger — rather than a blank
  * slate. Deterministic: every value derives from a date-seeded hash, so
  * re-seeding the same range always yields the same timesheet (no reshuffle).
  *
+ * The range starts a full calendar year back so the period selectors have a
+ * *previous* year to page into: year-over-year views, a December that isn't
+ * empty, and a holiday bonus that actually falls at Christmas.
+ *
  * Authored against {@link SAMPLE_SETTINGS}: an 8h Mon–Fri baseline with the
- * tracking epoch pinned to Jan 1, so the make-whole math accrues from there.
+ * tracking epoch pinned to the range's first day, so the make-whole math
+ * accrues from there.
  */
 import { todayISO } from '$lib/date';
 import type { Bonus, Expense, SavingsGoal, Settings, TimeEntry } from '$lib/db/schema';
 import type { EntryKind } from '$lib/leave-kinds';
 
-export const SAMPLE_START = '2026-01-01';
+export const SAMPLE_START = '2025-01-01';
 
-/** Settings the sample is authored against; accrual starts Jan 1, 2026. */
+/**
+ * Savings goals accrue from the *current* year, not {@link SAMPLE_START}:
+ * measured over the whole range every goal would have been reached many times
+ * over, and a maxed-out progress bar demonstrates nothing.
+ */
+export const SAMPLE_GOALS_START = '2026-01-01';
+
+/** Settings the sample is authored against; accrual starts Jan 1, 2025. */
 export const SAMPLE_SETTINGS: Settings = {
   id: 'default',
   hourlyRate: 45,
@@ -48,6 +60,29 @@ export const SAMPLE_SETTINGS: Settings = {
 // Fixed leave days within the range (US-ish holidays plus a little PTO/sick/
 // vacation so every leave color shows up on the dashboard and ledger).
 const LEAVE: Record<string, EntryKind> = {
+  // ── 2025 ──────────────────────────────────────────────────────────────
+  '2025-01-01': 'holiday_paid', // New Year's Day
+  '2025-01-20': 'holiday_paid', // MLK Day
+  '2025-02-05': 'sick_paid', // a cold
+  '2025-02-17': 'holiday_paid', // Presidents' Day
+  '2025-04-17': 'pto', // long weekend
+  '2025-04-18': 'pto',
+  '2025-05-26': 'holiday_paid', // Memorial Day
+  '2025-06-19': 'holiday_paid', // Juneteenth
+  '2025-07-04': 'holiday_paid', // Independence Day
+  '2025-08-11': 'vacation_paid', // summer trip, Mon–Wed
+  '2025-08-12': 'vacation_paid',
+  '2025-08-13': 'vacation_paid',
+  '2025-09-01': 'holiday_paid', // Labor Day
+  '2025-10-13': 'pto_unpaid', // unpaid personal day
+  '2025-10-31': 'sick_paid',
+  '2025-11-27': 'holiday_paid', // Thanksgiving
+  '2025-11-28': 'holiday_paid', // day after
+  '2025-12-24': 'holiday_paid', // Christmas Eve
+  '2025-12-25': 'holiday_paid', // Christmas Day
+  '2025-12-26': 'holiday_paid',
+  '2025-12-31': 'holiday_paid', // New Year's Eve
+  // ── 2026 ──────────────────────────────────────────────────────────────
   '2026-01-01': 'holiday_paid', // New Year's Day
   '2026-01-19': 'holiday_paid', // MLK Day
   '2026-02-04': 'sick_paid', // a cold
@@ -59,10 +94,13 @@ const LEAVE: Record<string, EntryKind> = {
   '2026-04-30': 'pto_unpaid', // unpaid personal day
   '2026-05-06': 'sick_paid',
   '2026-05-25': 'holiday_paid', // Memorial Day
+  '2026-06-19': 'holiday_paid', // Juneteenth
+  '2026-07-03': 'holiday_paid', // Independence Day observed (the 4th is a Sat)
+  '2026-09-07': 'holiday_paid', // Labor Day
 };
 
 // One Saturday gets logged so a weekend-with-entries row appears in the ledger.
-const WEEKEND_WORK = new Set(['2026-02-21']);
+const WEEKEND_WORK = new Set(['2025-03-22', '2026-02-21']);
 
 /** Deterministic float in [0, 1) from a string (FNV-1a + xorshift fold). */
 function hash01(seed: string): number {
@@ -138,11 +176,16 @@ function leaveEntry(date: string, kind: EntryKind, paid: boolean): TimeEntry {
 }
 
 /**
- * Sample savings goals, sized against the surplus the entries above produce
- * (single-digit overtime hours × $45 by mid-year): a 75/25 ranked split of
- * the overtime stream where the small #2 reaches its target and spills its
- * spare share up to #1, plus an all-earnings goal anchored to the current
- * month so it sits mid-progress whenever the demo is visited.
+ * Sample savings goals, sized against the pool the entries and bonuses above
+ * produce (overtime hours × $45 plus the year's bonuses, a few thousand
+ * dollars by autumn): a 75/25 ranked split of the overtime stream where the
+ * small #2 reaches its target and spills its spare share up to #1, plus an
+ * all-earnings goal anchored to the current month so it sits mid-progress
+ * whenever the demo is visited.
+ *
+ * Targets have to be re-sized whenever the bonus list grows — bonuses fund
+ * goals, so a bigger bonus year maxes every bar out and the demo stops
+ * showing progress at all.
  */
 export function sampleSavingsGoals(): SavingsGoal[] {
   const goal = (n: number, row: Omit<SavingsGoal, 'id' | 'rank' | 'createdAt' | 'updatedAt'>): SavingsGoal => ({
@@ -154,16 +197,16 @@ export function sampleSavingsGoals(): SavingsGoal[] {
   });
   return [
     goal(0, {
-      name: 'Nintendo Switch 2',
-      targetAmount: 450,
-      startDate: SAMPLE_START,
+      name: 'Trip to Japan',
+      targetAmount: 5000,
+      startDate: SAMPLE_GOALS_START,
       funding: 'overtime',
       allocation: 75,
     }),
     goal(1, {
-      name: 'Mechanical keyboard',
-      targetAmount: 60,
-      startDate: SAMPLE_START,
+      name: 'Nintendo Switch 2',
+      targetAmount: 450,
+      startDate: SAMPLE_GOALS_START,
       funding: 'overtime',
       allocation: 25,
     }),
@@ -206,18 +249,20 @@ export function sampleEntries(): TimeEntry[] {
  * get a visible jump. Dated within the sample range and clipped at today, so
  * nothing lands in the future however late in the year the demo is visited.
  *
- * The holiday bonus sits on Jan 2 rather than in December: the sample's epoch
- * is Jan 1, 2026, and a Christmas bonus paid out with the first check of the
- * new year is both realistic and actually inside the tracked range.
+ * With the range starting a year earlier, December 2025 is inside it, so the
+ * holiday bonus falls where a holiday bonus belongs.
  */
 const BONUSES: Array<{ date: string; label: string; amount: number; note: string | null }> = [
-  { date: '2026-01-02', label: 'Holiday bonus', amount: 1200, note: "Last year's, paid with the first check" },
+  { date: '2025-03-14', label: 'Q1 performance', amount: 1200, note: null },
+  { date: '2025-06-30', label: 'Q2 performance', amount: 1200, note: null },
+  { date: '2025-09-30', label: 'Q3 performance', amount: 1200, note: null },
+  { date: '2025-12-19', label: 'Holiday bonus', amount: 1500, note: 'Paid with the last check of the year' },
   { date: '2026-03-13', label: 'Q1 performance', amount: 1500, note: null },
   { date: '2026-05-08', label: 'Referral', amount: 750, note: 'Referred a backend hire' },
   { date: '2026-06-30', label: 'Q2 performance', amount: 1500, note: null },
   { date: '2026-08-14', label: 'Spot bonus', amount: 400, note: 'Shipped the migration a week early' },
   { date: '2026-09-30', label: 'Q3 performance', amount: 1500, note: null },
-  { date: '2026-12-18', label: 'Holiday bonus', amount: 1250, note: null },
+  { date: '2026-12-18', label: 'Holiday bonus', amount: 1750, note: null },
 ];
 
 export function sampleBonuses(): Bonus[] {
