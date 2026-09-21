@@ -272,14 +272,21 @@ import Settings from '@lucide/svelte/icons/settings';
         aria-label="Close menu"
         tabindex={-1}
       ></button>
+      <!-- One grid for the whole panel so the rows share column tracks: an
+           icon column, a label column sized to the longest label, and equal
+           `1fr` gutters either side that centre the pair. Each row is a
+           `subgrid` spanning all four, which keeps it a full-width box (tap
+           target, hover fill, divider, the clock dot) while its contents line
+           up with every other row. Sizing the label column to content is what
+           stops the block from carrying dead space on one side. -->
       <div
-        class="fixed inset-x-0 top-14 z-20 divide-y divide-border/60 border-t border-border/70 bg-background px-4 pb-2 md:hidden"
+        class="fixed inset-x-0 top-14 z-20 grid grid-cols-[1fr_1rem_auto_1fr] gap-x-2 divide-y divide-border/60 border-t border-border/70 bg-background px-4 pb-2 md:hidden"
       >
         {#each links as link (link.href)}
           {@const Icon = link.icon}
           <a
             href={link.href}
-            class="relative flex min-h-12 select-none items-center justify-center text-sm transition-colors hover:bg-accent hover:text-accent-foreground {isActive(
+            class="relative col-span-4 grid min-h-12 select-none grid-cols-subgrid items-center text-sm transition-colors hover:bg-accent hover:text-accent-foreground {isActive(
               link.href,
             )
               ? 'font-medium'
@@ -287,15 +294,8 @@ import Settings from '@lucide/svelte/icons/settings';
             aria-current={isActive(link.href) ? 'page' : undefined}
             onclick={() => (menuOpen = false)}
           >
-            <!-- Centring each row individually would stagger the icons by label
-                 length. Centre one fixed-width block instead and lay the row out
-                 on a 2-column grid, so every icon shares a column and every
-                 label starts on the same edge. The width only has to clear the
-                 longest label ("Dashboard"). -->
-            <span class="grid w-36 grid-cols-[1rem_1fr] items-center gap-2">
-              <Icon class="size-4 {isActive(link.href) ? 'text-primary' : ''}" />
-              <span>{link.label}</span>
-            </span>
+            <Icon class="col-start-2 size-4 {isActive(link.href) ? 'text-primary' : ''}" />
+            <span class="col-start-3">{link.label}</span>
             {#if link.href === '/clock' && clockRunning}
               <span class="absolute top-1 right-1 size-1.5 rounded-full bg-success" aria-hidden="true"></span>
             {/if}
