@@ -33,7 +33,7 @@ import Settings from '@lucide/svelte/icons/settings';
     { href: '/bonuses', label: 'Bonuses', icon: Gift },
   ];
   const settingsLink = { href: '/settings', label: 'Settings', icon: Settings };
-  // Desktop has room for all six across the header.
+  // The hamburger is the one place Settings appears by name.
   const links = [...navLinks, settingsLink];
 
   const clockRunning = $derived(!!data.openShift);
@@ -109,7 +109,7 @@ import Settings from '@lucide/svelte/icons/settings';
       </div>
       <nav class="flex items-center gap-1 text-sm">
         <div class="hidden items-center gap-1 md:flex">
-          {#each links as link (link.href)}
+          {#each navLinks as link (link.href)}
             {@const Icon = link.icon}
             <a
               href={link.href}
@@ -188,16 +188,17 @@ import Settings from '@lucide/svelte/icons/settings';
             </Tooltip.Root>
           </div>
         {/if}
-        <!-- Settings is off the phone tab bar, so it gets a header icon here,
-             just left of the theme toggle. Hidden from md up, where it's
-             already one of the header links. -->
+        <!-- Settings is a rare destination, so at every width it's a cog beside
+             the theme toggle rather than a labelled nav item: off the phone's
+             tab bar, and out of the desktop header's link run. The hamburger
+             still lists it by name. -->
         <Tooltip.Root>
           <Tooltip.Trigger>
             {#snippet child({ props })}
               <a
                 {...props}
                 href={settingsLink.href}
-                class="inline-flex size-8 items-center justify-center rounded-full transition-colors hover:bg-accent hover:text-accent-foreground md:hidden {isActive(
+                class="inline-flex size-8 items-center justify-center rounded-full transition-colors hover:bg-accent hover:text-accent-foreground {isActive(
                   settingsLink.href,
                 )
                   ? 'text-primary'
