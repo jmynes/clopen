@@ -286,14 +286,21 @@ import Settings from '@lucide/svelte/icons/settings';
           {@const Icon = link.icon}
           <a
             href={link.href}
-            class="relative col-span-4 grid min-h-12 select-none grid-cols-subgrid items-center text-sm transition-colors hover:bg-accent hover:text-accent-foreground {isActive(
+            class="relative col-span-4 grid min-h-12 select-none grid-cols-subgrid items-center text-sm transition-colors {isActive(
               link.href,
             )
-              ? 'font-medium'
-              : 'text-muted-foreground'}"
+              ? 'bg-primary/10 font-medium text-foreground hover:bg-primary/15'
+              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}"
             aria-current={isActive(link.href) ? 'page' : undefined}
             onclick={() => (menuOpen = false)}
           >
+            <!-- The current page is called out four ways at once — accent bar,
+                 tinted row, full-strength text, primary icon — because the menu
+                 covers the page you'd otherwise recognise, so weight alone is
+                 too quiet to answer "where am I?". -->
+            {#if isActive(link.href)}
+              <span class="absolute inset-y-0 left-0 w-1 rounded-r-sm bg-primary" aria-hidden="true"></span>
+            {/if}
             <Icon class="col-start-2 size-4 {isActive(link.href) ? 'text-primary' : ''}" />
             <span class="col-start-3">{link.label}</span>
             {#if link.href === '/clock' && clockRunning}
