@@ -422,8 +422,7 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   direction/method as icon + text. A shared `expenseEnhance(action, after?)`
   factory branches demo mutations to `demoRepo` + `invalidate('demo:data')`.
   Validation errors surface as a single `expenseError` line under the add
-  form. Footer note links the audit log and flags that bonus tracking is
-  planned.
+  form.
 - `src/routes/clock/+page.*` — the punch clock (2nd nav tab). `+page.server.ts`
   holds the seven demo-gated actions (`in`, `breakStart`, `breakEnd`, `out`,
   `adjust`, `resolveSave`, `resolveDiscard`), each pinning the app zone before

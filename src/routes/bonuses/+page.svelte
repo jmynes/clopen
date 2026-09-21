@@ -338,10 +338,6 @@
     </Card.Content>
   </Card.Root>
 
-  <p class="text-center text-xs text-muted-foreground">
-    Every add, edit, and delete here lands in the
-    <a href="/settings/audit" class="underline underline-offset-2 hover:text-foreground">audit log</a>.
-  </p>
 </div>
 
 <!-- edit dialog -->
