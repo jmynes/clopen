@@ -15,7 +15,6 @@ export function computeBonuses(bonuses: Bonus[], row: Settings) {
     bonuses,
     epoch: row.epoch,
     weekStartsOn: row.weekStartsOn,
-    ledgerPeriod: row.ledgerPeriod,
   };
 }
 

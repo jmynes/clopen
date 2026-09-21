@@ -14,7 +14,6 @@ export function computeExpenses(expenses: Expense[], row: Settings) {
     expenses,
     epoch: row.epoch,
     weekStartsOn: row.weekStartsOn,
-    ledgerPeriod: row.ledgerPeriod,
     // What the add form opens with (Settings → Expenses defaults).
     defaultExpenseKind: row.defaultExpenseKind,
     defaultRideVendor: row.defaultRideVendor,

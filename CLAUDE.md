@@ -399,9 +399,13 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
 - `src/routes/expenses/+page.*` — expenses tab (4th): an add form (DateField
   date / kind / amount / note, plus a kind-scoped Service select and a
   second axis — Direction for rides, Method for meals — that swap with the
-  kind), a period-paginated list using the dashboard's bucket math (opens to
-  `ledgerPeriod`, prev disabled at the epoch, DateJump floored there) with a
-  period total in the header, and edit/delete dialogs. The dropdowns are
+  kind), a period-paginated list using the dashboard's bucket math (**opens
+  Yearly** — a period here holds only the rows you recorded, so a short one is
+  usually empty; `ledgerPeriod` deliberately doesn't apply, being about how
+  much of the *schedule* the Log pages through — prev disabled at the epoch,
+  DateJump floored there) with a period total in the header, and edit/delete
+  dialogs. The list scrolls inside its card past 14 rows, capped by row count
+  rather than by period (even one week can hold a long list). The dropdowns are
   icon-bearing shadcn `Select`s defined once as snippets (`kindSelect` /
   `vendorSelect` / `directionSelect` / `methodSelect`) shared by the add
   form and edit dialog — display-only, with hidden inputs carrying the
@@ -441,9 +445,10 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   branches run the core actions against `demoRepo` + `invalidate('demo:data')`.
 - `src/routes/bonuses/+page.*` — bonuses tab (5th): an add form (DateField
   date / free-text label / amount / note), a period-paginated list using the
-  dashboard's bucket math (opens to `ledgerPeriod`, prev disabled at the
-  epoch, DateJump floored there) with a period total in the header, and
-  edit/delete dialogs. Rows badge the label (emerald, gift glyph) and show
+  dashboard's bucket math (**opens Yearly**, same reasoning as Expenses; prev
+  disabled at the epoch, DateJump floored there) with a period total in the
+  header, and edit/delete dialogs. The list scrolls inside its card past 14
+  rows, capped by row count rather than by period. Rows badge the label (emerald, gift glyph) and show
   the amount in success green. A `bonusEnhance(action, after?)` factory
   branches demo mutations to `demoRepo` + `invalidate('demo:data')`, mirroring
   the Expenses idiom; validation errors surface as a single `bonusError` line

@@ -42,9 +42,12 @@
     quarter: 'Quarterly',
     year: 'Yearly',
   };
-  // Initial-only read; the selector mutates independently after first render.
-  // svelte-ignore state_referenced_locally
-  let period = $state<LedgerPeriod>(data.ledgerPeriod);
+  // These lists open Yearly: unlike the Ledger, a period here holds only the
+  // handful of rows you actually recorded, so a short period is usually empty
+  // and a year reads as the useful default. The selector still changes it per
+  // visit, and `ledgerPeriod` deliberately doesn't apply — that setting is
+  // about how much of the *schedule* the Log pages through.
+  let period = $state<LedgerPeriod>('year');
   let anchor = $state(todayISO());
 
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -122,6 +125,9 @@
 
   const inBucket = $derived(data.bonuses.filter((b) => b.date >= bucket.start && b.date <= bucket.end));
   const total = $derived(Math.round(inBucket.reduce((s, b) => s + b.amount, 0) * 100) / 100);
+  /** Past this many rows the list scrolls inside its card. */
+  const VISIBLE_ROWS = 14;
+  const listCapped = $derived(inBucket.length > VISIBLE_ROWS);
 
   // ── Forms ────────────────────────────────────────────────────────────────
   let addDate = $state(todayISO());
@@ -285,7 +291,14 @@
       {#if inBucket.length === 0}
         <p class="py-8 text-center text-sm text-muted-foreground">No bonuses this period.</p>
       {:else}
-        <ul class="divide-y divide-border/50">
+        <!-- Capped by how many rows there are, not by which period is shown:
+             even a single week can hold a long list here. 14 rows matches the
+             Ledger's cap; beyond that the list scrolls inside the card. -->
+        <ul
+          class="divide-y divide-border/50 {listCapped
+            ? 'max-h-[calc(14*2.25rem)] overflow-y-auto rounded-md border border-input px-3'
+            : ''}"
+        >
           {#each inBucket as b (b.id)}
             <li class="flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5 text-sm">
               <span class="w-14 font-mono text-xs uppercase tabular-nums">{formatDay(b.date)}</span>
