@@ -2,10 +2,11 @@
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
+  import { bonusLabelOf } from '$lib/core/bonuses';
   import { formatDay, formatTimeRange, formatTimestamp } from '$lib/date';
-  import type { EntryEvent, Expense, ExpenseEvent, TimeEntry } from '$lib/db/schema';
+  import type { Bonus, BonusEvent, EntryEvent, Expense, ExpenseEvent, TimeEntry } from '$lib/db/schema';
   import { EXPENSE_META, MEAL_METHOD_LABELS, RIDE_DIRECTION_LABELS, VENDOR_LABELS } from '$lib/expense-kinds';
-  import { isOtherKind, LEAVE_META } from '$lib/leave-kinds';
+import { isOtherKind, LEAVE_META } from '$lib/leave-kinds';
   import { netHours } from '$lib/timesheet';
   import type { PageData } from './$types';
 
@@ -45,7 +46,7 @@
     id: string;
     action: EntryEvent['action'];
     at: number;
-    source: 'Entry' | 'Expense';
+    source: 'Entry' | 'Expense' | 'Bonus';
     date: string | null;
     detail: string;
     note: string | null;
@@ -95,8 +96,33 @@
     };
   }
 
+  function bonusSnapshotOf(e: BonusEvent): Bonus | null {
+    try {
+      return JSON.parse(e.snapshot) as Bonus;
+    } catch {
+      return null;
+    }
+  }
+
+  function bonusItem(e: BonusEvent): AuditItem {
+    const s = bonusSnapshotOf(e);
+    return {
+      id: e.id,
+      action: e.action,
+      at: e.at,
+      source: 'Bonus',
+      date: s?.date ?? null,
+      detail: s ? `${bonusLabelOf(s.label)} · ${money.format(s.amount)}` : '—',
+      note: s?.note ?? null,
+    };
+  }
+
   const items = $derived(
-    [...data.events.map(entryItem), ...data.expenseEvents.map(expenseItem)].sort((a, b) => b.at - a.at),
+    [
+      ...data.events.map(entryItem),
+      ...data.expenseEvents.map(expenseItem),
+      ...data.bonusEvents.map(bonusItem),
+    ].sort((a, b) => b.at - a.at),
   );
 </script>
 
@@ -106,14 +132,14 @@
       <ArrowLeft class="size-4" /> Settings
     </Button>
     <h1 class="text-2xl font-semibold tracking-tight">Audit log</h1>
-    <p class="mt-1 text-sm text-muted-foreground">Every add, edit, and delete on the ledger and expenses, newest first.</p>
+    <p class="mt-1 text-sm text-muted-foreground">Every add, edit, and delete on the ledger, expenses, and bonuses, newest first.</p>
   </div>
 
   <Card.Root>
     <Card.Content>
       {#if items.length === 0}
         <p class="py-8 text-center text-sm text-muted-foreground">
-          Nothing logged yet — events appear as entries and expenses are added, edited, or deleted.
+          Nothing logged yet — events appear as entries, expenses, and bonuses are added, edited, or deleted.
         </p>
       {:else}
         <ul class="divide-y divide-border/50">
@@ -125,7 +151,9 @@
               <span
                 class="w-16 rounded px-1.5 py-0.5 text-center text-xs font-medium {item.source === 'Expense'
                   ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
-                  : 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300'}"
+                  : item.source === 'Bonus'
+                    ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                    : 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300'}"
               >
                 {item.source}
               </span>

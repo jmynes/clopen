@@ -1,12 +1,13 @@
 <script lang="ts">
   import Clock from '@lucide/svelte/icons/clock';
   import FlaskConical from '@lucide/svelte/icons/flask-conical';
+  import Gift from '@lucide/svelte/icons/gift';
   import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
   import Moon from '@lucide/svelte/icons/moon';
   import NotebookPen from '@lucide/svelte/icons/notebook-pen';
   import PenLine from '@lucide/svelte/icons/pen-line';
   import Receipt from '@lucide/svelte/icons/receipt';
-  import Settings from '@lucide/svelte/icons/settings';
+import Settings from '@lucide/svelte/icons/settings';
   import Sun from '@lucide/svelte/icons/sun';
   import { onMount } from 'svelte';
   import { invalidate } from '$app/navigation';
@@ -20,13 +21,20 @@
 
   let { children, data } = $props();
 
-  const links = [
+  // The five destinations that earn a slot in the phone's thumb zone. Settings
+  // is deliberately not one of them: it's a place you visit rarely, so on
+  // mobile it lives as a header icon (and in the hamburger) instead of
+  // spending a fifth of the tab bar.
+  const navLinks = [
     { href: '/', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/clock', label: 'Clock', icon: Clock },
     { href: '/log', label: 'Log', icon: NotebookPen },
     { href: '/expenses', label: 'Expenses', icon: Receipt },
-    { href: '/settings', label: 'Settings', icon: Settings },
+    { href: '/bonuses', label: 'Bonuses', icon: Gift },
   ];
+  const settingsLink = { href: '/settings', label: 'Settings', icon: Settings };
+  // Desktop has room for all six across the header.
+  const links = [...navLinks, settingsLink];
 
   const clockRunning = $derived(!!data.openShift);
 
@@ -180,6 +188,30 @@
             </Tooltip.Root>
           </div>
         {/if}
+        <!-- Settings is off the phone tab bar, so it gets a header icon here,
+             just left of the theme toggle. Hidden from md up, where it's
+             already one of the header links. -->
+        <Tooltip.Root>
+          <Tooltip.Trigger>
+            {#snippet child({ props })}
+              <a
+                {...props}
+                href={settingsLink.href}
+                class="inline-flex size-8 items-center justify-center rounded-full transition-colors hover:bg-accent hover:text-accent-foreground md:hidden {isActive(
+                  settingsLink.href,
+                )
+                  ? 'text-primary'
+                  : 'text-muted-foreground'}"
+                aria-label="Settings"
+                aria-current={isActive(settingsLink.href) ? 'page' : undefined}
+                onclick={() => (menuOpen = false)}
+              >
+                <Settings class="size-4" />
+              </a>
+            {/snippet}
+          </Tooltip.Trigger>
+          <Tooltip.Content>Settings</Tooltip.Content>
+        </Tooltip.Root>
         <div
           role="radiogroup"
           aria-label="Theme"
@@ -314,7 +346,7 @@
     class="fixed inset-x-0 bottom-0 z-10 border-t border-border/70 bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
   >
     <div class="grid grid-cols-5">
-      {#each links as link (link.href)}
+      {#each navLinks as link (link.href)}
         {@const Icon = link.icon}
         <a
           href={link.href}

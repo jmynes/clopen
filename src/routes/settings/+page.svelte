@@ -473,7 +473,10 @@
                   </span>
                 </span>
               </label>
-              <p class="text-xs text-muted-foreground">Bonus tracking is planned and will live here.</p>
+              <p class="text-xs text-muted-foreground">
+                Bonuses are tracked on their own <a href="/bonuses" class="underline underline-offset-2">tab</a>; they
+                always count toward earnings and savings goals, never toward hours.
+              </p>
             </section>
 
             <section class="flex flex-col gap-3 pt-5">

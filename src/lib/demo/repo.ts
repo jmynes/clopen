@@ -12,7 +12,18 @@
  * other and toggling flips cleanly between them.
  */
 import { DEFAULT_SETTINGS, type Repo } from '$lib/core/repo';
-import type { EntryEvent, Expense, ExpenseEvent, OpenShift, SavingsGoal, Settings, TimeEntry } from '$lib/db/schema';
+import type {
+  Bonus,
+  BonusEvent,
+  EntryEvent,
+  Expense,
+  ExpenseEvent,
+  OpenShift,
+  SavingsGoal,
+  Settings,
+  TimeEntry,
+} from '$lib/db/schema';
+import type { BonusInput } from '$lib/schemas/bonus';
 import type { EntryInput } from '$lib/schemas/entry';
 import type { ExpenseInput } from '$lib/schemas/expense';
 import type { SavingsGoalInput } from '$lib/schemas/savings-goal';
@@ -28,6 +39,8 @@ const KEYS = {
     events: 'clopen:sample-entry-events',
     expenses: 'clopen:sample-expenses',
     expenseEvents: 'clopen:sample-expense-events',
+    bonuses: 'clopen:sample-bonuses',
+    bonusEvents: 'clopen:sample-bonus-events',
     savingsGoals: 'clopen:sample-savings-goals',
   },
   yours: {
@@ -37,6 +50,8 @@ const KEYS = {
     events: 'clopen:entry-events',
     expenses: 'clopen:expenses',
     expenseEvents: 'clopen:expense-events',
+    bonuses: 'clopen:bonuses',
+    bonusEvents: 'clopen:bonus-events',
     savingsGoals: 'clopen:savings-goals',
   },
 } as const;
@@ -211,6 +226,51 @@ function expenseFromInput(
   };
 }
 
+function readBonuses(): Bonus[] {
+  try {
+    const raw = localStorage.getItem(activeKeys().bonuses);
+    return raw ? (JSON.parse(raw) as Bonus[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeBonuses(rows: Bonus[]): void {
+  localStorage.setItem(activeKeys().bonuses, JSON.stringify(rows));
+}
+
+function readBonusEvents(): BonusEvent[] {
+  try {
+    const raw = localStorage.getItem(activeKeys().bonusEvents);
+    return raw ? (JSON.parse(raw) as BonusEvent[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Best-effort append — a logging failure never blocks the mutation itself. */
+function logBonusEvent(action: BonusEvent['action'], row: Bonus): void {
+  try {
+    const events = readBonusEvents();
+    events.push({ id: crypto.randomUUID(), bonusId: row.id, action, at: Date.now(), snapshot: JSON.stringify(row) });
+    localStorage.setItem(activeKeys().bonusEvents, JSON.stringify(events.slice(-EVENTS_CAP)));
+  } catch {
+    // storage unavailable or full — the bonus write still stands
+  }
+}
+
+function bonusFromInput(input: BonusInput, id: string, createdAt: number, updatedAt: number | null = null): Bonus {
+  return {
+    id,
+    date: input.date,
+    amount: input.amount,
+    label: input.label,
+    note: input.note,
+    createdAt,
+    updatedAt,
+  };
+}
+
 function readSavingsGoals(): SavingsGoal[] {
   try {
     const raw = localStorage.getItem(activeKeys().savingsGoals);
@@ -353,6 +413,44 @@ export const demoRepo: Repo = {
   async listExpenseEvents() {
     ensureSeeded();
     return [...readExpenseEvents()].sort((a, b) => b.at - a.at);
+  },
+
+  async listBonuses() {
+    ensureSeeded();
+    return sorted(readBonuses());
+  },
+
+  async addBonus(input) {
+    ensureSeeded();
+    const rows = readBonuses();
+    const row = bonusFromInput(input, crypto.randomUUID(), Date.now() / 1000);
+    rows.push(row);
+    writeBonuses(rows);
+    logBonusEvent('add', row);
+    return row;
+  },
+
+  async updateBonus(id, input) {
+    ensureSeeded();
+    const rows = readBonuses();
+    const idx = rows.findIndex((b) => b.id === id);
+    if (idx === -1) return;
+    rows[idx] = bonusFromInput(input, id, rows[idx].createdAt, Math.floor(Date.now() / 1000));
+    writeBonuses(rows);
+    logBonusEvent('edit', rows[idx]);
+  },
+
+  async deleteBonus(id) {
+    ensureSeeded();
+    const rows = readBonuses();
+    const removed = rows.find((b) => b.id === id);
+    writeBonuses(rows.filter((b) => b.id !== id));
+    if (removed) logBonusEvent('delete', removed);
+  },
+
+  async listBonusEvents() {
+    ensureSeeded();
+    return [...readBonusEvents()].sort((a, b) => b.at - a.at);
   },
 
   async listSavingsGoals() {

@@ -1,6 +1,6 @@
 /** Dashboard view math, computed in the universal page load from layout data. */
 import { todayISO } from '$lib/date';
-import type { Expense, SavingsGoal, Settings, TimeEntry } from '$lib/db/schema';
+import type { Bonus, Expense, SavingsGoal, Settings, TimeEntry } from '$lib/db/schema';
 import { makeWholeStatus } from '$lib/timesheet';
 import { toWorkSettings } from './repo';
 
@@ -12,6 +12,7 @@ export function computeDashboard(
   settingsRow: Settings,
   requested: string | null,
   savingsGoals: SavingsGoal[] = [],
+  bonuses: Bonus[] = [],
 ) {
   const today = todayISO();
   const asOf = requested && ISO_DATE.test(requested) ? requested : today;
@@ -37,6 +38,7 @@ export function computeDashboard(
     payCycle: settingsRow.payCycle,
     entries,
     expenses,
+    bonuses,
     savingsGoals,
     status,
   };

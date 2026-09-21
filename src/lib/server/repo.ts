@@ -1,4 +1,5 @@
 import type { Repo } from '$lib/core/repo';
+import { addBonus, deleteBonus, listBonusEvents, listBonuses, updateBonus } from '$lib/server/bonuses';
 import {
   addEntry,
   clearEntries,
@@ -42,6 +43,11 @@ export const serverRepo: Repo = {
   updateExpense,
   deleteExpense,
   listExpenseEvents,
+  listBonuses,
+  addBonus,
+  updateBonus,
+  deleteBonus,
+  listBonusEvents,
   listSavingsGoals,
   addSavingsGoal,
   updateSavingsGoal,

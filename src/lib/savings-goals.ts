@@ -4,8 +4,15 @@
  * salary tracking (and of Settings' yearly stretch goal): `overtime` funding
  * measures dollars earned beyond the as-written schedule since the goal's
  * start date, `all` measures every dollar earned since then.
+ *
+ * Bonuses land in both pools: they raise earnings, and since they arrive with
+ * no scheduled hours behind them every bonus dollar also clears the
+ * `overtime` pool's expected-dollars floor. Hours are untouched either way.
  */
 import { countWorkdays, type EntryLike, loggedHours, overtimeHours, type WorkSettings } from './timesheet';
+
+/** The shape of a bonus this math needs: a dated dollar amount. */
+export type BonusLike = { date: string; amount: number };
 
 export const GOAL_FUNDINGS = ['overtime', 'all'] as const;
 export type GoalFunding = (typeof GOAL_FUNDINGS)[number];
@@ -31,6 +38,8 @@ function round2(n: number): number {
 
 type PoolParams = {
   entries: EntryLike[];
+  /** Bonuses received; dollars only, never hours. */
+  bonuses?: BonusLike[];
   asOf: string;
   settings: WorkSettings;
   /** Earliest date that counts toward accrual, same clamp as the dashboard. */
@@ -49,7 +58,11 @@ function poolDollars(funding: GoalFunding, startDate: string, params: PoolParams
   // Same earnings math as the dashboard hero, at the straight salary rate
   // (goals are independent of the yearly stretch goal by design).
   const ot = params.otMultiplierEnabled ? overtimeHours(inRange, settings.dailyHours) : 0;
-  const earned = (logged - ot) * settings.hourlyRate + ot * settings.hourlyRate * (params.otMultiplier ?? 1.5);
+  const bonusDollars = (params.bonuses ?? [])
+    .filter((b) => b.date >= start && b.date <= asOf)
+    .reduce((sum, b) => sum + b.amount, 0);
+  const earned =
+    (logged - ot) * settings.hourlyRate + ot * settings.hourlyRate * (params.otMultiplier ?? 1.5) + bonusDollars;
   if (funding === 'all') return round2(earned);
   const expectedDollars = countWorkdays(start, asOf, settings.workdays) * settings.dailyHours * settings.hourlyRate;
   return round2(Math.max(0, earned - expectedDollars));

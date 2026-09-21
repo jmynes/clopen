@@ -6,6 +6,7 @@
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import ChevronUp from '@lucide/svelte/icons/chevron-up';
   import Clock from '@lucide/svelte/icons/clock';
+  import Gift from '@lucide/svelte/icons/gift';
   import Pencil from '@lucide/svelte/icons/pencil';
   import PiggyBank from '@lucide/svelte/icons/piggy-bank';
   import Plus from '@lucide/svelte/icons/plus';
@@ -194,8 +195,15 @@
   // Day-hours beyond the baseline earn at the multiplier when enabled;
   // otherwise everything is straight time (overtime still banks either way).
   const otHours = $derived(data.otMultiplierEnabled ? overtimeHours(inRange, data.dailyHours) : 0);
+  // Bonuses are money without hours behind them: they raise what you earned
+  // and never touch expectedHours/logged/Net, so a bonus can never make an
+  // hours shortfall look smaller than it is.
+  const bonusesInRange = $derived(
+    window ? data.bonuses.filter((b) => b.date >= window.start && b.date <= window.end) : [],
+  );
+  const bonusTotal = $derived(Math.round(bonusesInRange.reduce((s, b) => s + b.amount, 0) * 100) / 100);
   const earnedDollars = $derived(
-    (logged - otHours) * data.hourlyRate + otHours * data.hourlyRate * data.otMultiplier,
+    (logged - otHours) * data.hourlyRate + otHours * data.hourlyRate * data.otMultiplier + bonusTotal,
   );
   const dollarsDelta = $derived(earnedDollars - expectedDollars);
 
@@ -332,6 +340,7 @@
     const progress = allocateGoals({
       goals: data.savingsGoals,
       entries: data.entries,
+      bonuses: data.bonuses,
       asOf: data.today,
       settings: { hourlyRate: data.hourlyRate, dailyHours: data.dailyHours, workdays: data.workdays },
       epoch: data.epoch,
@@ -576,6 +585,14 @@
             </span>
           {/if}
         </p>
+        {#if bonusTotal > 0}
+          <!-- Earned jumps when a bonus lands, so say why. No toggle: a bonus
+               you received is money you have, and it never touches hours. -->
+          <p class="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Gift class="size-3.5 shrink-0 text-emerald-500" />
+            includes {money.format(bonusTotal)} in bonuses
+          </p>
+        {/if}
         {#if expensesTotal > 0}
           <label
             class="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-md border border-input px-2.5 py-1.5 text-xs transition-colors has-checked:border-amber-500/60 has-checked:bg-amber-500/10"

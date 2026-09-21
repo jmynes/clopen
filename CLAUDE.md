@@ -26,8 +26,10 @@ and can optionally fold into the make-whole math: included expense dollars
 convert to hours owed at the straight rate. An optional **yearly goal**
 (`goalEnabled`/`yearlyGoal`) replaces the salary rate with `goal ÷ year's
 expected hours`, prorating a stretch target into every dashboard period.
-**Bonus tracking is deferred** — noted in the UI, not built. Runs locally;
-no auth, no deploy.
+**Bonuses** are money that arrived without hours behind it (a free-text label
+plus a dollar amount). They raise the dashboard's *earned* dollars and fund
+savings goals, and they never touch the hours side — a bonus can't shrink an
+hours deficit. Runs locally; no auth, no deploy.
 
 The math lives in `src/lib/timesheet.ts` (pure, fully unit-tested) — the heart
 of the app. UI and DB are thin layers around it.
@@ -143,7 +145,8 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
     zero-network tab set), reached via the indigo "View audit log" button in
     Settings' Log & Ledger card. `Repo` exposes `listEntryEvents()` (newest
     first, server cap 1000). The audit page merges `entry_events` and
-    `expense_events` into one timeline with Entry/Expense source badges.
+    `expense_events` + `bonus_events` into one timeline with Entry/Expense/Bonus
+    source badges.
   - `expenses`: `id`, `date` (ISO local-day), `amount` (dollars), `kind`
     (from `$lib/expense-kinds`), `vendor` (shared column, values scoped per
     kind by `KIND_VENDORS`), `direction` (ride-only commute leg) / `method`
@@ -151,6 +154,15 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
     (subscription-purchase-only recurrence) — detail axes are null on other
     kinds and legacy rows — `note`, `createdAt`, `updatedAt` (same timestamp
     semantics as entries).
+  - `bonuses`: `id`, `date` (ISO local-day), `amount` (dollars), `label`
+    (free-text badge text, blank → "Bonus" at the display layer via
+    `bonusLabelOf`), `note`, `createdAt`, `updatedAt` (same timestamp
+    semantics as entries). Deliberately flat — no kind taxonomy, because
+    bonuses are a handful of rows a year.
+  - `bonus_events`: mirror of `entry_events` with `bonusId`; written inside
+    the repo implementations' CRUD (server + demo, demo capped at 500/bucket).
+    `Repo` exposes `listBonusEvents()` plus `listBonuses` / `addBonus` /
+    `updateBonus` / `deleteBonus`.
   - `expense_events`: mirror of `entry_events` with `expenseId`; written
     inside the repo implementations' CRUD (server + demo, demo capped at
     500/bucket). `Repo` exposes `listExpenseEvents()` plus `listExpenses` /
@@ -161,7 +173,10 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
     `allocation` (percent share of the savings stream, default 100),
     `createdAt`, `updatedAt`. Progress is derived (`$lib/savings-goals`
     `allocateGoals` — allocation split, capped at target, spare share spills
-    to the highest-ranked unfinished goal; pure + tested), never stored, and
+    to the highest-ranked unfinished goal; pure + tested). Bonuses land in
+    both funding pools: they raise earnings, and since they arrive with no
+    scheduled hours behind them every bonus dollar also clears the
+    `overtime` pool's expected-dollars floor. Progress is never stored, and
     always uses the straight `hourlyRate` — independent of the yearly stretch
     goal and of the hero's salary math. No audit events (not ledger records).
     `Repo` exposes `listSavingsGoals` (rank order) / `addSavingsGoal`
@@ -171,11 +186,11 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   so module load doesn't open a connection during SvelteKit's build analyse pass.
   Local default `file:./local.db`.
 - **Load architecture (zero-network tab switching):** entries + expenses +
-  settings load once in the root `+layout.server.ts` (which must never read `url`/`params`/
+  bonuses + settings load once in the root `+layout.server.ts` (which must never read `url`/`params`/
   `cookies` — that's what keeps it from re-running on navigation) and the demo
   branch in `+layout.ts`; each page's `+page.ts` is a pure synchronous compute
   over `await parent()` (`computeDashboard` / `computeLog` /
-  `computeExpenses` / `computeSettingsPage`). The per-route `+page.server.ts` files hold only form
+  `computeExpenses` / `computeBonuses` / `computeSettingsPage`). The per-route `+page.server.ts` files hold only form
   actions. Mutations refresh via `enhance`'s `invalidateAll()` (one fetch) in
   normal mode and `invalidate('demo:data')` (offline) in demo.
 - `src/lib/core/` — transport-agnostic page logic: `repo.ts` (the `Repo`
@@ -210,10 +225,11 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   handler has a demo branch that cancels the POST and runs the core action
   against localStorage (results stand in for the `form` prop via an
   `actionData` derived).
-- `src/lib/server/entries.ts` / `expenses.ts` / `savings-goals.ts` /
-  `settings.ts` — CRUD with an
+- `src/lib/server/entries.ts` / `expenses.ts` / `bonuses.ts` /
+  `savings-goals.ts` / `settings.ts` — CRUD with an
   **injectable `db` arg** so unit tests run against an in-memory libSQL
-  (`entries.test.ts`, `expenses.test.ts`, `savings-goals.test.ts`);
+  (`entries.test.ts`, `expenses.test.ts`, `bonuses.test.ts`,
+  `savings-goals.test.ts`);
   `repo.ts` bundles them as `serverRepo`, the Drizzle `Repo` implementation.
   Entries module also exports `findExistingDates`, `listEntriesByDates`, and
   `deleteEntriesByDates` for the conflict-resolution flow. `toWorkSettings` maps
@@ -263,6 +279,9 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
     unless the kind is `other_*`); produces an `EntryInput` whose `entryKind`
     reflects the kind and whose `hours` is the daily baseline for paid kinds,
     0 for unpaid.
+  - `bonusInput` — ISO date + positive dollar amount (≤ 1M) + optional
+    free-text `label` (trimmed, blank → null, ≤ `BONUS_LABEL_MAX` = 40) +
+    optional note (blank → null).
   - `expenseInput` — ISO date + positive dollar amount (≤ 100k) + kind +
     optional vendor/direction/method (each scrubbed to null when it doesn't
     belong to the kind) + optional note (blank → null).
@@ -415,6 +434,15 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   button so Enter confirms. `punchEnhance` passes the form's FormData
   through to its `run` callback for these. Demo
   branches run the core actions against `demoRepo` + `invalidate('demo:data')`.
+- `src/routes/bonuses/+page.*` — bonuses tab (5th): an add form (DateField
+  date / free-text label / amount / note), a period-paginated list using the
+  dashboard's bucket math (opens to `ledgerPeriod`, prev disabled at the
+  epoch, DateJump floored there) with a period total in the header, and
+  edit/delete dialogs. Rows badge the label (emerald, gift glyph) and show
+  the amount in success green. A `bonusEnhance(action, after?)` factory
+  branches demo mutations to `demoRepo` + `invalidate('demo:data')`, mirroring
+  the Expenses idiom; validation errors surface as a single `bonusError` line
+  under the add form.
 - `src/routes/settings/+page.*` — sidebar shell: a section rail (vertical
   from `md`, dropdown below) showing one section at a time in a single wide
   pane (Global / Dashboard / Clock & time / Log & Ledger / Expenses,
@@ -440,10 +468,15 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   bar shows save status plus a Reset-to-defaults button behind a confirm
   dialog. Tooltips: `Tooltip.Provider` wraps the
   app in `+layout.svelte`; repeated/per-row controls use native `title`.
-- `src/routes/+layout.svelte` — responsive nav (Dashboard / Clock / Log /
-  Expenses / Settings): desktop header links (with icons) from `md`; below that an
-  iOS-style bottom tab bar plus a top-left hamburger (bars→X morph) opening a
-  slide-down menu over a dim overlay. The Clock link shows a small `bg-success`
+- `src/routes/+layout.svelte` — responsive nav. `navLinks` (Dashboard /
+  Clock / Log / Expenses / Bonuses) is what earns a slot in the phone's thumb
+  zone; `settingsLink` is separate, and `links` concatenates them for the
+  desktop header, which shows all six from `md`. Below `md`: an iOS-style
+  bottom tab bar of `navLinks` only, a top-left hamburger (bars→X morph)
+  opening a slide-down menu that does list all six, and a Settings cog icon
+  in the header just left of the theme toggle (`md:hidden`, tooltipped,
+  tinted primary on `/settings`) — Settings is a rare destination, so it
+  doesn't spend a fifth of the tab bar. The Clock link shows a small `bg-success`
   dot while a shift is running (`data.openShift`). The footer shows the app
   version via `__APP_VERSION__`, defined in `vite.config.ts` from
   `package.json` — no manual sync — plus GitHub and Discord (FA-brands

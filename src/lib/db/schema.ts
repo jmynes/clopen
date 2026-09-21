@@ -200,3 +200,40 @@ export const expenseEvents = sqliteTable('expense_events', {
   snapshot: text('snapshot').notNull(),
 });
 export type ExpenseEvent = typeof expenseEvents.$inferSelect;
+
+/**
+ * A bonus received: money that arrived without hours behind it. Deliberately
+ * flat — date, dollars, a free-text label ("Q3 performance", "referral"), and
+ * a note — because bonuses are a handful of rows a year and a taxonomy would
+ * cost more than it explains.
+ *
+ * Bonuses move the dollar side of the make-whole math only. They raise what
+ * you earned (and so savings-goal funding), and never shrink an hours
+ * deficit: a bonus is not hours worked.
+ */
+export const bonuses = sqliteTable('bonuses', {
+  id: text('id').primaryKey(),
+  date: text('date').notNull(),
+  amount: real('amount').notNull(),
+  /** Free-text badge text; blank falls back to "Bonus" at the display layer. */
+  label: text('label'),
+  note: text('note'),
+  createdAt: integer('created_at').notNull().default(sql`(unixepoch())`),
+  /** Epoch seconds of the last edit; null = never edited since creation. */
+  updatedAt: integer('updated_at'),
+});
+export type Bonus = typeof bonuses.$inferSelect;
+
+/**
+ * Append-only audit log of bonus mutations — the shape of entry_events and
+ * expense_events with `bonusId`. Written inside the repo implementations so
+ * every mutation path logs without per-caller wiring.
+ */
+export const bonusEvents = sqliteTable('bonus_events', {
+  id: text('id').primaryKey(),
+  bonusId: text('bonus_id').notNull(),
+  action: text('action', { enum: ['add', 'edit', 'delete'] }).notNull(),
+  at: integer('at').notNull(),
+  snapshot: text('snapshot').notNull(),
+});
+export type BonusEvent = typeof bonusEvents.$inferSelect;

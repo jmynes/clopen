@@ -1,4 +1,15 @@
-import type { EntryEvent, Expense, ExpenseEvent, OpenShift, SavingsGoal, Settings, TimeEntry } from '$lib/db/schema';
+import type {
+  Bonus,
+  BonusEvent,
+  EntryEvent,
+  Expense,
+  ExpenseEvent,
+  OpenShift,
+  SavingsGoal,
+  Settings,
+  TimeEntry,
+} from '$lib/db/schema';
+import type { BonusInput } from '$lib/schemas/bonus';
 import type { EntryInput } from '$lib/schemas/entry';
 import type { ExpenseInput } from '$lib/schemas/expense';
 import type { SavingsGoalInput } from '$lib/schemas/savings-goal';
@@ -33,6 +44,12 @@ export type Repo = {
   deleteExpense(id: string): Promise<void>;
   /** Audit log of expense mutations, newest first. */
   listExpenseEvents(): Promise<ExpenseEvent[]>;
+  listBonuses(): Promise<Bonus[]>;
+  addBonus(input: BonusInput): Promise<Bonus>;
+  updateBonus(id: string, input: BonusInput): Promise<void>;
+  deleteBonus(id: string): Promise<void>;
+  /** Audit log of bonus mutations, newest first. */
+  listBonusEvents(): Promise<BonusEvent[]>;
   /** Savings goals in rank (allocation-priority) order. */
   listSavingsGoals(): Promise<SavingsGoal[]>;
   addSavingsGoal(input: SavingsGoalInput): Promise<SavingsGoal>;
@@ -105,6 +122,13 @@ export const emptyRepo: Repo = {
   updateExpense: async () => {},
   deleteExpense: async () => {},
   listExpenseEvents: async () => [],
+  listBonuses: async () => [],
+  addBonus: async () => {
+    throw new Error('emptyRepo is read-only');
+  },
+  updateBonus: async () => {},
+  deleteBonus: async () => {},
+  listBonusEvents: async () => [],
   listSavingsGoals: async () => [],
   addSavingsGoal: async () => {
     throw new Error('emptyRepo is read-only');

@@ -623,8 +623,8 @@
 
   <p class="text-center text-xs text-muted-foreground">
     Every add, edit, and delete here lands in the
-    <a href="/settings/audit" class="underline underline-offset-2 hover:text-foreground">audit log</a>. Bonus tracking
-    is planned.
+    <a href="/settings/audit" class="underline underline-offset-2 hover:text-foreground">audit log</a>. Bonuses live
+    on their own <a href="/bonuses" class="underline underline-offset-2 hover:text-foreground">tab</a>.
   </p>
 </div>
 

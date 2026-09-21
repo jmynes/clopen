@@ -6,10 +6,20 @@ import type { PageLoad } from './$types';
 // stub. timeFormat rides along from the layout's settings for the stamps.
 export const load: PageLoad = async ({ data, parent, depends }) => {
   const { settings } = await parent();
-  if (!isDemo) return { events: data.events, expenseEvents: data.expenseEvents, timeFormat: settings.timeFormat };
+  const fromServer = {
+    events: data.events,
+    expenseEvents: data.expenseEvents,
+    bonusEvents: data.bonusEvents,
+    timeFormat: settings.timeFormat,
+  };
+  if (!isDemo) return fromServer;
   depends('demo:data');
-  if (!browser) return { events: data.events, expenseEvents: data.expenseEvents, timeFormat: settings.timeFormat };
+  if (!browser) return fromServer;
   const { demoRepo } = await import('$lib/demo/repo');
-  const [events, expenseEvents] = await Promise.all([demoRepo.listEntryEvents(), demoRepo.listExpenseEvents()]);
-  return { events, expenseEvents, timeFormat: settings.timeFormat };
+  const [events, expenseEvents, bonusEvents] = await Promise.all([
+    demoRepo.listEntryEvents(),
+    demoRepo.listExpenseEvents(),
+    demoRepo.listBonusEvents(),
+  ]);
+  return { events, expenseEvents, bonusEvents, timeFormat: settings.timeFormat };
 };

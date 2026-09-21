@@ -7,6 +7,10 @@ import type { PageServerLoad } from './$types';
 // keeps the (potentially large) event lists out of the layout payload.
 export const load: PageServerLoad = async () => {
   const repo = isDemo ? emptyRepo : serverRepo;
-  const [events, expenseEvents] = await Promise.all([repo.listEntryEvents(), repo.listExpenseEvents()]);
-  return { events, expenseEvents };
+  const [events, expenseEvents, bonusEvents] = await Promise.all([
+    repo.listEntryEvents(),
+    repo.listExpenseEvents(),
+    repo.listBonusEvents(),
+  ]);
+  return { events, expenseEvents, bonusEvents };
 };

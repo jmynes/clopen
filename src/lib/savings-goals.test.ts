@@ -146,3 +146,57 @@ describe('goalProgress · edges', () => {
     expect(p.reached).toBe(true);
   });
 });
+
+describe('bonuses in the funding pools', () => {
+  // $10/h, 8h weekdays; 2026-06-08 is a Monday. A week worked exactly to
+  // schedule earns $400 and banks no overtime.
+  const settings: WorkSettings = { hourlyRate: 10, dailyHours: 8, workdays: [1, 2, 3, 4, 5] };
+  const exact = [0, 1, 2, 3, 4].map((i) => ({
+    date: `2026-06-${String(8 + i).padStart(2, '0')}`,
+    hours: 8,
+  }));
+  const base = { entries: exact, asOf: '2026-06-12', settings, startDate: '2026-06-08', targetAmount: 1000 };
+
+  it('adds bonus dollars to the all-earnings pool', () => {
+    const without = goalProgress({ ...base, funding: 'all' });
+    const with250 = goalProgress({
+      ...base,
+      funding: 'all',
+      bonuses: [{ date: '2026-06-10', amount: 250 }],
+    });
+    expect(without.saved).toBe(400);
+    expect(with250.saved).toBe(650);
+  });
+
+  it('clears the overtime pool floor, since a bonus brings no scheduled hours', () => {
+    // Worked exactly to schedule: the overtime pool is empty without a bonus.
+    expect(goalProgress({ ...base, funding: 'overtime' }).saved).toBe(0);
+    expect(goalProgress({ ...base, funding: 'overtime', bonuses: [{ date: '2026-06-10', amount: 250 }] }).saved).toBe(
+      250,
+    );
+  });
+
+  it('ignores bonuses outside the goal window', () => {
+    const out = goalProgress({
+      ...base,
+      funding: 'all',
+      bonuses: [
+        { date: '2026-06-07', amount: 999 }, // before startDate
+        { date: '2026-06-13', amount: 999 }, // after asOf
+      ],
+    });
+    expect(out.saved).toBe(400);
+  });
+
+  it('respects the epoch clamp on the bonus window too', () => {
+    const out = goalProgress({
+      ...base,
+      funding: 'all',
+      epoch: '2026-06-10',
+      bonuses: [{ date: '2026-06-09', amount: 999 }],
+    });
+    // Epoch floors accrual at the 10th, so both the 9th's hours and its
+    // bonus fall outside: Wed–Fri only.
+    expect(out.saved).toBe(240);
+  });
+});

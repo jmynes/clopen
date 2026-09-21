@@ -21,9 +21,10 @@ export const load: LayoutLoad = async ({ data, depends }) => {
   depends('demo:data');
   if (!browser) return data;
   const { demoRepo } = await import('$lib/demo/repo');
-  const [entries, expenses, settings, openShift, savingsGoals] = await Promise.all([
+  const [entries, expenses, bonuses, settings, openShift, savingsGoals] = await Promise.all([
     demoRepo.listEntries(),
     demoRepo.listExpenses(),
+    demoRepo.listBonuses(),
     demoRepo.getSettings(),
     demoRepo.getOpenShift(),
     demoRepo.listSavingsGoals(),
@@ -31,5 +32,5 @@ export const load: LayoutLoad = async ({ data, depends }) => {
   // The layout load runs before every page compute, on server and client,
   // so todayISO() is already zone-correct downstream.
   setAppTimeZone(effectiveZone(settings.timeZone, settings.observeDst));
-  return { entries, expenses, settings, openShift, savingsGoals };
+  return { entries, expenses, bonuses, settings, openShift, savingsGoals };
 };
