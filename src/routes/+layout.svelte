@@ -279,7 +279,7 @@ import Settings from '@lucide/svelte/icons/settings';
           {@const Icon = link.icon}
           <a
             href={link.href}
-            class="relative flex min-h-12 select-none items-center justify-center gap-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground {isActive(
+            class="relative flex min-h-12 select-none items-center justify-center text-sm transition-colors hover:bg-accent hover:text-accent-foreground {isActive(
               link.href,
             )
               ? 'font-medium'
@@ -287,8 +287,15 @@ import Settings from '@lucide/svelte/icons/settings';
             aria-current={isActive(link.href) ? 'page' : undefined}
             onclick={() => (menuOpen = false)}
           >
-            <Icon class="size-4 {isActive(link.href) ? 'text-primary' : ''}" />
-            {link.label}
+            <!-- Centring each row individually would stagger the icons by label
+                 length. Centre one fixed-width block instead and lay the row out
+                 on a 2-column grid, so every icon shares a column and every
+                 label starts on the same edge. The width only has to clear the
+                 longest label ("Dashboard"). -->
+            <span class="grid w-36 grid-cols-[1rem_1fr] items-center gap-2">
+              <Icon class="size-4 {isActive(link.href) ? 'text-primary' : ''}" />
+              <span>{link.label}</span>
+            </span>
             {#if link.href === '/clock' && clockRunning}
               <span class="absolute top-1 right-1 size-1.5 rounded-full bg-success" aria-hidden="true"></span>
             {/if}
