@@ -479,14 +479,14 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   dialog. Tooltips: `Tooltip.Provider` wraps the
   app in `+layout.svelte`; repeated/per-row controls use native `title`.
 - `src/routes/+layout.svelte` — responsive nav. `navLinks` (Dashboard /
-  Clock / Log / Expenses / Bonuses) is what earns a slot in the phone's thumb
-  zone; `settingsLink` is separate, and `links` concatenates them for the
-  desktop header, which shows all six from `md`. Below `md`: an iOS-style
-  bottom tab bar of `navLinks` only, a top-left hamburger (bars→X morph)
-  opening a slide-down menu that does list all six, and a Settings cog icon
-  in the header just left of the theme toggle (`md:hidden`, tooltipped,
-  tinted primary on `/settings`) — Settings is a rare destination, so it
-  doesn't spend a fifth of the tab bar. The Clock link shows a small `bg-success`
+  Clock / Log / Expenses / Bonuses) is the labelled set at every width: the
+  desktop header's link run from `md`, and the iOS-style bottom tab bar
+  below it. **Settings is never a labelled nav item** — it's a rare
+  destination, so at every width it's the tooltipped cog beside the theme
+  toggle (`settingsLink`, tinted primary on `/settings`). `links` is
+  `navLinks` + Settings and serves only the mobile hamburger (bars→X morph,
+  slide-down panel over a dim overlay), the one place Settings appears by
+  name. The Clock link shows a small `bg-success`
   dot while a shift is running (`data.openShift`). The footer shows the app
   version via `__APP_VERSION__`, defined in `vite.config.ts` from
   `package.json` — no manual sync — plus GitHub and Discord (FA-brands
