@@ -1521,7 +1521,7 @@
     <Card.Header class="flex flex-col items-stretch gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-2">
       <div class="max-md:text-center">
         <Card.Title>Log a week</Card.Title>
-        <Card.Description>Fill each day, then add them all at once.</Card.Description>
+        <Card.Description>Rows save as you fill them.</Card.Description>
       </div>
       <!-- Mobile: week nav on its own full-width row, then month/year/This week
            sharing a line. md:order-* restores the desktop sequence
@@ -2052,7 +2052,7 @@
     <Card.Root>
       <Card.Header class="max-md:text-center">
         <Card.Title>Log a week</Card.Title>
-        <Card.Description>Fill each day, then add them all at once.</Card.Description>
+        <Card.Description>Rows save as you fill them.</Card.Description>
       </Card.Header>
       <Card.Content><div class="h-96 md:h-[26rem]"></div></Card.Content>
     </Card.Root>
