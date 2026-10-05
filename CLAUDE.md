@@ -117,6 +117,8 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
     false — entry notes start expanded in the Ledger),
     `ledgerPeriod` (`week | biweek | month | quarter | year`, default `month` —
     the period the Ledger opens to),
+    `linkLogNavs` (default true — the Log page's weekly grid and Ledger date
+    navs move together; see the Log route below),
     `payCycle` (`daily | weekly | biweekly | monthly`, default `biweekly` —
     what the dashboard's period selector and chart granularity open to),
     `timeZone` (IANA, default `America/Chicago`) / `observeDst` (default true —
@@ -373,7 +375,25 @@ Run a single test file: `bun run test src/lib/timesheet.test.ts`.
   Main-row field names stay `start-{i}` where i is the day offset from
   weekStart — hiding weekends or adding shifts must never renumber them.
   Paste and Fill target main rows only; Fill copies the last-touched cell to
-  the whole week (fallback: first row's time fields down). The edit modal
+  the whole week (fallback: first row's time fields down).
+  **Nav coupling:** with `linkLogNavs` on, the grid and Ledger date navs move
+  together — every week change routes through `goToWeek()` and every Ledger
+  change through `goToEntriesAnchor()`, which re-POINT each other rather than
+  counting steps, so a calendar jump or a "today" press can't desync them. The
+  grid follows to the Ledger block's `start`, not its anchor (a month/quarter/
+  year anchor sits inside the block, not at its edge), epoch-clamped. Changing
+  the Ledger's *period* deliberately doesn't move the grid. Bi-week blocks are
+  relative ("the anchor's week plus the one before"), so stepping the grid
+  through one re-phases it a week at a time — inherent, not a bug. `goToWeek`
+  takes a thunk for relative steps so rapid arrow clicks don't all read the
+  pre-move `weekStart`.
+  **`flushPendingRowSaves()` runs before every programmatic week change**, and is
+  what makes typing safe across navigation: the grid is uncontrolled and
+  `buildRow` reads the cell values *and* `weekRowDates[i]` when the debounced
+  save fires, so without the flush a week change inside that 500ms window lets
+  `seedGrid` overwrite the cells and the save then applies the new week's values
+  under the new week's dates, silently dropping what was typed.
+  The edit modal
   carries a Type chooser (work + leave kinds) and doubles as the
   single-entry create path: the pencil on a blank day opens it posting to
   `?/add` with that date prefilled.
