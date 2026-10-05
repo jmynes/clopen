@@ -1538,6 +1538,20 @@
            to the left. The title stays left in both cases. -->
       <div class="flex flex-col gap-2 md:ml-auto md:flex-row md:flex-wrap md:items-center">
         <div class="flex items-center gap-2 md:order-4">
+          <!-- First in the group, so from md the calendar sits left of the
+               previous-week arrow with the rest of the date controls. On phones
+               it's absolute instead, parked in the header's top-right beside the
+               (centred) title, which hands its width back to the label and
+               arrows that otherwise fill the row exactly — so this DOM position
+               is desktop-only in effect. -->
+          <div class="max-md:absolute max-md:top-0 max-md:right-4 md:contents">
+            <DateJump
+              value={weekStart}
+              min={data.epoch}
+              label="Jump to week"
+              onpick={(iso) => (weekAnchor = iso < data.epoch ? data.epoch : iso)}
+            />
+          </div>
           <Tooltip.Root>
             <Tooltip.Trigger>
               {#snippet child({ props })}
@@ -1594,20 +1608,6 @@
             </Tooltip.Trigger>
             <Tooltip.Content>Next week</Tooltip.Content>
           </Tooltip.Root>
-          <!-- On phones the calendar lifts out of the nav row and parks in the
-               header's top-right corner, beside the (centred) title rather
-               than displacing it. That hands its 36px plus the row's gap back
-               to the date label and arrows, which otherwise fill the row
-               exactly. md:contents dissolves this wrapper from md up, where
-               the calendar is an ordinary flex child again. -->
-          <div class="max-md:absolute max-md:top-0 max-md:right-4 md:contents">
-            <DateJump
-              value={weekStart}
-              min={data.epoch}
-              label="Jump to week"
-              onpick={(iso) => (weekAnchor = iso < data.epoch ? data.epoch : iso)}
-            />
-          </div>
         </div>
         <div class="flex items-center gap-2 md:contents">
           <Tooltip.Root>
@@ -2217,6 +2217,19 @@
             {entriesAtCurrent ? `Already on this ${PERIOD_NOUNS[entriesPeriod]}` : 'Jump back to the current period'}
           </Tooltip.Content>
         </Tooltip.Root>
+        <!-- Ahead of the previous-period arrow, so from md the calendar sits
+             with the rest of the date controls. On phones it's absolute instead,
+             parked in the card header's top-right beside the Ledger title, which
+             hands its width back to the period label and arrows — so this DOM
+             position is desktop-only in effect. -->
+        <div class="max-md:absolute max-md:top-4 max-md:right-4 md:contents">
+          <DateJump
+            value={entriesAnchor}
+            min={data.epoch}
+            label="Jump to date"
+            onpick={(iso) => (entriesAnchor = iso < data.epoch ? data.epoch : iso)}
+          />
+        </div>
         <Tooltip.Root>
           <Tooltip.Trigger>
             {#snippet child({ props })}
@@ -2273,17 +2286,6 @@
           </Tooltip.Trigger>
           <Tooltip.Content>Next period</Tooltip.Content>
         </Tooltip.Root>
-        <!-- Same move as the weekly grid: on phones the calendar parks in the
-             card header's top-right, beside the Ledger title, handing its width
-             back to the period label and arrows. -->
-        <div class="max-md:absolute max-md:top-4 max-md:right-4 md:contents">
-          <DateJump
-            value={entriesAnchor}
-            min={data.epoch}
-            label="Jump to date"
-            onpick={(iso) => (entriesAnchor = iso < data.epoch ? data.epoch : iso)}
-          />
-        </div>
       </div>
       {#if actionData?.imported}
         <p class="mb-3 text-sm text-success">
