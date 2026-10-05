@@ -693,6 +693,10 @@
   let weekForm = $state<HTMLFormElement | null>(null);
   // Column order per mode; paste/fill distribute across these (notes included).
   const gridCols = $derived(weekMode === 'clock' ? ['start', 'end', 'break', 'note'] : ['hours', 'break', 'note']);
+  // Paste anchors on the focused cell in BOTH axes, so a two-column in/out
+  // block dropped on an Out cell writes in→Out and out→Break. The tip names
+  // the first column by its header so the advice can't drift from gridCols.
+  const pasteAnchorLabel = $derived(weekMode === 'clock' ? 'In' : 'Worked');
 
   // Inline extra shifts per day (offset-indexed). Unlike the main rows these
   // are controlled state: paste and Fill deliberately ignore sub-rows, so
@@ -1518,7 +1522,9 @@
   <!-- weekly grid -->
   {#if gridReady}
   <Card.Root>
-    <Card.Header class="flex flex-col items-stretch gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-2">
+    <Card.Header
+      class="relative flex flex-col items-stretch gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-2"
+    >
       <div class="max-md:text-center">
         <Card.Title>Log a week</Card.Title>
         <Card.Description>Rows save as you fill them.</Card.Description>
@@ -1568,7 +1574,9 @@
                 Upcoming
               </span>
             {/if}
-            <span class="leading-5">{formatWeekRange(weekStart, true)}</span>
+            <!-- text-balance so a label too wide for a phone splits either side
+                 of the dash instead of orphaning the trailing year. -->
+            <span class="text-balance leading-5">{formatWeekRange(weekStart, true)}</span>
           </span>
           <Tooltip.Root>
             <Tooltip.Trigger>
@@ -1586,12 +1594,20 @@
             </Tooltip.Trigger>
             <Tooltip.Content>Next week</Tooltip.Content>
           </Tooltip.Root>
-          <DateJump
-            value={weekStart}
-            min={data.epoch}
-            label="Jump to week"
-            onpick={(iso) => (weekAnchor = iso < data.epoch ? data.epoch : iso)}
-          />
+          <!-- On phones the calendar lifts out of the nav row and parks in the
+               header's top-right corner, beside the (centred) title rather
+               than displacing it. That hands its 36px plus the row's gap back
+               to the date label and arrows, which otherwise fill the row
+               exactly. md:contents dissolves this wrapper from md up, where
+               the calendar is an ordinary flex child again. -->
+          <div class="max-md:absolute max-md:top-0 max-md:right-4 md:contents">
+            <DateJump
+              value={weekStart}
+              min={data.epoch}
+              label="Jump to week"
+              onpick={(iso) => (weekAnchor = iso < data.epoch ? data.epoch : iso)}
+            />
+          </div>
         </div>
         <div class="flex items-center gap-2 md:contents">
           <Tooltip.Root>
@@ -2040,7 +2056,7 @@
           <!-- The tip carries the right-push at lg (where it's visible); below
                lg it's hidden, so Fill takes over the ml-auto. -->
           <span class="hidden text-xs text-muted-foreground lg:ml-auto lg:inline">
-            Tip: paste a block from a spreadsheet into any cell.
+            Tip: paste a spreadsheet block into an {pasteAnchorLabel} cell — it fills right and down.
           </span>
           <Tooltip.Root>
             <Tooltip.Trigger>
