@@ -2095,19 +2095,49 @@
       tabindex={-1}
     ></button>
   {/if}
+  <!-- Rendered twice: in the header cluster from md, and on the phone sort row
+       below, where there's slack the header's four buttons didn't have. -->
+  {#snippet expandLedger(cls: string)}
+    <Tooltip.Root>
+      <Tooltip.Trigger>
+        {#snippet child({ props })}
+          <Button
+            {...props}
+            variant="outline"
+            size="sm"
+            type="button"
+            class={cls}
+            aria-label={entriesExpanded ? 'Collapse ledger' : 'Expand ledger'}
+            onclick={() => (entriesExpanded = !entriesExpanded)}
+          >
+            {#if entriesExpanded}
+              <Minimize2 class="size-4" />
+            {:else}
+              <Maximize2 class="size-4" />
+            {/if}
+          </Button>
+        {/snippet}
+      </Tooltip.Trigger>
+      <Tooltip.Content>{entriesExpanded ? 'Exit fullscreen' : 'Fullscreen ledger'}</Tooltip.Content>
+    </Tooltip.Root>
+  {/snippet}
+
+  <!-- relative: the phone-parked calendar below is absolute against this card. -->
   <Card.Root
     class={entriesExpanded
       ? 'fixed inset-0 z-50 overflow-hidden max-md:rounded-none max-md:ring-0 md:inset-6 2xl:inset-x-[calc((100vw-84rem)/2)]'
-      : ''}
+      : 'relative'}
   >
-    <Card.Header class="flex flex-row flex-wrap items-center justify-between gap-2">
+    <Card.Header class="relative flex flex-row flex-wrap items-center justify-between gap-2">
       <div>
         <Card.Title>Ledger</Card.Title>
         <Card.Description>
           {pagedEntries.length} in this {entriesPeriod === 'biweek' ? 'bi-week' : entriesPeriod} · {data.entries.length} total
         </Card.Description>
       </div>
-      <div class="flex shrink-0 items-center gap-2">
+      <!-- max-md:flex-wrap: four buttons plus shrink-0 overran the card edge on a
+           phone, clipping the fullscreen toggle. -->
+      <div class="flex shrink-0 items-center gap-2 max-md:flex-wrap">
         <Button variant="outline" size="sm" onclick={exportCsv} disabled={data.entries.length === 0}>
           <Download class="size-4" /> Export CSV
         </Button>
@@ -2146,27 +2176,7 @@
           </Tooltip.Trigger>
           <Tooltip.Content>Delete this period's entries, or the whole ledger</Tooltip.Content>
         </Tooltip.Root>
-        <Tooltip.Root>
-          <Tooltip.Trigger>
-            {#snippet child({ props })}
-              <Button
-                {...props}
-                variant="outline"
-                size="sm"
-                type="button"
-                aria-label={entriesExpanded ? 'Collapse ledger' : 'Expand ledger'}
-                onclick={() => (entriesExpanded = !entriesExpanded)}
-              >
-                {#if entriesExpanded}
-                  <Minimize2 class="size-4" />
-                {:else}
-                  <Maximize2 class="size-4" />
-                {/if}
-              </Button>
-            {/snippet}
-          </Tooltip.Trigger>
-          <Tooltip.Content>{entriesExpanded ? 'Exit fullscreen' : 'Fullscreen ledger'}</Tooltip.Content>
-        </Tooltip.Root>
+        {@render expandLedger('max-md:hidden')}
       </div>
     </Card.Header>
     <Card.Content class={entriesExpanded ? 'flex min-h-0 flex-1 flex-col' : ''}>
@@ -2231,15 +2241,20 @@
             {entriesAtEpoch ? `Tracking starts ${data.epoch} — your epoch in Settings` : 'Previous period'}
           </Tooltip.Content>
         </Tooltip.Root>
-        <span class="flex-1 text-center font-mono text-sm font-medium uppercase tabular-nums">
-          {entriesBucket.label}
+        <!-- Badge above the label, as in the weekly grid: inline it widened the
+             row on exactly the future periods whose labels are longest, and on a
+             phone it wrapped underneath, which read as a different component. -->
+        <span
+          class="flex flex-1 flex-col items-center justify-center font-mono text-sm font-medium uppercase tabular-nums"
+        >
           {#if entriesBucketIsFuture}
             <span
-              class="ml-1 rounded bg-muted px-1.5 py-0.5 align-middle font-mono text-[10px] font-medium tracking-wider text-muted-foreground"
+              class="rounded bg-muted px-1.5 font-mono text-[10px] font-medium leading-4 tracking-wider text-muted-foreground"
             >
               Upcoming
             </span>
           {/if}
+          <span class="text-balance leading-5">{entriesBucket.label}</span>
         </span>
         <Tooltip.Root>
           <Tooltip.Trigger>
@@ -2258,12 +2273,17 @@
           </Tooltip.Trigger>
           <Tooltip.Content>Next period</Tooltip.Content>
         </Tooltip.Root>
-        <DateJump
-          value={entriesAnchor}
-          min={data.epoch}
-          label="Jump to date"
-          onpick={(iso) => (entriesAnchor = iso < data.epoch ? data.epoch : iso)}
-        />
+        <!-- Same move as the weekly grid: on phones the calendar parks in the
+             card header's top-right, beside the Ledger title, handing its width
+             back to the period label and arrows. -->
+        <div class="max-md:absolute max-md:top-4 max-md:right-4 md:contents">
+          <DateJump
+            value={entriesAnchor}
+            min={data.epoch}
+            label="Jump to date"
+            onpick={(iso) => (entriesAnchor = iso < data.epoch ? data.epoch : iso)}
+          />
+        </div>
       </div>
       {#if actionData?.imported}
         <p class="mb-3 text-sm text-success">
@@ -2491,18 +2511,21 @@
 
         <!-- mobile entries list: same rows, stacked layout -->
         {#if showEntriesList}
-        <button
-          type="button"
-          onclick={() => (ledgerAsc = !ledgerAsc)}
-          class="mb-2 inline-flex items-center gap-1 text-xs font-medium uppercase tracking-wider text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:text-foreground md:hidden"
-        >
-          {ledgerAsc ? 'Earliest first' : 'Latest first'}
-          {#if ledgerAsc}
-            <ChevronUp class="size-3.5" />
-          {:else}
-            <ChevronDown class="size-3.5" />
-          {/if}
-        </button>
+        <div class="mb-2 flex items-center justify-between gap-2 md:hidden">
+          <button
+            type="button"
+            onclick={() => (ledgerAsc = !ledgerAsc)}
+            class="inline-flex items-center gap-1 text-xs font-medium uppercase tracking-wider text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:text-foreground"
+          >
+            {ledgerAsc ? 'Earliest first' : 'Latest first'}
+            {#if ledgerAsc}
+              <ChevronUp class="size-3.5" />
+            {:else}
+              <ChevronDown class="size-3.5" />
+            {/if}
+          </button>
+          {@render expandLedger('')}
+        </div>
         <div
           class="divide-y divide-input overflow-y-auto rounded-md border border-input md:hidden {entriesExpanded
             ? 'min-h-0 flex-1'
@@ -2520,7 +2543,6 @@
                     : ''}"
               >
                 <span class="flex items-center gap-2 font-mono text-sm uppercase tabular-nums">
-                  <span class="size-3.5 shrink-0"></span>
                   <span>
                     <span>{weekdayShort(row.date)}</span>
                     <span class="ml-1">{formatDay(row.date).replace(/^\w+,\s/, '')}</span>
@@ -2570,9 +2592,15 @@
                     : ''}
               >
                 <div class="flex items-center justify-between gap-3 px-3 py-2">
+                <!-- No chevron gutter here. The date used to carry a size-3.5
+                     spacer so it lined up with the disclosure arrow on multi-shift
+                     day rows, which left it indented 22px past the times beneath
+                     it. Spending those 22px on the whole block instead aligned the
+                     two but squeezed the times onto three lines on a phone, so both
+                     now sit flush: the arrow on a day row is its own affordance and
+                     doesn't need every other row reserving space for it. -->
                 <div class="flex min-w-0 flex-col gap-1">
                   <div class="flex flex-wrap items-center gap-2 font-mono text-sm uppercase tabular-nums">
-                    <span class="size-3.5 shrink-0"></span>
                     {#if row.dayCount === 1}
                       <span>
                         <span class="text-muted-foreground">{weekdayShort(entry.date)}</span>
