@@ -1525,8 +1525,12 @@
       </div>
       <!-- Mobile: week nav on its own full-width row, then month/year/This week
            sharing a line. md:order-* restores the desktop sequence
-           (month, year, nav, This week) once the md:contents wrapper dissolves. -->
-      <div class="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
+           (month, year, nav, This week) once the md:contents wrapper dissolves.
+           md:ml-auto keeps this block hard right whether it shares the header's
+           line with the title or wraps below it: an auto margin eats the free
+           space either way, where justify-between would drop a solo line back
+           to the left. The title stays left in both cases. -->
+      <div class="flex flex-col gap-2 md:ml-auto md:flex-row md:flex-wrap md:items-center">
         <div class="flex items-center gap-2 md:order-4">
           <Tooltip.Root>
             <Tooltip.Trigger>
