@@ -1554,15 +1554,21 @@
               {weekAtEpoch ? `Tracking starts ${data.epoch} — your epoch in Settings` : 'Previous week'}
             </Tooltip.Content>
           </Tooltip.Root>
-          <span class="min-w-44 flex-1 text-center font-mono text-sm font-medium uppercase tabular-nums md:flex-none">
-            {formatWeekRange(weekStart, true)}
+          <!-- The badge sits above the range rather than beside it: inline it
+               pushed the row ~68px wider on exactly the future weeks whose
+               labels are already the longest, and the stack keeps the date
+               itself on one predictable line. -->
+          <span
+            class="flex min-w-44 flex-1 flex-col items-center justify-center font-mono text-sm font-medium uppercase tabular-nums md:flex-none"
+          >
             {#if weekIsFuture}
               <span
-                class="ml-1 rounded bg-muted px-1.5 py-0.5 align-middle font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+                class="rounded bg-muted px-1.5 text-[10px] font-medium uppercase leading-4 tracking-wider text-muted-foreground"
               >
                 Upcoming
               </span>
             {/if}
+            <span class="leading-5">{formatWeekRange(weekStart, true)}</span>
           </span>
           <Tooltip.Root>
             <Tooltip.Trigger>
