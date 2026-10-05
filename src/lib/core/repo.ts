@@ -74,6 +74,7 @@ export const DEFAULT_SETTINGS = {
   hideWeekendsEntries: false,
   hideWeekendsGrid: false,
   expandNotes: false,
+  linkLogNavs: true,
   otMultiplierEnabled: false,
   otMultiplier: 1.5,
   goalEnabled: true,

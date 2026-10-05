@@ -204,6 +204,13 @@
       "when": 1790010969418,
       "tag": "0028_swift_ink",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "6",
+      "when": 1791233848134,
+      "tag": "0029_loose_arachne",
+      "breakpoints": true
     }
   ]
 }

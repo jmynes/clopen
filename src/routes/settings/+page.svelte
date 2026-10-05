@@ -149,6 +149,7 @@
       ['hideWeekendsEntries', DEFAULT_SETTINGS.hideWeekendsEntries],
       ['hideWeekendsGrid', DEFAULT_SETTINGS.hideWeekendsGrid],
       ['expandNotes', DEFAULT_SETTINGS.expandNotes],
+      ['linkLogNavs', DEFAULT_SETTINGS.linkLogNavs],
       ['observeDst', DEFAULT_SETTINGS.observeDst],
       ['countExpenses', DEFAULT_SETTINGS.countExpenses],
     ];
@@ -643,6 +644,18 @@
                   </label>
                 </div>
               </div>
+              <label
+                class="flex cursor-pointer items-start gap-2 rounded-md border border-input px-3 py-2 text-sm transition-colors has-checked:border-primary has-checked:bg-accent"
+              >
+                <input type="checkbox" name="linkLogNavs" checked={data.linkLogNavs} class="mt-0.5 accent-primary" />
+                <span>
+                  <span class="font-medium">Move the grid and Ledger together</span>
+                  <span class="block text-xs text-muted-foreground">
+                    On the Log page, paging either date nav re-points the other: the Ledger follows the week you land
+                    on, and the grid jumps to the first week of the Ledger's period. Off gives each its own cursor.
+                  </span>
+                </span>
+              </label>
             </section>
 
             <section class="flex flex-col gap-3 pt-5">

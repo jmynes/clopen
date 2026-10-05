@@ -37,6 +37,7 @@ export async function updateSettings(input: SettingsInput, database: Database = 
     hideWeekendsEntries: input.hideWeekendsEntries,
     hideWeekendsGrid: input.hideWeekendsGrid,
     expandNotes: input.expandNotes,
+    linkLogNavs: input.linkLogNavs,
     otMultiplierEnabled: input.otMultiplierEnabled,
     otMultiplier: input.otMultiplier,
     goalEnabled: input.goalEnabled,

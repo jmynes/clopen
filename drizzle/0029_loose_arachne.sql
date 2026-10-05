@@ -1,0 +1,1 @@
+ALTER TABLE `settings` ADD `link_log_navs` integer DEFAULT true NOT NULL;

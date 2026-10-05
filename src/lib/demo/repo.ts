@@ -527,6 +527,7 @@ export const demoRepo: Repo = {
       hideWeekendsEntries: input.hideWeekendsEntries,
       hideWeekendsGrid: input.hideWeekendsGrid,
       expandNotes: input.expandNotes,
+      linkLogNavs: input.linkLogNavs,
       otMultiplierEnabled: input.otMultiplierEnabled,
       otMultiplier: input.otMultiplier,
       goalEnabled: input.goalEnabled,

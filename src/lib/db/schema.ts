@@ -85,6 +85,12 @@ export const settings = sqliteTable('settings', {
   hideWeekendsGrid: integer('hide_weekends_grid', { mode: 'boolean' }).notNull().default(false),
   /** Start with every entry's note accordion expanded in the Entries views. */
   expandNotes: integer('expand_notes', { mode: 'boolean' }).notNull().default(false),
+  /**
+   * Move the Log page's weekly-grid and Ledger date navs together. On (the
+   * default) each one's arrows, jump-to-today and calendar re-point the other;
+   * off restores the two independent cursors.
+   */
+  linkLogNavs: integer('link_log_navs', { mode: 'boolean' }).notNull().default(true),
   /** Pay day-hours beyond the daily baseline at `otMultiplier` × rate. */
   otMultiplierEnabled: integer('ot_multiplier_enabled', { mode: 'boolean' }).notNull().default(false),
   otMultiplier: real('ot_multiplier').notNull().default(1.5),

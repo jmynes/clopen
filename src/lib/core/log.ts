@@ -25,6 +25,7 @@ export function computeLog(entries: TimeEntry[], row: Settings) {
     hideWeekendsEntries: row.hideWeekendsEntries,
     hideWeekendsGrid: row.hideWeekendsGrid,
     expandNotes: row.expandNotes,
+    linkLogNavs: row.linkLogNavs,
     epoch: row.epoch,
     ledgerPeriod: row.ledgerPeriod,
   };

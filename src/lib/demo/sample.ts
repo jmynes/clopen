@@ -40,6 +40,7 @@ export const SAMPLE_SETTINGS: Settings = {
   hideWeekendsEntries: false,
   hideWeekendsGrid: false,
   expandNotes: false,
+  linkLogNavs: true,
   otMultiplierEnabled: false,
   otMultiplier: 1.5,
   goalEnabled: true,

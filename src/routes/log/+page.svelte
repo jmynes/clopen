@@ -403,8 +403,7 @@
     return [...set].filter((y) => y >= epochYear).sort((a, b) => a - b);
   });
   function jumpTo(year: number, month: number) {
-    const target = `${year}-${String(month).padStart(2, '0')}-01`;
-    weekAnchor = target < data.epoch ? data.epoch : target;
+    void goToWeek(`${year}-${String(month).padStart(2, '0')}-01`);
   }
   const weekAtEpoch = $derived(weekStart <= data.epoch);
   // "This week" has nowhere to jump when the grid already shows today's week.
@@ -511,10 +510,11 @@
     return d.toISOString().slice(0, 10);
   }
 
-  const entriesBucket = $derived.by(() => {
-    const anchor = entriesAnchor;
+  // Pure, so the nav coupling can ask "which block would this anchor give?"
+  // without depending on when a $derived happens to recompute.
+  function entriesBucketOf(anchor: string, period: Period): { start: string; end: string; label: string } {
     const wsOn = data.weekStartsOn;
-    switch (entriesPeriod) {
+    switch (period) {
       case 'week': {
         const start = weekDates(anchor, wsOn)[0];
         const end = addDays(start, 6);
@@ -545,7 +545,8 @@
         return { start: `${y}-01-01`, end: `${y}-12-31`, label: String(y) };
       }
     }
-  });
+  }
+  const entriesBucket = $derived(entriesBucketOf(entriesAnchor, entriesPeriod));
 
   const pagedEntries = $derived(
     data.entries.filter((e) => e.date >= entriesBucket.start && e.date <= entriesBucket.end),
@@ -669,24 +670,25 @@
     return () => cancelAnimationFrame(id);
   });
 
-  function shiftEntriesPage(dir: -1 | 1) {
+  function nextEntriesAnchor(dir: -1 | 1): string {
     switch (entriesPeriod) {
       case 'week':
-        entriesAnchor = addDays(entriesAnchor, 7 * dir);
-        return;
+        return addDays(entriesAnchor, 7 * dir);
       case 'biweek':
-        entriesAnchor = addDays(entriesAnchor, 14 * dir);
-        return;
+        return addDays(entriesAnchor, 14 * dir);
       case 'month':
-        entriesAnchor = shiftMonth(entriesAnchor, dir);
-        return;
+        return shiftMonth(entriesAnchor, dir);
       case 'quarter':
-        entriesAnchor = shiftMonth(entriesAnchor, 3 * dir);
-        return;
+        return shiftMonth(entriesAnchor, 3 * dir);
       case 'year':
-        entriesAnchor = shiftMonth(entriesAnchor, 12 * dir);
-        return;
+        return shiftMonth(entriesAnchor, 12 * dir);
     }
+  }
+  // Single exit point, so the grid coupling can't be bypassed by a caller.
+  function shiftEntriesPage(dir: -1 | 1) {
+    // entriesAnchor is assigned synchronously inside goToEntriesAnchor, so the
+    // next click already reads the moved value — no thunk needed here.
+    void goToEntriesAnchor(nextEntriesAnchor(dir));
   }
 
   // ── Spreadsheet-style editing for the weekly grid ────────────────────────
@@ -1347,6 +1349,67 @@
     if (t) clearTimeout(t);
     rowSaveTimers.set(key, setTimeout(() => void saveSubShift(i, j), 500));
   }
+
+  /**
+   * Run every debounced row save NOW, and resolve once they've all landed.
+   *
+   * This is what makes typing safe across navigation. The grid is uncontrolled
+   * and `buildRow` reads both the cell values and `weekRowDates[i]` at the
+   * moment the save fires — so if the week changed inside the 500ms debounce,
+   * `seedGrid` would have already overwritten the cells and the save would
+   * apply the NEW week's values under the NEW week's dates, silently dropping
+   * what was typed. Every programmatic week change therefore flushes first,
+   * while the DOM still holds the week the user actually typed into.
+   */
+  function flushPendingRowSaves(): Promise<void> {
+    const keys = [...rowSaveTimers.keys()];
+    if (keys.length === 0) return Promise.resolve();
+    const runs: Promise<void>[] = [];
+    for (const key of keys) {
+      const t = rowSaveTimers.get(key);
+      if (t) clearTimeout(t);
+      rowSaveTimers.delete(key);
+      const main = /^m(\d+)$/.exec(key);
+      const sub = /^s(\d+)\.(\d+)$/.exec(key);
+      if (main) runs.push(saveRow(Number(main[1])));
+      else if (sub) runs.push(saveSubShift(Number(sub[1]), Number(sub[2])));
+    }
+    return Promise.all(runs).then(() => undefined);
+  }
+
+  // ── Grid ↔ Ledger nav coupling ───────────────────────────────────────────
+  // With data.linkLogNavs on (the default) the two date navs move together.
+  // Both directions re-POINT rather than counting steps, so a calendar jump or
+  // a "today" press can never leave them disagreeing.
+  //
+  // Every week change goes through here so the flush above is unskippable.
+  // `to` may be a thunk: a relative step has to be computed AFTER the flush, or
+  // two quick arrow clicks both read the pre-move weekStart and collapse into
+  // one. Awaiting first means the second click's continuation sees the first's
+  // assignment (microtasks run in call order).
+  async function goToWeek(to: string | (() => string), { couple = true } = {}): Promise<void> {
+    await flushPendingRowSaves();
+    const iso = typeof to === 'function' ? to() : to;
+    const target = iso < data.epoch ? data.epoch : iso;
+    weekAnchor = target;
+    // The Ledger re-derives its block from the week we landed on; for a period
+    // coarser than a week that usually leaves it where it was.
+    if (couple && data.linkLogNavs) entriesAnchor = weekDates(target, data.weekStartsOn)[0];
+  }
+
+  // The grid follows to the FIRST week of the Ledger's block — not to its
+  // anchor, which for a month/quarter/year sits at the start of some month
+  // inside the block rather than at its edge.
+  //
+  // Bi-week is the one period whose blocks aren't calendar-aligned (a block is
+  // "the anchor's week plus the one before"), so stepping the grid through one
+  // re-phases it a week at a time. That's inherent to a relative block, not a
+  // bug to chase.
+  async function goToEntriesAnchor(iso: string): Promise<void> {
+    entriesAnchor = iso;
+    if (!data.linkLogNavs) return;
+    await goToWeek(entriesBucketOf(iso, entriesPeriod).start, { couple: false });
+  }
   function onGridFocusOut(e: FocusEvent): void {
     const el = e.target;
     if (!(el instanceof HTMLInputElement)) return;
@@ -1549,7 +1612,7 @@
               value={weekStart}
               min={data.epoch}
               label="Jump to week"
-              onpick={(iso) => (weekAnchor = iso < data.epoch ? data.epoch : iso)}
+              onpick={(iso) => void goToWeek(iso)}
             />
           </div>
           <Tooltip.Root>
@@ -1563,7 +1626,7 @@
                   aria-label="Previous week"
                   aria-disabled={weekAtEpoch}
                   onclick={() => {
-                    if (!weekAtEpoch) weekAnchor = addDays(weekStart, -7);
+                    if (!weekAtEpoch) void goToWeek(() => addDays(weekStart, -7));
                   }}
                 >
                   <ChevronLeft class="size-4" />
@@ -1600,7 +1663,7 @@
                   variant="outline"
                   size="icon-lg"
                   aria-label="Next week"
-                  onclick={() => (weekAnchor = addDays(weekStart, 7))}
+                  onclick={() => void goToWeek(() => addDays(weekStart, 7))}
                 >
                   <ChevronRight class="size-4" />
                 </Button>
@@ -1622,7 +1685,7 @@
                   class="md:order-1 {weekIsCurrent ? 'opacity-50' : ''}"
                   aria-disabled={weekIsCurrent}
                   onclick={() => {
-                    if (!weekIsCurrent) weekAnchor = todayISO();
+                    if (!weekIsCurrent) void goToWeek(todayISO());
                   }}
                 >
                   <CalendarRange class="size-4" /> This week
@@ -2206,7 +2269,7 @@
                 class="shrink-0 {entriesAtCurrent ? 'opacity-50' : ''}"
                 aria-disabled={entriesAtCurrent}
                 onclick={() => {
-                  if (!entriesAtCurrent) entriesAnchor = todayISO();
+                  if (!entriesAtCurrent) void goToEntriesAnchor(todayISO());
                 }}
               >
                 <CalendarCheck class="size-4" /> This {PERIOD_NOUNS[entriesPeriod]}
@@ -2227,7 +2290,7 @@
             value={entriesAnchor}
             min={data.epoch}
             label="Jump to date"
-            onpick={(iso) => (entriesAnchor = iso < data.epoch ? data.epoch : iso)}
+            onpick={(iso) => void goToEntriesAnchor(iso < data.epoch ? data.epoch : iso)}
           />
         </div>
         <Tooltip.Root>
